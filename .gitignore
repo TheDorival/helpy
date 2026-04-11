@@ -4,6 +4,8 @@ __pycache__/
 media/
 static/
 migrations/ 
+staticfiles/
 
+*.pyc
 *.sqlite3
 .env
