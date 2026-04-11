@@ -52,6 +52,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'helpy.urls'
@@ -116,4 +117,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# pasta onde o collectstatic vai depositar
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# onde ficam os statics durante dev
+STATICFILES_DIRS = [
+    BASE_DIR / 'static'
+]
+
+# URL publica
 STATIC_URL = 'static/'
