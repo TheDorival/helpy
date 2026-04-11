@@ -125,5 +125,11 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static'
 ]
 
-# URL publica
+# URL publica de static
 STATIC_URL = 'static/'
+
+# URL publica de media
+MEDIA_URL = '/media/'
+
+# caminho onde os media serão salvos
+MEDIA_ROOT = BASE_DIR / 'media'
