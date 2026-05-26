@@ -17,9 +17,20 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.contrib.auth.views import LoginView, LogoutView
+from django.urls import include, path
+
+from helpy.views import home, painel
+from usuarios.views import cadastro, perfil
 
 urlpatterns = [
+    path('', home, name='home'),
+    path('entrar/', LoginView.as_view(template_name='login.html'), name='login'),
+    path('sair/', LogoutView.as_view(), name='logout'),
+    path('cadastro/', cadastro, name='cadastro'),
+    path('painel/', painel, name='painel'),
+    path('perfil/', perfil, name='perfil'),
+    path('', include('financeiro.urls')),
     path('admin/', admin.site.urls),
 ]
 
