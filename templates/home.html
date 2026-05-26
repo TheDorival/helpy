@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bg:      '#191919',
+            surface: '#222222',
+            line:    '#2e2e2e',
+            navy:    '#1d3461',
+            accent:  '#4c8eff',
+            tx:      '#e8e8e6',
+            muted:   '#8b8b8b',
+            dim:     '#555555',
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    html { font-size: 16.72px; }
+  </style>
+</head>
+<body class="bg-bg text-tx font-sans min-h-screen">
+
+  <!-- NAVBAR -->
+  <header class="border-b border-line">
+    <div class="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
+      <span class="text-sm font-semibold text-tx tracking-tight">Helpy</span>
+      <div class="flex items-center gap-4">
+        <a href="{% url 'login' %}" class="text-sm text-muted hover:text-tx transition-colors">Entrar</a>
+        <a href="{% url 'cadastro' %}" class="text-sm font-medium text-white bg-accent hover:opacity-90 transition-opacity px-3 py-1.5 rounded-md">Criar conta</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-6">
+
+    <!-- HERO -->
+    <section class="pt-24 pb-20 border-b border-line">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-6">Controle financeiro pessoal</p>
+      <h1 class="text-4xl sm:text-5xl font-semibold text-tx leading-tight tracking-tight max-w-xl">
+        Tudo que você ganha.<br />Tudo que você gasta.<br />
+        <span class="text-accent">Em um só lugar.</span>
+      </h1>
+      <p class="mt-6 text-base text-muted max-w-md leading-relaxed">
+        Helpy registra e organiza sua vida financeira de forma completa — por categoria, contexto e período — para que você entenda exatamente onde está e para onde vai seu dinheiro.
+      </p>
+      <div class="mt-10">
+        <a href="{% url 'cadastro' %}"
+           class="inline-flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-md hover:opacity-90 transition-opacity">
+          Criar conta
+        </a>
+      </div>
+    </section>
+
+    <!-- RASTREAMENTO -->
+    <section class="py-16 border-b border-line">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-10">Rastreamento</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
+
+        <div>
+          <h3 class="text-sm font-semibold text-tx mb-2">Por categoria</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Alimentação, moradia, saúde, transporte, lazer, educação e mais. Cada gasto classificado para você saber onde o dinheiro vai de verdade.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-semibold text-tx mb-2">Por contexto</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Separe finanças pessoais, profissionais e familiares. Acompanhe cada ambiente de forma independente ou de forma consolidada.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-semibold text-tx mb-2">Gastos fixos e variáveis</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Identifique o que é comprometimento mensal fixo e o que é gasto espontâneo. Veja o impacto de cada tipo no seu saldo.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-semibold text-tx mb-2">Parcelamentos</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Registre compras parceladas e veja o peso de cada parcela nos meses futuros antes mesmo de comprometer sua renda.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-semibold text-tx mb-2">Receitas recorrentes</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Salário, freelances, aluguéis ou renda variável. Configure entradas recorrentes ou registre cada uma manualmente.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-semibold text-tx mb-2">Metas financeiras</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Defina quanto quer economizar e em quanto tempo. Acompanhe o progresso mês a mês com base no seu comportamento real.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- GRÁFICOS -->
+    <section class="py-16 border-b border-line">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-10">Visualizações e gráficos</p>
+
+      <div class="space-y-8">
+
+        <div class="flex items-start gap-6 p-5 rounded-lg bg-surface border border-line">
+          <div class="w-9 h-9 rounded bg-bg border border-line flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-tx mb-1">Gráfico de vida financeira</h3>
+            <p class="text-sm text-muted leading-relaxed">
+              Linha do tempo completa com toda a sua renda e todos os seus gastos desde o início. Veja a evolução do seu patrimônio ao longo dos anos e identifique momentos de virada.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-6 p-5 rounded-lg bg-surface border border-line">
+          <div class="w-9 h-9 rounded bg-bg border border-line flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-tx mb-1">Gráfico mensal</h3>
+            <p class="text-sm text-muted leading-relaxed">
+              Comparativo de receitas e despesas por mês. Veja quais meses você ficou no positivo, quais ficou no negativo e qual foi a variação em relação ao mês anterior.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-6 p-5 rounded-lg bg-surface border border-line">
+          <div class="w-9 h-9 rounded bg-bg border border-line flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-tx mb-1">Distribuição por categoria</h3>
+            <p class="text-sm text-muted leading-relaxed">
+              Veja quanto cada categoria representa no total dos seus gastos. Identifique onde você mais gasta e onde há espaço para ajuste.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-6 p-5 rounded-lg bg-surface border border-line">
+          <div class="w-9 h-9 rounded bg-bg border border-line flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-tx mb-1">Projeção e tendência</h3>
+            <p class="text-sm text-muted leading-relaxed">
+              Com base no seu histórico, o Helpy projeta como seu saldo deve evoluir nos próximos meses. Antecipe problemas antes que eles aconteçam.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="py-16 border-b border-line">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-10">Como funciona</p>
+      <ol class="space-y-8">
+        <li class="flex items-start gap-5">
+          <span class="text-xs font-mono text-dim pt-0.5 w-4 flex-shrink-0">01</span>
+          <div>
+            <h3 class="text-sm font-semibold text-tx mb-1">Configure seu perfil financeiro</h3>
+            <p class="text-sm text-muted leading-relaxed">Defina suas fontes de renda, categorias de gasto e os contextos que fazem sentido para sua vida — pessoal, profissional, familiar.</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-5">
+          <span class="text-xs font-mono text-dim pt-0.5 w-4 flex-shrink-0">02</span>
+          <div>
+            <h3 class="text-sm font-semibold text-tx mb-1">Registre cada transação</h3>
+            <p class="text-sm text-muted leading-relaxed">Adicione ganhos e gastos manualmente ou importe por planilha. Classifique por categoria, data e contexto. Quanto mais você registra, mais precisa fica a visão.</p>
+          </div>
+        </li>
+        <li class="flex items-start gap-5">
+          <span class="text-xs font-mono text-dim pt-0.5 w-4 flex-shrink-0">03</span>
+          <div>
+            <h3 class="text-sm font-semibold text-tx mb-1">Analise e ajuste</h3>
+            <p class="text-sm text-muted leading-relaxed">Leia os gráficos, identifique padrões e tome decisões com base em dados reais. Acompanhe mês a mês e veja seu comportamento financeiro mudar ao longo do tempo.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-16">
+      <h2 class="text-sm font-semibold text-tx mb-2">Comece a registrar hoje.</h2>
+      <p class="text-sm text-muted mb-6 max-w-sm leading-relaxed">
+        Quanto mais cedo você começa, mais completo fica seu histórico financeiro e mais úteis ficam as análises.
+      </p>
+      <div class="flex items-center gap-5">
+        <a href="{% url 'cadastro' %}" class="inline-flex items-center gap-2 text-sm font-medium text-accent hover:opacity-80 transition-opacity">
+          Criar conta →
+        </a>
+        <a href="{% url 'login' %}" class="text-sm text-muted hover:text-tx transition-colors">
+          Já tenho uma conta
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-line">
+    <div class="max-w-3xl mx-auto px-6 h-12 flex items-center justify-between">
+      <span class="text-xs text-dim">© 2026 Helpy</span>
+      <span class="text-xs text-dim">Gestão financeira pessoal</span>
+    </div>
+  </footer>
+
+</body>
+</html>
