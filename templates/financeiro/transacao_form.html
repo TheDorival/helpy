@@ -1,0 +1,118 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}{{ titulo }} — Helpy{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+
+  <div class="max-w-lg">
+
+    <div class="bg-surface border border-line rounded-lg p-7">
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- Descrição -->
+        <div class="mb-5">
+          <label for="id_descricao" class="block text-xs font-medium text-muted mb-2">Descrição</label>
+          <input
+            type="text"
+            name="descricao"
+            id="id_descricao"
+            autofocus
+            required
+            class="w-full bg-bg border {% if form.descricao.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+            placeholder="Ex: Salário, Aluguel, Mercado…"
+            value="{{ form.descricao.value|default:'' }}"
+          />
+          {% if form.descricao.errors %}
+            <p class="mt-1.5 text-xs text-red-400">{{ form.descricao.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Valor + Data -->
+        <div class="grid grid-cols-2 gap-4 mb-5">
+          <div>
+            <label for="id_valor" class="block text-xs font-medium text-muted mb-2">Valor (R$)</label>
+            <input
+              type="number"
+              name="valor"
+              id="id_valor"
+              step="0.01"
+              min="0.01"
+              required
+              class="w-full bg-bg border {% if form.valor.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+              placeholder="0,00"
+              value="{{ form.valor.value|default:'' }}"
+            />
+            {% if form.valor.errors %}
+              <p class="mt-1.5 text-xs text-red-400">{{ form.valor.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="id_data" class="block text-xs font-medium text-muted mb-2">Data</label>
+            <input
+              type="date"
+              name="data"
+              id="id_data"
+              required
+              class="w-full bg-bg border {% if form.data.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors [color-scheme:dark]"
+              value="{{ form.data.value|default:'' }}"
+            />
+            {% if form.data.errors %}
+              <p class="mt-1.5 text-xs text-red-400">{{ form.data.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Categoria -->
+        <div class="mb-5">
+          <label for="id_categoria" class="block text-xs font-medium text-muted mb-2">
+            Categoria <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <select
+            name="categoria"
+            id="id_categoria"
+            class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors"
+          >
+            <option value="">— sem categoria —</option>
+            {% for cat in form.categoria.field.queryset %}
+              <option value="{{ cat.pk }}" {% if form.categoria.value|stringformat:"s" == cat.pk|stringformat:"s" %}selected{% endif %}>
+                {{ cat.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Observação -->
+        <div class="mb-6">
+          <label for="id_observacao" class="block text-xs font-medium text-muted mb-2">
+            Observação <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <textarea
+            name="observacao"
+            id="id_observacao"
+            rows="2"
+            class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors resize-none"
+            placeholder="Alguma nota adicional…"
+          >{{ form.observacao.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Ações -->
+        <div class="flex items-center gap-3">
+          <button
+            type="submit"
+            class="{% if tipo == 'receita' %}bg-green hover:opacity-90{% else %}bg-red hover:opacity-90{% endif %} text-white text-sm font-medium px-5 py-2 rounded-md transition-opacity"
+          >
+            {% if transacao %}Salvar alterações{% else %}Registrar{% endif %}
+          </button>
+          <a href="{% url cancel_url %}" class="text-sm text-muted hover:text-tx transition-colors">Cancelar</a>
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+{% endblock %}
