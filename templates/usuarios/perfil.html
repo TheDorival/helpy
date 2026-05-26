@@ -1,0 +1,148 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Perfil — Helpy{% endblock %}
+{% block page_title %}Perfil{% endblock %}
+
+{% block content %}
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="mb-5 px-4 py-3 rounded-md bg-green/10 border border-green/20 text-sm text-green">
+        {{ msg }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <div class="grid grid-cols-3 gap-6">
+
+      <!-- ── COLUNA ESQUERDA (campos editáveis) ── -->
+      <div class="col-span-2 flex flex-col gap-5">
+
+        <!-- Nome + Sobrenome -->
+        <div class="bg-surface border border-line rounded-lg p-6">
+          <p class="text-xs font-medium text-dim uppercase tracking-widest mb-5">Informações pessoais</p>
+
+          <div class="grid grid-cols-2 gap-4 mb-5">
+            <div>
+              <label for="id_first_name" class="block text-xs font-medium text-muted mb-2">Nome</label>
+              <input type="text" name="first_name" id="id_first_name" required
+                     class="w-full bg-bg border {% if form.first_name.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+                     value="{{ form.first_name.value|default:'' }}" />
+              {% if form.first_name.errors %}
+                <p class="mt-1.5 text-xs text-red-400">{{ form.first_name.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="id_last_name" class="block text-xs font-medium text-muted mb-2">Sobrenome</label>
+              <input type="text" name="last_name" id="id_last_name" required
+                     class="w-full bg-bg border {% if form.last_name.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+                     value="{{ form.last_name.value|default:'' }}" />
+              {% if form.last_name.errors %}
+                <p class="mt-1.5 text-xs text-red-400">{{ form.last_name.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-5">
+            <label for="id_email" class="block text-xs font-medium text-muted mb-2">E-mail</label>
+            <input type="email" name="email" id="id_email" required
+                   class="w-full bg-bg border {% if form.email.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+                   value="{{ form.email.value|default:'' }}" />
+            {% if form.email.errors %}
+              <p class="mt-1.5 text-xs text-red-400">{{ form.email.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="id_telefone" class="block text-xs font-medium text-muted mb-2">
+                Telefone <span class="text-dim font-normal">(opcional)</span>
+              </label>
+              <input type="tel" name="telefone" id="id_telefone"
+                     class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+                     placeholder="(11) 99999-9999"
+                     value="{{ form.telefone.value|default:'' }}" />
+            </div>
+            <div>
+              <label for="id_data_nascimento" class="block text-xs font-medium text-muted mb-2">
+                Nascimento <span class="text-dim font-normal">(opcional)</span>
+              </label>
+              <input type="date" name="data_nascimento" id="id_data_nascimento"
+                     class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors [color-scheme:dark]"
+                     value="{{ form.data_nascimento.value|default:'' }}" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Bio + botão -->
+        <div class="flex-1 flex flex-col bg-surface border border-line rounded-lg p-6 min-h-0">
+          <p class="text-xs font-medium text-dim uppercase tracking-widest mb-5">Bio</p>
+          <textarea name="bio" id="id_bio"
+                    class="flex-1 min-h-[80px] w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors resize-none"
+                    placeholder="Uma frase sobre você…">{{ form.bio.value|default:'' }}</textarea>
+          <button type="submit"
+                  class="mt-5 self-start bg-accent hover:opacity-90 text-white text-sm font-medium px-5 py-2 rounded-md transition-opacity">
+            Salvar alterações
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ── COLUNA DIREITA ── -->
+      <div class="flex flex-col gap-5">
+
+        <!-- Avatar -->
+        <div class="bg-surface border border-line rounded-lg p-6">
+          <p class="text-xs font-medium text-dim uppercase tracking-widest mb-5">Foto de perfil</p>
+
+          <div class="flex flex-col items-center text-center">
+            {% if request.user.avatar %}
+              <img src="{{ request.user.avatar.url }}"
+                   alt="avatar"
+                   class="w-20 h-20 rounded-full object-cover border border-line mb-4">
+            {% else %}
+              <div class="w-20 h-20 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-3xl font-semibold text-accent mb-4">
+                {{ request.user.username|first|upper }}
+              </div>
+            {% endif %}
+
+            <label for="id_avatar"
+                   class="cursor-pointer text-xs font-medium text-muted hover:text-tx transition-colors border border-line rounded-md px-3 py-1.5 hover:bg-surfacehi">
+              {% if request.user.avatar %}Trocar foto{% else %}Enviar foto{% endif %}
+            </label>
+            <input type="file" name="avatar" id="id_avatar" accept="image/*" class="hidden" />
+            {% if request.user.avatar %}
+              <p class="mt-2 text-xs text-dim">{{ request.user.avatar.name|slice:"9:" }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Conta -->
+        <div class="flex-1 bg-surface border border-line rounded-lg p-6">
+          <p class="text-xs font-medium text-dim uppercase tracking-widest mb-5">Conta</p>
+          <div class="space-y-4">
+            <div>
+              <p class="text-xs text-muted mb-0.5">Usuário</p>
+              <p class="text-sm text-tx font-mono">@{{ request.user.username }}</p>
+            </div>
+            <div class="border-t border-line pt-4">
+              <p class="text-xs text-muted mb-0.5">Membro desde</p>
+              <p class="text-sm text-tx">{{ request.user.date_joined|date:"d/m/Y" }}</p>
+            </div>
+            <div class="border-t border-line pt-4">
+              <p class="text-xs text-muted mb-0.5">Último acesso</p>
+              <p class="text-sm text-tx">{{ request.user.last_login|date:"d/m/Y H:i"|default:"—" }}</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </form>
+
+{% endblock %}
