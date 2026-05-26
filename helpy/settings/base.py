@@ -41,8 +41,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'financeiro',
-    'educacional'
+    'educacional',
+    'usuarios',
 ]
+
+AUTH_USER_MODEL = 'usuarios.Usuario'
+
+LOGIN_URL = '/entrar/'
+LOGIN_REDIRECT_URL = '/painel/'
+LOGOUT_REDIRECT_URL = '/'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -60,7 +67,7 @@ ROOT_URLCONF = 'helpy.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
