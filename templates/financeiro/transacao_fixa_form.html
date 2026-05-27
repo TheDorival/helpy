@@ -47,10 +47,14 @@
         <!-- Valor + Frequência -->
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label for="id_valor" class="block text-xs font-medium text-muted mb-2">Valor</label>
-            <input type="number" name="valor" id="id_valor" step="0.01" min="0"
+            <label for="id_valor" class="block text-xs font-medium text-muted mb-2">
+              Valor ({{ request.user.simbolo_moeda }})
+            </label>
+            <input type="text" inputmode="decimal" name="valor" id="id_valor"
                    value="{{ form.valor.value|default:'' }}"
-                   class="w-full bg-bg border {% if form.valor.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors" />
+                   placeholder="0,00"
+                   autocomplete="off"
+                   class="w-full bg-bg border {% if form.valor.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
             {% if form.valor.errors %}
               <p class="mt-1.5 text-xs text-red">{{ form.valor.errors.0 }}</p>
             {% endif %}
@@ -130,9 +134,36 @@
 
   <script>
   (function () {
-    const tipoRadios  = document.querySelectorAll('input[name="tipo"]');
-    const catSelect   = document.getElementById('id_categoria');
-    const catOptions  = [...catSelect.options];
+    // ── Formatação do campo Valor ──
+    const valorInput = document.getElementById('id_valor');
+    const form       = valorInput.closest('form');
+
+    function parse(s) {
+      return parseFloat(String(s).replace(/\./g, '').replace(',', '.'));
+    }
+    function fmt(n) {
+      return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    if (valorInput.value) {
+      const n = parseFloat(valorInput.value);
+      if (!isNaN(n)) valorInput.value = fmt(n);
+    }
+
+    valorInput.addEventListener('blur', function () {
+      const n = parse(this.value);
+      if (!isNaN(n) && n > 0) this.value = fmt(n);
+    });
+
+    form.addEventListener('submit', function () {
+      const n = parse(valorInput.value);
+      if (!isNaN(n)) valorInput.value = n.toFixed(2);
+    });
+
+    // ── Filtro de categorias por tipo ──
+    const tipoRadios = document.querySelectorAll('input[name="tipo"]');
+    const catSelect  = document.getElementById('id_categoria');
+    const catOptions = [...catSelect.options];
 
     function filtrar() {
       const tipo = document.querySelector('input[name="tipo"]:checked')?.value;
