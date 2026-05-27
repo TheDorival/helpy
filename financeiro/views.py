@@ -1,8 +1,9 @@
-import calendar
-from datetime import date
+import csv
+from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import TransacaoForm
@@ -16,13 +17,25 @@ MESES = [
 
 def _periodo(request):
     hoje = date.today()
+    dia_corte = getattr(request.user, 'dia_corte', 1)
+
     try:
-        mes = int(request.GET.get('mes', hoje.month))
-        ano = int(request.GET.get('ano', hoje.year))
-        if not (1 <= mes <= 12):
-            mes, ano = hoje.month, hoje.year
+        mes = int(request.GET.get('mes', 0))
+        ano = int(request.GET.get('ano', 0))
     except (ValueError, TypeError):
-        mes, ano = hoje.month, hoje.year
+        mes = ano = 0
+
+    if not mes or not ano or not (1 <= mes <= 12):
+        if hoje.day >= dia_corte:
+            mes, ano = hoje.month, hoje.year
+        else:
+            mes = hoje.month - 1 if hoje.month > 1 else 12
+            ano = hoje.year if hoje.month > 1 else hoje.year - 1
+
+    inicio = date(ano, mes, dia_corte)
+    mes_fim = mes % 12 + 1
+    ano_fim = ano + 1 if mes == 12 else ano
+    fim = date(ano_fim, mes_fim, dia_corte) - timedelta(days=1)
 
     mes_ant = (mes - 2) % 12 + 1
     ano_ant = ano - 1 if mes == 1 else ano
@@ -32,6 +45,9 @@ def _periodo(request):
     return {
         'mes': mes, 'ano': ano,
         'mes_nome': MESES[mes],
+        'inicio': inicio,
+        'fim': fim,
+        'dia_corte': dia_corte,
         'mes_anterior': {'mes': mes_ant, 'ano': ano_ant},
         'mes_proximo': {'mes': mes_prox, 'ano': ano_prox},
     }
@@ -42,7 +58,7 @@ def receitas(request):
     ctx = _periodo(request)
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='receita',
-        data__month=ctx['mes'], data__year=ctx['ano'],
+        data__gte=ctx['inicio'], data__lte=ctx['fim'],
     )
     ctx['transacoes'] = qs
     ctx['total'] = qs.aggregate(t=Sum('valor'))['t'] or 0
@@ -54,7 +70,7 @@ def despesas(request):
     ctx = _periodo(request)
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='despesa',
-        data__month=ctx['mes'], data__year=ctx['ano'],
+        data__gte=ctx['inicio'], data__lte=ctx['fim'],
     )
     ctx['transacoes'] = qs
     ctx['total'] = qs.aggregate(t=Sum('valor'))['t'] or 0
@@ -117,3 +133,34 @@ def excluir_transacao(request, pk):
     if request.method == 'POST':
         transacao.delete()
     return redirect('receitas' if tipo == 'receita' else 'despesas')
+
+
+@login_required
+def exportar_dados(request):
+    simbolo = request.user.simbolo_moeda
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="helpy_transacoes.csv"'
+    response.write('﻿')  # BOM para Excel reconhecer UTF-8
+
+    writer = csv.writer(response)
+    writer.writerow(['Tipo', 'Descrição', f'Valor ({simbolo})', 'Data', 'Categoria', 'Observação', 'Registrado em'])
+
+    transacoes = (
+        Transacao.objects
+        .filter(usuario=request.user)
+        .select_related('categoria')
+        .order_by('-data', '-criado_em')
+    )
+
+    for t in transacoes:
+        writer.writerow([
+            t.get_tipo_display(),
+            t.descricao,
+            str(t.valor),
+            t.data.strftime('%d/%m/%Y'),
+            t.categoria.nome if t.categoria else '',
+            t.observacao,
+            t.criado_em.strftime('%d/%m/%Y %H:%M'),
+        ])
+
+    return response

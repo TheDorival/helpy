@@ -9,4 +9,5 @@ urlpatterns = [
     path('despesas/nova/', views.nova_despesa, name='nova_despesa'),
     path('transacao/<int:pk>/editar/', views.editar_transacao, name='editar_transacao'),
     path('transacao/<int:pk>/excluir/', views.excluir_transacao, name='excluir_transacao'),
+    path('exportar/', views.exportar_dados, name='exportar_dados'),
 ]
