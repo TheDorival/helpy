@@ -37,6 +37,22 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 3px; }
 
+    /* Skeleton loading */
+    @keyframes sk-shimmer {
+      0%   { background-position: -1200px 0; }
+      100% { background-position:  1200px 0; }
+    }
+    .sk {
+      background: linear-gradient(90deg, #282828 25%, #333333 50%, #282828 75%);
+      background-size: 2400px 100%;
+      animation: sk-shimmer 1.4s ease-in-out infinite;
+      border-radius: 4px;
+    }
+    @keyframes sk-fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
     /* Autofill do browser no tema escuro */
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
@@ -225,10 +241,100 @@
     </header>
 
     <main class="flex-1 overflow-y-auto px-8 py-6">
-      {% block content %}{% endblock %}
+
+      <!-- ── SKELETON ── -->
+      <div id="sk" aria-hidden="true">
+        <div class="flex items-center justify-between mb-5">
+          <div class="h-4 w-40 sk rounded"></div>
+          <div class="h-7 w-28 sk rounded-md"></div>
+        </div>
+        <div class="h-20 sk rounded-lg mb-5"></div>
+        <div class="border border-line rounded-lg overflow-hidden">
+          <div class="px-4 py-3 border-b border-line flex items-center gap-4">
+            <div class="h-3 w-10 sk rounded"></div>
+            <div class="h-3 w-36 sk rounded"></div>
+            <div class="h-3 w-20 sk rounded"></div>
+            <div class="h-3 w-14 sk rounded ml-auto"></div>
+          </div>
+          <div class="divide-y divide-line">
+            <div class="px-4 py-3 flex items-center gap-4">
+              <div class="h-3 w-10 sk rounded shrink-0"></div>
+              <div class="h-3 sk rounded flex-1"></div>
+              <div class="h-5 w-20 sk rounded shrink-0"></div>
+              <div class="h-3 w-16 sk rounded shrink-0"></div>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-4">
+              <div class="h-3 w-10 sk rounded shrink-0"></div>
+              <div class="h-3 w-4/5 sk rounded flex-1"></div>
+              <div class="h-5 w-16 sk rounded shrink-0"></div>
+              <div class="h-3 w-16 sk rounded shrink-0"></div>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-4">
+              <div class="h-3 w-10 sk rounded shrink-0"></div>
+              <div class="h-3 w-3/5 sk rounded flex-1"></div>
+              <div class="h-5 w-24 sk rounded shrink-0"></div>
+              <div class="h-3 w-16 sk rounded shrink-0"></div>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-4">
+              <div class="h-3 w-10 sk rounded shrink-0"></div>
+              <div class="h-3 sk rounded flex-1"></div>
+              <div class="h-5 w-20 sk rounded shrink-0"></div>
+              <div class="h-3 w-16 sk rounded shrink-0"></div>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-4">
+              <div class="h-3 w-10 sk rounded shrink-0"></div>
+              <div class="h-3 w-4/6 sk rounded flex-1"></div>
+              <div class="h-5 w-16 sk rounded shrink-0"></div>
+              <div class="h-3 w-16 sk rounded shrink-0"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONTEÚDO REAL ── -->
+      <div id="page-content" style="opacity:0">
+        {% block content %}{% endblock %}
+      </div>
+
     </main>
 
   </div>
 
+  <script>
+  (function () {
+    var sk   = document.getElementById('sk');
+    var cont = document.getElementById('page-content');
+
+    /* Revela o conteúdo e esconde o skeleton */
+    function reveal() {
+      if (!sk || !cont) return;
+      cont.style.cssText = 'animation: sk-fade-in .2s ease-out forwards';
+      sk.style.transition = 'opacity .15s';
+      sk.style.opacity = '0';
+      sk.style.pointerEvents = 'none';
+      setTimeout(function () { sk.style.display = 'none'; }, 160);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', reveal);
+    } else {
+      reveal();
+    }
+
+    /* Mostra o skeleton ao navegar */
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a[href]');
+      if (!a) return;
+      var h = a.getAttribute('href') || '';
+      if (!h || h[0] === '#' || h.indexOf('javascript') === 0 ||
+          a.target === '_blank' || a.hasAttribute('download') ||
+          (h.indexOf('http') === 0 && h.indexOf(location.origin) !== 0)) return;
+      if (sk && cont) {
+        sk.style.cssText   = 'display:block; opacity:1';
+        cont.style.cssText = 'opacity:0';
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
