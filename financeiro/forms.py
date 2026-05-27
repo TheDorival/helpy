@@ -56,7 +56,8 @@ class TransacaoForm(forms.ModelForm):
 class TransacaoFixaForm(forms.ModelForm):
     class Meta:
         model = TransacaoFixa
-        fields = ['tipo', 'descricao', 'entidade', 'valor', 'frequencia', 'data_inicio', 'data_fim', 'categoria', 'observacao']
+        fields = ['tipo', 'descricao', 'entidade', 'valor', 'frequencia', 'intervalo_dias',
+                  'data_inicio', 'data_fim', 'categoria', 'observacao']
 
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -70,6 +71,7 @@ class TransacaoFixaForm(forms.ModelForm):
         self.fields['entidade'].required = False
         self.fields['categoria'].required = False
         self.fields['observacao'].required = False
+        self.fields['intervalo_dias'].required = False
         if not self.instance.pk:
             self.fields['data_inicio'].initial = date.today()
         if usuario:
@@ -78,3 +80,11 @@ class TransacaoFixaForm(forms.ModelForm):
         else:
             self.fields['entidade'].queryset = Entidade.objects.none()
             self.fields['categoria'].queryset = Categoria.objects.none()
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('frequencia') == 'intervalo':
+            intervalo = cleaned.get('intervalo_dias')
+            if not intervalo or intervalo < 1:
+                self.add_error('intervalo_dias', 'Informe o número de dias (mínimo 1).')
+        return cleaned

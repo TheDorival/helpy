@@ -67,6 +67,15 @@
                 <option value="{{ value }}" {% if form.frequencia.value == value %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
+            <div id="intervalo-wrapper" class="mt-2 {% if form.frequencia.value != 'intervalo' %}hidden{% endif %}">
+              <input type="number" name="intervalo_dias" id="id_intervalo_dias"
+                     value="{{ form.intervalo_dias.value|default:'' }}"
+                     min="1" placeholder="Nº de dias"
+                     class="w-full bg-bg border {% if form.intervalo_dias.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+              {% if form.intervalo_dias.errors %}
+                <p class="mt-1 text-xs text-red">{{ form.intervalo_dias.errors.0 }}</p>
+              {% endif %}
+            </div>
           </div>
         </div>
 
@@ -159,6 +168,22 @@
       const n = parse(valorInput.value);
       if (!isNaN(n)) valorInput.value = n.toFixed(2);
     });
+
+    // ── Intervalo em dias ──
+    const freqSelect      = document.getElementById('id_frequencia');
+    const intervaloWrapper = document.getElementById('intervalo-wrapper');
+    const intervaloInput  = document.getElementById('id_intervalo_dias');
+
+    function toggleIntervalo() {
+      if (freqSelect.value === 'intervalo') {
+        intervaloWrapper.classList.remove('hidden');
+        intervaloInput.focus();
+      } else {
+        intervaloWrapper.classList.add('hidden');
+        intervaloInput.value = '';
+      }
+    }
+    freqSelect.addEventListener('change', toggleIntervalo);
 
     // ── Filtro de categorias por tipo ──
     const tipoRadios = document.querySelectorAll('input[name="tipo"]');

@@ -83,6 +83,7 @@ class TransacaoFixa(models.Model):
         ('trimestral', 'Trimestral'),
         ('semestral',  'Semestral'),
         ('anual',      'Anual'),
+        ('intervalo',  'A cada N dias'),
     ]
 
     usuario        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transacoes_fixas')
@@ -92,6 +93,7 @@ class TransacaoFixa(models.Model):
     valor          = models.DecimalField(max_digits=12, decimal_places=2)
     categoria      = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes_fixas')
     frequencia     = models.CharField(max_length=20, choices=FREQUENCIA_CHOICES, default='mensal')
+    intervalo_dias = models.PositiveIntegerField(null=True, blank=True)
     data_inicio    = models.DateField()
     data_fim       = models.DateField(null=True, blank=True)
     observacao     = models.TextField(blank=True, default='')
@@ -116,13 +118,13 @@ class TransacaoFixa(models.Model):
 
     def proxima_data(self):
         base = self.ultima_geracao
-        d = _avancar_data(base, self.frequencia) if base else self.data_inicio
+        d = _avancar_data(base, self.frequencia, self.intervalo_dias) if base else self.data_inicio
         if self.data_fim and d > self.data_fim:
             return None
         return d
 
 
-def _avancar_data(data, frequencia):
+def _avancar_data(data, frequencia, intervalo_dias=None):
     from datetime import date, timedelta
     meses = {'mensal': 1, 'bimestral': 2, 'trimestral': 3, 'semestral': 6, 'anual': 12}
     if frequencia == 'diaria':
@@ -131,6 +133,8 @@ def _avancar_data(data, frequencia):
         return data + timedelta(weeks=1)
     if frequencia == 'quinzenal':
         return data + timedelta(days=15)
+    if frequencia == 'intervalo':
+        return data + timedelta(days=intervalo_dias or 1)
     n = meses.get(frequencia, 1)
     total = data.year * 12 + (data.month - 1) + n
     ano, mes = total // 12, total % 12 + 1
