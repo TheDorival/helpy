@@ -350,6 +350,13 @@ def categorias(request):
     })
 
 
+def _cat_ctx(usuario):
+    return {
+        'receita_cats': Categoria.objects.filter(usuario=usuario, tipo='receita'),
+        'despesa_cats': Categoria.objects.filter(usuario=usuario, tipo='despesa'),
+    }
+
+
 @login_required
 def nova_categoria(request):
     form = CategoriaForm(request.POST or None)
@@ -359,7 +366,7 @@ def nova_categoria(request):
         cat.save()
         return redirect('categorias')
     return render(request, 'financeiro/categoria_form.html', {
-        'form': form, 'titulo': 'Nova categoria',
+        'form': form, 'titulo': 'Nova categoria', **_cat_ctx(request.user),
     })
 
 
@@ -371,7 +378,7 @@ def editar_categoria(request, pk):
         form.save()
         return redirect('categorias')
     return render(request, 'financeiro/categoria_form.html', {
-        'form': form, 'titulo': 'Editar categoria', 'obj': cat,
+        'form': form, 'titulo': 'Editar categoria', 'obj': cat, **_cat_ctx(request.user),
     })
 
 
@@ -408,6 +415,7 @@ def nova_entidade(request):
         return redirect(next_url)
     return render(request, 'financeiro/entidade_form.html', {
         'form': form, 'titulo': 'Nova entidade',
+        'entidades': Entidade.objects.filter(usuario=request.user),
     })
 
 
@@ -420,6 +428,7 @@ def editar_entidade(request, pk):
         return redirect('entidades')
     return render(request, 'financeiro/entidade_form.html', {
         'form': form, 'titulo': 'Editar entidade', 'obj': ent,
+        'entidades': Entidade.objects.filter(usuario=request.user),
     })
 
 
