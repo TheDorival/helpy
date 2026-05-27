@@ -5,13 +5,13 @@
 
 {% block content %}
 
-  <div class="mb-7">
+  <div class="mb-5">
     <p class="text-xs text-dim mb-1">Bem-vindo de volta,</p>
     <h2 class="text-xl font-semibold text-tx">{{ request.user.get_full_name|default:request.user.username }}</h2>
   </div>
 
   <!-- Cards de resumo -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
 
     <div class="bg-surface border border-line rounded-lg p-5">
       <div class="flex items-center justify-between mb-4">

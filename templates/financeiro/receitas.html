@@ -6,7 +6,7 @@
 {% block content %}
 
   <!-- Cabeçalho + navegação de mês -->
-  <div class="flex items-center justify-between mb-6">
+  <div class="flex items-center justify-between mb-5">
 
     <div class="flex items-center gap-3">
       <a href="?mes={{ mes_anterior.mes }}&ano={{ mes_anterior.ano }}"
@@ -35,7 +35,7 @@
   </div>
 
   <!-- Card total -->
-  <div class="bg-surface border border-line rounded-lg p-5 mb-6">
+  <div class="bg-surface border border-line rounded-lg p-4 mb-5">
     <p class="text-xs text-muted mb-1">Total em {{ mes_nome }}</p>
     <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total|floatformat:2 }}</p>
     <p class="text-xs text-dim mt-1">{{ transacoes.count }} registro{{ transacoes.count|pluralize }}</p>
@@ -48,34 +48,34 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-line">
-            <th class="text-left text-xs font-medium text-dim px-5 py-3">Data</th>
-            <th class="text-left text-xs font-medium text-dim px-5 py-3">Descrição</th>
-            <th class="text-left text-xs font-medium text-dim px-5 py-3">Categoria</th>
-            <th class="text-right text-xs font-medium text-dim px-5 py-3">Valor</th>
-            <th class="px-5 py-3"></th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Data</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Descrição</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Categoria</th>
+            <th class="text-right text-xs font-medium text-dim px-4 py-2">Valor</th>
+            <th class="px-4 py-2"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">
           {% for t in transacoes %}
           <tr class="hover:bg-surfacehi transition-colors group">
-            <td class="px-5 py-3 text-xs text-muted whitespace-nowrap">{{ t.data|date:"d/m/Y" }}</td>
-            <td class="px-5 py-3 text-tx">
+            <td class="px-4 py-2 text-xs text-muted whitespace-nowrap">{{ t.data|date:"d/m/Y" }}</td>
+            <td class="px-4 py-2 text-tx">
               {{ t.nome_display }}
               {% if t.observacao %}
                 <p class="text-xs text-dim mt-0.5">{{ t.observacao }}</p>
               {% endif %}
             </td>
-            <td class="px-5 py-3">
+            <td class="px-4 py-2">
               {% if t.categoria %}
                 <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ t.categoria }}</span>
               {% else %}
                 <span class="text-xs text-dim">—</span>
               {% endif %}
             </td>
-            <td class="px-5 py-3 text-right font-semibold text-green whitespace-nowrap">
+            <td class="px-4 py-2 text-right font-semibold text-green whitespace-nowrap">
               {{ request.user.simbolo_moeda }} {{ t.valor|floatformat:2 }}
             </td>
-            <td class="px-5 py-3">
+            <td class="px-4 py-2">
               <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a href="{% url 'editar_transacao' t.pk %}"
                    class="text-xs text-muted hover:text-tx transition-colors">Editar</a>

@@ -5,7 +5,7 @@
 
 {% block content %}
 
-  <div class="flex items-center justify-between mb-6">
+  <div class="flex items-center justify-between mb-5">
     <p class="text-xs text-muted">Organize suas transações por categoria.</p>
     <a href="{% url 'nova_categoria' %}"
        class="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-xs font-medium px-3 py-1.5 rounded-md transition-colors">
@@ -20,7 +20,7 @@
 
     <!-- Receitas -->
     <div class="bg-surface border border-line rounded-lg overflow-hidden">
-      <div class="px-5 py-3 border-b border-line flex items-center gap-2">
+      <div class="px-4 py-2 border-b border-line flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-green"></span>
         <p class="text-xs font-medium text-tx">Receitas</p>
         <span class="ml-auto text-xs text-dim">{{ receita_cats.count }}</span>
@@ -28,7 +28,7 @@
       {% if receita_cats %}
         <ul class="divide-y divide-line">
           {% for cat in receita_cats %}
-            <li class="flex items-center justify-between px-5 py-3 hover:bg-surfacehi transition-colors group">
+            <li class="flex items-center justify-between px-4 py-2 hover:bg-surfacehi transition-colors group">
               <span class="text-sm text-tx">{{ cat.nome }}</span>
               <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a href="{% url 'editar_categoria' cat.pk %}" class="text-xs text-muted hover:text-tx">Editar</a>
@@ -50,7 +50,7 @@
 
     <!-- Despesas -->
     <div class="bg-surface border border-line rounded-lg overflow-hidden">
-      <div class="px-5 py-3 border-b border-line flex items-center gap-2">
+      <div class="px-4 py-2 border-b border-line flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-red"></span>
         <p class="text-xs font-medium text-tx">Despesas</p>
         <span class="ml-auto text-xs text-dim">{{ despesa_cats.count }}</span>
@@ -58,7 +58,7 @@
       {% if despesa_cats %}
         <ul class="divide-y divide-line">
           {% for cat in despesa_cats %}
-            <li class="flex items-center justify-between px-5 py-3 hover:bg-surfacehi transition-colors group">
+            <li class="flex items-center justify-between px-4 py-2 hover:bg-surfacehi transition-colors group">
               <span class="text-sm text-tx">{{ cat.nome }}</span>
               <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a href="{% url 'editar_categoria' cat.pk %}" class="text-xs text-muted hover:text-tx">Editar</a>
