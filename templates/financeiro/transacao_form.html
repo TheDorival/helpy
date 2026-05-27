@@ -7,20 +7,18 @@
 
   <div class="max-w-lg">
     <div class="bg-surface border border-line rounded-lg p-5">
-      <form method="post" novalidate>
+      <form method="post" novalidate id="form-transacao">
         {% csrf_token %}
 
-        <!-- Entidade -->
+        <!-- Identificação -->
         <div class="mb-4">
-          <div class="flex items-center justify-between mb-2">
-            <label for="id_entidade" class="text-xs font-medium text-muted">Identificação</label>
-            <a href="{% url 'nova_entidade' %}?next={{ request.path }}"
-               class="text-xs text-accent hover:underline">+ Nova entidade</a>
-          </div>
+          <label class="block text-xs font-medium text-muted mb-2">Identificação</label>
+
+          <!-- Entidade (select) -->
           {% if entidades %}
             <select name="entidade" id="id_entidade"
-                    class="w-full bg-bg border {% if form.entidade.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
-              <option value="">— Sem identificação —</option>
+                    class="w-full bg-bg border {% if form.entidade.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none mb-2">
+              <option value="">Sem entidade</option>
               {% regroup entidades by get_tipo_display as grupos %}
               {% for grupo in grupos %}
                 <optgroup label="{{ grupo.grouper }}">
@@ -32,27 +30,41 @@
                 </optgroup>
               {% endfor %}
             </select>
-          {% else %}
-            <div class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-dim flex items-center justify-between">
-              <span>Nenhuma entidade cadastrada</span>
-              <a href="{% url 'nova_entidade' %}" class="text-accent hover:underline text-xs">Cadastrar</a>
-            </div>
           {% endif %}
+
+          <!-- Descrição livre -->
+          <div class="relative">
+            <input type="text" name="descricao" id="id_descricao"
+                   value="{{ form.descricao.value|default:'' }}"
+                   placeholder="Ou descrever livremente: Ex: Conta de luz, Freela…"
+                   class="w-full bg-bg border {% if form.descricao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          </div>
+          <p class="mt-1 text-xs text-dim">Entidade tem prioridade sobre a descrição livre.</p>
+
           {% if form.entidade.errors %}
             <p class="mt-1.5 text-xs text-red">{{ form.entidade.errors.0 }}</p>
           {% endif %}
+          {% if form.descricao.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ form.descricao.errors.0 }}</p>
+          {% endif %}
+
+          <div class="mt-1.5">
+            <a href="{% url 'nova_entidade' %}?next={{ request.path }}"
+               class="text-xs text-accent hover:underline">+ Nova entidade</a>
+          </div>
         </div>
 
         <!-- Valor + Data -->
-        <div class="grid grid-cols-2 gap-4 mb-5">
+        <div class="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label for="id_valor" class="block text-xs font-medium text-muted mb-2">
               Valor ({{ request.user.simbolo_moeda }})
             </label>
-            <input type="number" name="valor" id="id_valor" step="0.01" min="0.01" autofocus
+            <input type="text" inputmode="decimal" name="valor" id="id_valor"
                    class="w-full bg-bg border {% if form.valor.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
                    placeholder="0,00"
-                   value="{{ form.valor.value|default:'' }}" />
+                   value="{{ form.valor.value|default:'' }}"
+                   autocomplete="off" />
             {% if form.valor.errors %}
               <p class="mt-1.5 text-xs text-red">{{ form.valor.errors.0 }}</p>
             {% endif %}
@@ -75,7 +87,7 @@
           </label>
           <select name="categoria" id="id_categoria"
                   class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
-            <option value="">— Sem categoria —</option>
+            <option value="">Sem categoria</option>
             {% for cat in form.categoria.field.queryset %}
               <option value="{{ cat.pk }}" {% if form.categoria.value|stringformat:"s" == cat.pk|stringformat:"s" %}selected{% endif %}>
                 {{ cat.nome }}
@@ -106,5 +118,48 @@
       </form>
     </div>
   </div>
+
+  <script>
+  (function () {
+    // ── Formatação do campo Valor ──
+    const valorInput = document.getElementById('id_valor');
+
+    function parse(s) {
+      // Aceita tanto "450,00" quanto "450.00"
+      return parseFloat(String(s).replace(/\./g, '').replace(',', '.'));
+    }
+
+    function fmt(n) {
+      return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Formata valor inicial (quando editando)
+    if (valorInput.value) {
+      const n = parseFloat(valorInput.value);
+      if (!isNaN(n)) valorInput.value = fmt(n);
+    }
+
+    valorInput.addEventListener('blur', function () {
+      const n = parse(this.value);
+      if (!isNaN(n) && n > 0) this.value = fmt(n);
+    });
+
+    // Antes de enviar: converte "450,00" → "450.00" para o Django
+    document.getElementById('form-transacao').addEventListener('submit', function () {
+      const n = parse(valorInput.value);
+      if (!isNaN(n)) valorInput.value = n.toFixed(2);
+    });
+
+    // ── Data padrão: hoje ──
+    const dataInput = document.getElementById('id_data');
+    if (dataInput && !dataInput.value) {
+      const hoje = new Date();
+      const y = hoje.getFullYear();
+      const m = String(hoje.getMonth() + 1).padStart(2, '0');
+      const d = String(hoje.getDate()).padStart(2, '0');
+      dataInput.value = `${y}-${m}-${d}`;
+    }
+  })();
+  </script>
 
 {% endblock %}

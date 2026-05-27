@@ -11,83 +11,117 @@
   </div>
 
   <!-- Cards de resumo -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+  <div class="grid grid-cols-3 gap-4 mb-6">
 
     <div class="bg-surface border border-line rounded-lg p-5">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-xs font-medium text-muted">Saldo atual</p>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Saldo em {{ mes_nome }}</p>
         <div class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center">
           <svg class="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
       </div>
-      <p class="text-2xl font-semibold text-tx">R$ 0,00</p>
-      <p class="mt-1.5 text-xs text-dim">Nenhuma transação ainda</p>
+      <p class="text-2xl font-semibold {% if saldo >= 0 %}text-tx{% else %}text-red{% endif %}">
+        {{ request.user.simbolo_moeda }} {{ saldo|floatformat:2 }}
+      </p>
+      <p class="mt-1 text-xs text-dim">Receitas − Despesas</p>
     </div>
 
     <div class="bg-surface border border-line rounded-lg p-5">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-xs font-medium text-muted">Receitas do mês</p>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Receitas em {{ mes_nome }}</p>
         <a href="{% url 'receitas' %}" class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center hover:border-green/50 transition-colors">
           <svg class="w-3.5 h-3.5 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
           </svg>
         </a>
       </div>
-      <p class="text-2xl font-semibold text-green">R$ 0,00</p>
-      <p class="mt-1.5 text-xs text-dim">Nenhuma receita registrada</p>
+      <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:2 }}</p>
+      <p class="mt-1 text-xs text-dim">
+        {% if total_receitas %}Ver no detalhe →{% else %}Nenhuma receita registrada{% endif %}
+      </p>
     </div>
 
     <div class="bg-surface border border-line rounded-lg p-5">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-xs font-medium text-muted">Despesas do mês</p>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Despesas em {{ mes_nome }}</p>
         <a href="{% url 'despesas' %}" class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center hover:border-red/50 transition-colors">
           <svg class="w-3.5 h-3.5 text-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
           </svg>
         </a>
       </div>
-      <p class="text-2xl font-semibold text-red">R$ 0,00</p>
-      <p class="mt-1.5 text-xs text-dim">Nenhuma despesa registrada</p>
+      <p class="text-2xl font-semibold text-red">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:2 }}</p>
+      <p class="mt-1 text-xs text-dim">
+        {% if total_despesas %}Ver no detalhe →{% else %}Nenhuma despesa registrada{% endif %}
+      </p>
     </div>
 
   </div>
 
   <!-- Transações recentes + Atalhos -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="grid grid-cols-3 gap-6">
 
-    <div class="lg:col-span-2 bg-surface border border-line rounded-lg">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-line">
+    <div class="col-span-2 bg-surface border border-line rounded-lg">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-line">
         <h3 class="text-sm font-semibold text-tx">Transações recentes</h3>
-      </div>
-      <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div class="w-10 h-10 rounded-full bg-bg border border-line flex items-center justify-center mb-4">
-          <svg class="w-5 h-5 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-          </svg>
-        </div>
-        <p class="text-sm text-muted mb-1">Nenhuma transação registrada</p>
-        <p class="text-xs text-dim max-w-xs leading-relaxed">Comece registrando uma receita ou despesa.</p>
-        <div class="flex gap-3 mt-5">
-          <a href="{% url 'nova_receita' %}" class="inline-flex items-center gap-1.5 text-xs font-medium text-green border border-green/30 bg-green/5 hover:bg-green/10 px-3 py-1.5 rounded-md transition-colors">
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-            Receita
-          </a>
-          <a href="{% url 'nova_despesa' %}" class="inline-flex items-center gap-1.5 text-xs font-medium text-red border border-red/30 bg-red/5 hover:bg-red/10 px-3 py-1.5 rounded-md transition-colors">
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
-            Despesa
-          </a>
+        <div class="flex gap-2">
+          <a href="{% url 'receitas' %}" class="text-xs text-muted hover:text-tx transition-colors">Ver receitas</a>
+          <span class="text-dim">·</span>
+          <a href="{% url 'despesas' %}" class="text-xs text-muted hover:text-tx transition-colors">Ver despesas</a>
         </div>
       </div>
+
+      {% if recentes %}
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-line">
+            {% for t in recentes %}
+            <tr class="hover:bg-surfacehi transition-colors">
+              <td class="px-4 py-2 text-xs text-muted whitespace-nowrap w-16">{{ t.data|date:"d/m" }}</td>
+              <td class="px-4 py-2 text-tx">{{ t.nome_display }}</td>
+              <td class="px-4 py-2">
+                {% if t.categoria %}
+                  <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ t.categoria }}</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2 text-right font-medium whitespace-nowrap
+                         {% if t.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
+                {% if t.tipo == 'despesa' %}−{% endif %}{{ request.user.simbolo_moeda }} {{ t.valor|floatformat:2 }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="flex flex-col items-center justify-center py-12 px-6 text-center">
+          <div class="w-9 h-9 rounded-full bg-bg border border-line flex items-center justify-center mb-3">
+            <svg class="w-4 h-4 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+          </div>
+          <p class="text-sm text-muted mb-1">Nenhuma transação registrada</p>
+          <p class="text-xs text-dim mb-4">Comece registrando uma receita ou despesa.</p>
+          <div class="flex gap-3">
+            <a href="{% url 'nova_receita' %}" class="inline-flex items-center gap-1.5 text-xs font-medium text-green border border-green/30 bg-green/5 hover:bg-green/10 px-3 py-1.5 rounded-md transition-colors">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+              Receita
+            </a>
+            <a href="{% url 'nova_despesa' %}" class="inline-flex items-center gap-1.5 text-xs font-medium text-red border border-red/30 bg-red/5 hover:bg-red/10 px-3 py-1.5 rounded-md transition-colors">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
+              Despesa
+            </a>
+          </div>
+        </div>
+      {% endif %}
     </div>
 
     <div class="space-y-4">
       <div class="bg-surface border border-line rounded-lg">
-        <div class="px-5 py-4 border-b border-line">
+        <div class="px-5 py-3 border-b border-line">
           <h3 class="text-sm font-semibold text-tx">Atalhos</h3>
         </div>
-        <div class="p-3 space-y-1">
+        <div class="p-2 space-y-0.5">
           <a href="{% url 'nova_receita' %}" class="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
             <svg class="w-4 h-4 text-green flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             Nova receita

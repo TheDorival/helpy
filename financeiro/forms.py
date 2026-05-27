@@ -1,3 +1,5 @@
+from datetime import date
+
 from django import forms
 
 from .models import Categoria, Entidade, Transacao, TransacaoFixa
@@ -22,7 +24,7 @@ class EntidadeForm(forms.ModelForm):
 class TransacaoForm(forms.ModelForm):
     class Meta:
         model = Transacao
-        fields = ['entidade', 'valor', 'data', 'categoria', 'observacao']
+        fields = ['entidade', 'descricao', 'valor', 'data', 'categoria', 'observacao']
 
     def __init__(self, *args, usuario=None, tipo=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,7 +32,11 @@ class TransacaoForm(forms.ModelForm):
         self.fields['data'].input_formats = ['%Y-%m-%d']
         self.fields['observacao'].required = False
         self.fields['entidade'].required = False
+        self.fields['descricao'].required = False
         self.fields['categoria'].required = False
+        # Default: today when creating a new transaction
+        if not self.instance.pk:
+            self.fields['data'].initial = date.today()
         if usuario:
             self.fields['entidade'].queryset = Entidade.objects.filter(usuario=usuario)
             if tipo:
@@ -45,7 +51,7 @@ class TransacaoForm(forms.ModelForm):
 class TransacaoFixaForm(forms.ModelForm):
     class Meta:
         model = TransacaoFixa
-        fields = ['tipo', 'entidade', 'valor', 'frequencia', 'data_inicio', 'data_fim', 'categoria', 'observacao']
+        fields = ['tipo', 'descricao', 'entidade', 'valor', 'frequencia', 'data_inicio', 'data_fim', 'categoria', 'observacao']
 
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,9 +61,12 @@ class TransacaoFixaForm(forms.ModelForm):
         self.fields['data_fim'].widget = date_widget()
         self.fields['data_fim'].input_formats = ['%Y-%m-%d']
         self.fields['data_fim'].required = False
+        self.fields['descricao'].required = False
         self.fields['entidade'].required = False
         self.fields['categoria'].required = False
         self.fields['observacao'].required = False
+        if not self.instance.pk:
+            self.fields['data_inicio'].initial = date.today()
         if usuario:
             self.fields['entidade'].queryset = Entidade.objects.filter(usuario=usuario)
             self.fields['categoria'].queryset = Categoria.objects.filter(usuario=usuario)

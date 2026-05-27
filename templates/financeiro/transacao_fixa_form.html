@@ -94,7 +94,7 @@
           </label>
           <select name="categoria" id="id_categoria"
                   class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
-            <option value="">— Sem categoria —</option>
+            <option value="">Sem categoria</option>
             {% for cat in todas_cat %}
               <option value="{{ cat.pk }}"
                       data-tipo="{{ cat.tipo }}"

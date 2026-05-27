@@ -56,8 +56,8 @@ def _periodo(request):
 
 @login_required
 def receitas(request):
-    sincronizar_fixas(request.user)
     ctx = _periodo(request)
+    sincronizar_fixas(request.user, limite=ctx['fim'])
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='receita',
         data__gte=ctx['inicio'], data__lte=ctx['fim'],
@@ -69,8 +69,8 @@ def receitas(request):
 
 @login_required
 def despesas(request):
-    sincronizar_fixas(request.user)
     ctx = _periodo(request)
+    sincronizar_fixas(request.user, limite=ctx['fim'])
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='despesa',
         data__gte=ctx['inicio'], data__lte=ctx['fim'],
@@ -152,16 +152,16 @@ def excluir_transacao(request, pk):
     return redirect('receitas' if tipo == 'receita' else 'despesas')
 
 
-def sincronizar_fixas(usuario):
-    """Gera todas as ocorrências pendentes de transações fixas até hoje."""
-    hoje = date.today()
+def sincronizar_fixas(usuario, limite=None):
+    """Gera todas as ocorrências pendentes de transações fixas até `limite` (padrão: hoje)."""
+    ate = limite if limite is not None else date.today()
     for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade'):
-        proxima = _avancar_data(tf.ultima_geracao, tf.frequencia) if tf.ultima_geracao else tf.data_inicio
-        limite  = min(hoje, tf.data_fim) if tf.data_fim else hoje
+        proxima  = _avancar_data(tf.ultima_geracao, tf.frequencia) if tf.ultima_geracao else tf.data_inicio
+        lim_fixa = min(ate, tf.data_fim) if tf.data_fim else ate
 
         novas, ultima = [], tf.ultima_geracao
         d = proxima
-        while d <= limite:
+        while d <= lim_fixa:
             novas.append(Transacao(
                 usuario=tf.usuario, tipo=tf.tipo,
                 entidade=tf.entidade, descricao=tf.descricao,
