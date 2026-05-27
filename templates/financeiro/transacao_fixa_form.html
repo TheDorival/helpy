@@ -18,7 +18,7 @@
             <label class="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors
                           border-green/40 bg-green/5 text-green has-[:checked]:bg-green/15 has-[:checked]:border-green">
               <input type="radio" name="tipo" value="receita"
-                     {% if form.tipo.value == 'receita' or not form.tipo.value %}checked{% endif %}
+                     {% if form.tipo.value == 'receita' %}checked{% endif %}
                      class="sr-only" />
               <span class="text-sm font-medium">Receita</span>
             </label>
