@@ -240,10 +240,10 @@
       </a>
     </header>
 
-    <main class="flex-1 overflow-y-auto px-8 py-6">
+    <main class="flex-1 overflow-y-auto px-8 py-6 relative">
 
-      <!-- ── SKELETON ── -->
-      <div id="sk" aria-hidden="true">
+      <!-- ── SKELETON (cobre o conteúdo enquanto carrega) ── -->
+      <div id="sk" aria-hidden="true" class="absolute inset-0 z-10 bg-bg px-8 py-6">
         <div class="flex items-center justify-between mb-5">
           <div class="h-4 w-40 sk rounded"></div>
           <div class="h-7 w-28 sk rounded-md"></div>
@@ -292,7 +292,7 @@
       </div>
 
       <!-- ── CONTEÚDO REAL ── -->
-      <div id="page-content" style="opacity:0">
+      <div id="page-content">
         {% block content %}{% endblock %}
       </div>
 
@@ -302,17 +302,14 @@
 
   <script>
   (function () {
-    var sk   = document.getElementById('sk');
-    var cont = document.getElementById('page-content');
+    var sk = document.getElementById('sk');
 
-    /* Revela o conteúdo e esconde o skeleton */
+    /* Esconde o skeleton quando o conteúdo estiver pronto */
     function reveal() {
-      if (!sk || !cont) return;
-      cont.style.cssText = 'animation: sk-fade-in .2s ease-out forwards';
-      sk.style.transition = 'opacity .15s';
+      if (!sk) return;
+      sk.style.transition = 'opacity .18s ease-out';
       sk.style.opacity = '0';
-      sk.style.pointerEvents = 'none';
-      setTimeout(function () { sk.style.display = 'none'; }, 160);
+      setTimeout(function () { sk.style.display = 'none'; }, 190);
     }
 
     if (document.readyState === 'loading') {
@@ -321,7 +318,7 @@
       reveal();
     }
 
-    /* Mostra o skeleton ao navegar */
+    /* Reexibe o skeleton ao clicar em links internos */
     document.addEventListener('click', function (e) {
       var a = e.target.closest('a[href]');
       if (!a) return;
@@ -329,9 +326,8 @@
       if (!h || h[0] === '#' || h.indexOf('javascript') === 0 ||
           a.target === '_blank' || a.hasAttribute('download') ||
           (h.indexOf('http') === 0 && h.indexOf(location.origin) !== 0)) return;
-      if (sk && cont) {
-        sk.style.cssText   = 'display:block; opacity:1';
-        cont.style.cssText = 'opacity:0';
+      if (sk) {
+        sk.style.cssText = 'display:block; opacity:1; transition:none';
       }
     });
   })();
