@@ -10,14 +10,22 @@
       <form method="post" novalidate id="form-transacao">
         {% csrf_token %}
 
+        {% if form.non_field_errors %}
+          <div class="mb-4 px-3 py-2 bg-red/10 border border-red/30 rounded-md">
+            {% for erro in form.non_field_errors %}
+              <p class="text-xs text-red">{{ erro }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
         <!-- Identificação -->
         <div class="mb-4">
           <label class="block text-xs font-medium text-muted mb-2">Identificação</label>
 
           {% if entidades %}
-            <select name="entidade" id="id_entidade"
+            <select name="entidade" id="id_entidade" required
                     class="w-full bg-bg border {% if form.entidade.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
-              <option value="">Sem entidade</option>
+              <option value="" disabled {% if not form.entidade.value and not form.descricao.value %}selected{% endif %}>Selecione...</option>
               {% regroup entidades by get_tipo_display as grupos %}
               {% for grupo in grupos %}
                 <optgroup label="{{ grupo.grouper }}">

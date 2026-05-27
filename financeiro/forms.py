@@ -34,7 +34,6 @@ class TransacaoForm(forms.ModelForm):
         self.fields['entidade'].required = False
         self.fields['descricao'].required = False
         self.fields['categoria'].required = False
-        # Default: today when creating a new transaction
         if not self.instance.pk:
             self.fields['data'].initial = date.today()
         if usuario:
@@ -46,6 +45,12 @@ class TransacaoForm(forms.ModelForm):
         else:
             self.fields['entidade'].queryset = Entidade.objects.none()
             self.fields['categoria'].queryset = Categoria.objects.none()
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get('entidade') and not cleaned.get('descricao', '').strip():
+            raise forms.ValidationError('Selecione uma entidade ou escolha "Outro" e informe uma descrição.')
+        return cleaned
 
 
 class TransacaoFixaForm(forms.ModelForm):
