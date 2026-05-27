@@ -13,13 +13,16 @@
       theme: {
         extend: {
           colors: {
-            bg:      '#191919',
-            surface: '#222222',
-            line:    '#2e2e2e',
-            accent:  '#4c8eff',
-            tx:      '#e8e8e6',
-            muted:   '#8b8b8b',
-            dim:     '#555555',
+            bg:        '#191919',
+            surface:   '#222222',
+            surfacehi: '#282828',
+            line:      '#2e2e2e',
+            accent:    '#4c8eff',
+            green:     '#3ecf8e',
+            red:       '#f16060',
+            tx:        '#e8e8e6',
+            muted:     '#8b8b8b',
+            dim:       '#555555',
           },
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
         }
@@ -29,7 +32,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    html { font-size: 16.72px; }
+    html { font-size: 15px; }
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #e8e8e6;
+      -webkit-box-shadow: 0 0 0px 1000px #191919 inset;
+      transition: background-color 5000s ease-in-out 0s;
+    }
   </style>
 </head>
 <body class="bg-bg text-tx font-sans min-h-screen flex items-center justify-center px-4">
@@ -48,7 +58,7 @@
     <div class="bg-surface border border-line rounded-lg p-7">
 
       {% if form.non_field_errors %}
-        <div class="mb-5 px-4 py-3 rounded-md bg-red-950/60 border border-red-800/50 text-sm text-red-300">
+        <div class="mb-5 px-4 py-3 rounded-md bg-red/10 border border-red/30 text-sm text-red">
           {{ form.non_field_errors.0 }}
         </div>
       {% endif %}
@@ -74,7 +84,7 @@
             value="{{ form.username.value|default:'' }}"
           />
           {% if form.username.errors %}
-            <p class="mt-1.5 text-xs text-red-400">{{ form.username.errors.0 }}</p>
+            <p class="mt-1.5 text-xs text-red">{{ form.username.errors.0 }}</p>
           {% else %}
             <p class="mt-1.5 text-xs text-dim">Use o username cadastrado, não o e-mail.</p>
           {% endif %}
@@ -96,7 +106,7 @@
             placeholder="••••••••"
           />
           {% if form.password.errors %}
-            <p class="mt-1.5 text-xs text-red-400">{{ form.password.errors.0 }}</p>
+            <p class="mt-1.5 text-xs text-red">{{ form.password.errors.0 }}</p>
           {% endif %}
         </div>
 

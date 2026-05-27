@@ -29,19 +29,19 @@
             <div>
               <label for="id_first_name" class="block text-xs font-medium text-muted mb-2">Nome</label>
               <input type="text" name="first_name" id="id_first_name" required
-                     class="w-full bg-bg border {% if form.first_name.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+                     class="w-full bg-bg border {% if form.first_name.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
                      value="{{ form.first_name.value|default:'' }}" />
               {% if form.first_name.errors %}
-                <p class="mt-1.5 text-xs text-red-400">{{ form.first_name.errors.0 }}</p>
+                <p class="mt-1.5 text-xs text-red">{{ form.first_name.errors.0 }}</p>
               {% endif %}
             </div>
             <div>
               <label for="id_last_name" class="block text-xs font-medium text-muted mb-2">Sobrenome</label>
               <input type="text" name="last_name" id="id_last_name" required
-                     class="w-full bg-bg border {% if form.last_name.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+                     class="w-full bg-bg border {% if form.last_name.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
                      value="{{ form.last_name.value|default:'' }}" />
               {% if form.last_name.errors %}
-                <p class="mt-1.5 text-xs text-red-400">{{ form.last_name.errors.0 }}</p>
+                <p class="mt-1.5 text-xs text-red">{{ form.last_name.errors.0 }}</p>
               {% endif %}
             </div>
           </div>
@@ -49,10 +49,10 @@
           <div class="mb-4">
             <label for="id_email" class="block text-xs font-medium text-muted mb-2">E-mail</label>
             <input type="email" name="email" id="id_email" required
-                   class="w-full bg-bg border {% if form.email.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+                   class="w-full bg-bg border {% if form.email.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
                    value="{{ form.email.value|default:'' }}" />
             {% if form.email.errors %}
-              <p class="mt-1.5 text-xs text-red-400">{{ form.email.errors.0 }}</p>
+              <p class="mt-1.5 text-xs text-red">{{ form.email.errors.0 }}</p>
             {% endif %}
           </div>
 
@@ -84,7 +84,7 @@
                     class="flex-1 min-h-[80px] w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors resize-none"
                     placeholder="Uma frase sobre você…">{{ form.bio.value|default:'' }}</textarea>
           <button type="submit"
-                  class="mt-4self-start bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
+                  class="mt-4 self-start bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
             Salvar alterações
           </button>
         </div>

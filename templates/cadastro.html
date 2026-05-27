@@ -13,13 +13,16 @@
       theme: {
         extend: {
           colors: {
-            bg:      '#191919',
-            surface: '#222222',
-            line:    '#2e2e2e',
-            accent:  '#4c8eff',
-            tx:      '#e8e8e6',
-            muted:   '#8b8b8b',
-            dim:     '#555555',
+            bg:        '#191919',
+            surface:   '#222222',
+            surfacehi: '#282828',
+            line:      '#2e2e2e',
+            accent:    '#4c8eff',
+            green:     '#3ecf8e',
+            red:       '#f16060',
+            tx:        '#e8e8e6',
+            muted:     '#8b8b8b',
+            dim:       '#555555',
           },
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
         }
@@ -29,7 +32,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    html { font-size: 16.72px; }
+    html { font-size: 15px; }
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #e8e8e6;
+      -webkit-box-shadow: 0 0 0px 1000px #191919 inset;
+      transition: background-color 5000s ease-in-out 0s;
+    }
   </style>
 </head>
 <body class="bg-bg text-tx font-sans min-h-screen flex items-center justify-center px-4 py-10">
@@ -60,12 +70,12 @@
               id="id_first_name"
               autocomplete="given-name"
               required
-              class="w-full bg-bg border {% if form.first_name.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+              class="w-full bg-bg border {% if form.first_name.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
               placeholder="João"
               value="{{ form.first_name.value|default:'' }}"
             />
             {% if form.first_name.errors %}
-              <p class="mt-1.5 text-xs text-red-400">{{ form.first_name.errors.0 }}</p>
+              <p class="mt-1.5 text-xs text-red">{{ form.first_name.errors.0 }}</p>
             {% endif %}
           </div>
           <div>
@@ -76,12 +86,12 @@
               id="id_last_name"
               autocomplete="family-name"
               required
-              class="w-full bg-bg border {% if form.last_name.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+              class="w-full bg-bg border {% if form.last_name.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
               placeholder="Silva"
               value="{{ form.last_name.value|default:'' }}"
             />
             {% if form.last_name.errors %}
-              <p class="mt-1.5 text-xs text-red-400">{{ form.last_name.errors.0 }}</p>
+              <p class="mt-1.5 text-xs text-red">{{ form.last_name.errors.0 }}</p>
             {% endif %}
           </div>
         </div>
@@ -95,12 +105,12 @@
             id="id_username"
             autocomplete="username"
             required
-            class="w-full bg-bg border {% if form.username.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+            class="w-full bg-bg border {% if form.username.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
             placeholder="joaosilva"
             value="{{ form.username.value|default:'' }}"
           />
           {% if form.username.errors %}
-            <p class="mt-1.5 text-xs text-red-400">{{ form.username.errors.0 }}</p>
+            <p class="mt-1.5 text-xs text-red">{{ form.username.errors.0 }}</p>
           {% else %}
             <p class="mt-1.5 text-xs text-dim">Letras, números e @/./+/-/_ apenas.</p>
           {% endif %}
@@ -115,12 +125,12 @@
             id="id_email"
             autocomplete="email"
             required
-            class="w-full bg-bg border {% if form.email.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+            class="w-full bg-bg border {% if form.email.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
             placeholder="joao@email.com"
             value="{{ form.email.value|default:'' }}"
           />
           {% if form.email.errors %}
-            <p class="mt-1.5 text-xs text-red-400">{{ form.email.errors.0 }}</p>
+            <p class="mt-1.5 text-xs text-red">{{ form.email.errors.0 }}</p>
           {% endif %}
         </div>
 
@@ -166,11 +176,11 @@
             id="id_password1"
             autocomplete="new-password"
             required
-            class="w-full bg-bg border {% if form.password1.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+            class="w-full bg-bg border {% if form.password1.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
             placeholder="••••••••"
           />
           {% if form.password1.errors %}
-            <p class="mt-1.5 text-xs text-red-400">{{ form.password1.errors.0 }}</p>
+            <p class="mt-1.5 text-xs text-red">{{ form.password1.errors.0 }}</p>
           {% else %}
             <p class="mt-1.5 text-xs text-dim">Mínimo 8 caracteres. Não use apenas números.</p>
           {% endif %}
@@ -185,11 +195,11 @@
             id="id_password2"
             autocomplete="new-password"
             required
-            class="w-full bg-bg border {% if form.password2.errors %}border-red-700{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
+            class="w-full bg-bg border {% if form.password2.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors"
             placeholder="••••••••"
           />
           {% if form.password2.errors %}
-            <p class="mt-1.5 text-xs text-red-400">{{ form.password2.errors.0 }}</p>
+            <p class="mt-1.5 text-xs text-red">{{ form.password2.errors.0 }}</p>
           {% endif %}
         </div>
 
