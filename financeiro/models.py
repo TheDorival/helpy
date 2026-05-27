@@ -8,8 +8,8 @@ class Categoria(models.Model):
     TIPO_CHOICES = [('receita', 'Receita'), ('despesa', 'Despesa')]
 
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='categorias')
-    nome = models.CharField(max_length=100)
-    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    nome    = models.CharField(max_length=100)
+    tipo    = models.CharField(max_length=10, choices=TIPO_CHOICES)
 
     class Meta:
         verbose_name = 'Categoria'
@@ -21,17 +21,41 @@ class Categoria(models.Model):
         return self.nome
 
 
+class Entidade(models.Model):
+    TIPO_CHOICES = [
+        ('pessoa',  'Pessoa'),
+        ('empresa', 'Empresa'),
+        ('projeto', 'Projeto'),
+        ('outro',   'Outro'),
+    ]
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='entidades')
+    nome    = models.CharField(max_length=150)
+    tipo    = models.CharField(max_length=10, choices=TIPO_CHOICES, default='pessoa')
+    notas   = models.TextField(blank=True, default='')
+
+    class Meta:
+        verbose_name = 'Entidade'
+        verbose_name_plural = 'Entidades'
+        ordering = ['tipo', 'nome']
+        unique_together = ('usuario', 'nome', 'tipo')
+
+    def __str__(self):
+        return self.nome
+
+
 class Transacao(models.Model):
     TIPO_CHOICES = [('receita', 'Receita'), ('despesa', 'Despesa')]
 
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transacoes')
-    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
-    descricao = models.CharField(max_length=200)
-    valor = models.DecimalField(max_digits=12, decimal_places=2)
-    data = models.DateField()
+    usuario   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transacoes')
+    tipo      = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    entidade  = models.ForeignKey(Entidade, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes')
+    descricao = models.CharField(max_length=200, blank=True, default='')   # legado / fallback
+    valor     = models.DecimalField(max_digits=12, decimal_places=2)
+    data      = models.DateField()
     categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes')
     observacao = models.TextField(blank=True, default='')
-    criado_em = models.DateTimeField(auto_now_add=True)
+    criado_em  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'Transação'
@@ -39,7 +63,13 @@ class Transacao(models.Model):
         ordering = ['-data', '-criado_em']
 
     def __str__(self):
-        return f'{self.descricao} — R$ {self.valor}'
+        return f'{self.nome_display} — R$ {self.valor}'
+
+    @property
+    def nome_display(self):
+        if self.entidade_id:
+            return self.entidade.nome
+        return self.descricao or '—'
 
 
 class TransacaoFixa(models.Model):
@@ -57,7 +87,8 @@ class TransacaoFixa(models.Model):
 
     usuario        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transacoes_fixas')
     tipo           = models.CharField(max_length=10, choices=TIPO_CHOICES)
-    descricao      = models.CharField(max_length=200)
+    entidade       = models.ForeignKey(Entidade, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes_fixas')
+    descricao      = models.CharField(max_length=200, blank=True, default='')   # legado / fallback
     valor          = models.DecimalField(max_digits=12, decimal_places=2)
     categoria      = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes_fixas')
     frequencia     = models.CharField(max_length=20, choices=FREQUENCIA_CHOICES, default='mensal')
@@ -74,23 +105,24 @@ class TransacaoFixa(models.Model):
         ordering = ['-criado_em']
 
     def __str__(self):
-        return f'{self.get_tipo_display()} — {self.descricao} ({self.get_frequencia_display()})'
+        nome = self.entidade.nome if self.entidade_id else (self.descricao or '—')
+        return f'{self.get_tipo_display()} — {nome} ({self.get_frequencia_display()})'
+
+    @property
+    def nome_display(self):
+        if self.entidade_id:
+            return self.entidade.nome
+        return self.descricao or '—'
 
     def proxima_data(self):
-        """Retorna a próxima data de geração (após ultima_geracao ou a partir de data_inicio)."""
-        from datetime import date
-        base = self.ultima_geracao or None
-        if base:
-            d = _avancar_data(base, self.frequencia)
-        else:
-            d = self.data_inicio
+        base = self.ultima_geracao
+        d = _avancar_data(base, self.frequencia) if base else self.data_inicio
         if self.data_fim and d > self.data_fim:
             return None
         return d
 
 
 def _avancar_data(data, frequencia):
-    """Retorna a próxima data com base na frequência."""
     from datetime import date, timedelta
     meses = {'mensal': 1, 'bimestral': 2, 'trimestral': 3, 'semestral': 6, 'anual': 12}
     if frequencia == 'diaria':

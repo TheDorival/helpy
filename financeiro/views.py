@@ -7,8 +7,8 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import TransacaoFixaForm, TransacaoForm
-from .models import Categoria, Transacao, TransacaoFixa, _avancar_data
+from .forms import CategoriaForm, EntidadeForm, TransacaoFixaForm, TransacaoForm
+from .models import Categoria, Entidade, Transacao, TransacaoFixa, _avancar_data
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -61,7 +61,7 @@ def receitas(request):
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='receita',
         data__gte=ctx['inicio'], data__lte=ctx['fim'],
-    )
+    ).select_related('entidade', 'categoria')
     ctx['transacoes'] = qs
     ctx['total'] = qs.aggregate(t=Sum('valor'))['t'] or 0
     return render(request, 'financeiro/receitas.html', ctx)
@@ -74,14 +74,25 @@ def despesas(request):
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='despesa',
         data__gte=ctx['inicio'], data__lte=ctx['fim'],
-    )
+    ).select_related('entidade', 'categoria')
     ctx['transacoes'] = qs
     ctx['total'] = qs.aggregate(t=Sum('valor'))['t'] or 0
     return render(request, 'financeiro/despesas.html', ctx)
 
 
+def _entidades_ctx(usuario):
+    """Retorna entidades agrupadas por tipo para uso nos templates."""
+    from itertools import groupby
+    qs = list(Entidade.objects.filter(usuario=usuario))
+    grupos = {}
+    for e in qs:
+        grupos.setdefault(e.get_tipo_display(), []).append(e)
+    return qs, grupos
+
+
 @login_required
 def nova_receita(request):
+    entidades, _ = _entidades_ctx(request.user)
     form = TransacaoForm(request.POST or None, usuario=request.user, tipo='receita')
     if request.method == 'POST' and form.is_valid():
         t = form.save(commit=False)
@@ -91,12 +102,13 @@ def nova_receita(request):
         return redirect('receitas')
     return render(request, 'financeiro/transacao_form.html', {
         'form': form, 'tipo': 'receita', 'titulo': 'Nova receita',
-        'cancel_url': 'receitas',
+        'cancel_url': 'receitas', 'entidades': entidades,
     })
 
 
 @login_required
 def nova_despesa(request):
+    entidades, _ = _entidades_ctx(request.user)
     form = TransacaoForm(request.POST or None, usuario=request.user, tipo='despesa')
     if request.method == 'POST' and form.is_valid():
         t = form.save(commit=False)
@@ -106,13 +118,14 @@ def nova_despesa(request):
         return redirect('despesas')
     return render(request, 'financeiro/transacao_form.html', {
         'form': form, 'tipo': 'despesa', 'titulo': 'Nova despesa',
-        'cancel_url': 'despesas',
+        'cancel_url': 'despesas', 'entidades': entidades,
     })
 
 
 @login_required
 def editar_transacao(request, pk):
     transacao = get_object_or_404(Transacao, pk=pk, usuario=request.user)
+    entidades, _ = _entidades_ctx(request.user)
     form = TransacaoForm(
         request.POST or None, instance=transacao,
         usuario=request.user, tipo=transacao.tipo,
@@ -126,6 +139,7 @@ def editar_transacao(request, pk):
         'titulo': f'Editar {transacao.get_tipo_display().lower()}',
         'cancel_url': 'receitas' if transacao.tipo == 'receita' else 'despesas',
         'transacao': transacao,
+        'entidades': entidades,
     })
 
 
@@ -141,7 +155,7 @@ def excluir_transacao(request, pk):
 def sincronizar_fixas(usuario):
     """Gera todas as ocorrências pendentes de transações fixas até hoje."""
     hoje = date.today()
-    for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria'):
+    for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade'):
         proxima = _avancar_data(tf.ultima_geracao, tf.frequencia) if tf.ultima_geracao else tf.data_inicio
         limite  = min(hoje, tf.data_fim) if tf.data_fim else hoje
 
@@ -150,9 +164,9 @@ def sincronizar_fixas(usuario):
         while d <= limite:
             novas.append(Transacao(
                 usuario=tf.usuario, tipo=tf.tipo,
-                descricao=tf.descricao, valor=tf.valor,
-                data=d, categoria=tf.categoria,
-                observacao=tf.observacao,
+                entidade=tf.entidade, descricao=tf.descricao,
+                valor=tf.valor, data=d,
+                categoria=tf.categoria, observacao=tf.observacao,
             ))
             ultima = d
             d = _avancar_data(d, tf.frequencia)
@@ -322,6 +336,99 @@ def toggle_fixa(request, pk):
         if tf.ativa:
             sincronizar_fixas(request.user)
     return redirect('fixas')
+
+
+# ── CATEGORIAS ────────────────────────────────────────────────────────────────
+
+@login_required
+def categorias(request):
+    receita_cats = Categoria.objects.filter(usuario=request.user, tipo='receita')
+    despesa_cats = Categoria.objects.filter(usuario=request.user, tipo='despesa')
+    return render(request, 'financeiro/categorias.html', {
+        'receita_cats': receita_cats,
+        'despesa_cats': despesa_cats,
+    })
+
+
+@login_required
+def nova_categoria(request):
+    form = CategoriaForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        cat = form.save(commit=False)
+        cat.usuario = request.user
+        cat.save()
+        return redirect('categorias')
+    return render(request, 'financeiro/categoria_form.html', {
+        'form': form, 'titulo': 'Nova categoria',
+    })
+
+
+@login_required
+def editar_categoria(request, pk):
+    cat = get_object_or_404(Categoria, pk=pk, usuario=request.user)
+    form = CategoriaForm(request.POST or None, instance=cat)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('categorias')
+    return render(request, 'financeiro/categoria_form.html', {
+        'form': form, 'titulo': 'Editar categoria', 'obj': cat,
+    })
+
+
+@login_required
+def excluir_categoria(request, pk):
+    cat = get_object_or_404(Categoria, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        cat.delete()
+    return redirect('categorias')
+
+
+# ── ENTIDADES ──────────────────────────────────────────────────────────────────
+
+@login_required
+def entidades(request):
+    qs = Entidade.objects.filter(usuario=request.user)
+    grupos = {}
+    for e in qs:
+        grupos.setdefault(e.tipo, []).append(e)
+    return render(request, 'financeiro/entidades.html', {
+        'entidades': qs,
+        'grupos': grupos,
+    })
+
+
+@login_required
+def nova_entidade(request):
+    form = EntidadeForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        e = form.save(commit=False)
+        e.usuario = request.user
+        e.save()
+        next_url = request.GET.get('next', 'entidades')
+        return redirect(next_url)
+    return render(request, 'financeiro/entidade_form.html', {
+        'form': form, 'titulo': 'Nova entidade',
+    })
+
+
+@login_required
+def editar_entidade(request, pk):
+    ent = get_object_or_404(Entidade, pk=pk, usuario=request.user)
+    form = EntidadeForm(request.POST or None, instance=ent)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('entidades')
+    return render(request, 'financeiro/entidade_form.html', {
+        'form': form, 'titulo': 'Editar entidade', 'obj': ent,
+    })
+
+
+@login_required
+def excluir_entidade(request, pk):
+    ent = get_object_or_404(Entidade, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        ent.delete()
+    return redirect('entidades')
 
 
 @login_required

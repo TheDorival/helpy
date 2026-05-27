@@ -1,0 +1,83 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Categorias — Helpy{% endblock %}
+{% block page_title %}Categorias{% endblock %}
+
+{% block content %}
+
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-xs text-muted">Organize suas transações por categoria.</p>
+    <a href="{% url 'nova_categoria' %}"
+       class="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-xs font-medium px-3 py-1.5 rounded-md transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+      Nova categoria
+    </a>
+  </div>
+
+  <div class="grid grid-cols-2 gap-5">
+
+    <!-- Receitas -->
+    <div class="bg-surface border border-line rounded-lg overflow-hidden">
+      <div class="px-5 py-3 border-b border-line flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green"></span>
+        <p class="text-xs font-medium text-tx">Receitas</p>
+        <span class="ml-auto text-xs text-dim">{{ receita_cats.count }}</span>
+      </div>
+      {% if receita_cats %}
+        <ul class="divide-y divide-line">
+          {% for cat in receita_cats %}
+            <li class="flex items-center justify-between px-5 py-3 hover:bg-surfacehi transition-colors group">
+              <span class="text-sm text-tx">{{ cat.nome }}</span>
+              <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a href="{% url 'editar_categoria' cat.pk %}" class="text-xs text-muted hover:text-tx">Editar</a>
+                <form method="post" action="{% url 'excluir_categoria' cat.pk %}"
+                      onsubmit="return confirm('Excluir categoria {{ cat.nome }}?')">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="px-5 py-8 text-center">
+          <p class="text-xs text-dim">Nenhuma categoria de receita</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Despesas -->
+    <div class="bg-surface border border-line rounded-lg overflow-hidden">
+      <div class="px-5 py-3 border-b border-line flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-red"></span>
+        <p class="text-xs font-medium text-tx">Despesas</p>
+        <span class="ml-auto text-xs text-dim">{{ despesa_cats.count }}</span>
+      </div>
+      {% if despesa_cats %}
+        <ul class="divide-y divide-line">
+          {% for cat in despesa_cats %}
+            <li class="flex items-center justify-between px-5 py-3 hover:bg-surfacehi transition-colors group">
+              <span class="text-sm text-tx">{{ cat.nome }}</span>
+              <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a href="{% url 'editar_categoria' cat.pk %}" class="text-xs text-muted hover:text-tx">Editar</a>
+                <form method="post" action="{% url 'excluir_categoria' cat.pk %}"
+                      onsubmit="return confirm('Excluir categoria {{ cat.nome }}?')">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="px-5 py-8 text-center">
+          <p class="text-xs text-dim">Nenhuma categoria de despesa</p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+{% endblock %}

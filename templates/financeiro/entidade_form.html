@@ -1,0 +1,55 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}{{ titulo }} — Helpy{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+
+  <div class="max-w-sm">
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="mb-4">
+          <label for="id_nome" class="block text-xs font-medium text-muted mb-2">Nome</label>
+          <input type="text" name="nome" id="id_nome"
+                 value="{{ form.nome.value|default:'' }}"
+                 autofocus placeholder="Ex: João Silva, Netflix, Reforma…"
+                 class="w-full bg-bg border {% if form.nome.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if form.nome.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ form.nome.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div class="mb-4">
+          <label for="id_tipo" class="block text-xs font-medium text-muted mb-2">Tipo</label>
+          <select name="tipo" id="id_tipo"
+                  class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+            {% for value, label in form.fields.tipo.choices %}
+              <option value="{{ value }}" {% if form.tipo.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-5">
+          <label for="id_notas" class="block text-xs font-medium text-muted mb-2">
+            Notas <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <textarea name="notas" id="id_notas" rows="2"
+                    class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors resize-none"
+                    placeholder="Informações adicionais…">{{ form.notas.value|default:'' }}</textarea>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button type="submit"
+                  class="bg-accent hover:opacity-90 text-white text-sm font-medium px-5 py-2 rounded-md transition-opacity">
+            Salvar
+          </button>
+          <a href="{% url 'entidades' %}" class="text-sm text-muted hover:text-tx transition-colors">Cancelar</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+{% endblock %}
