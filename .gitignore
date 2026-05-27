@@ -2,8 +2,7 @@ venv/
 .venv/
 __pycache__/
 media/
-static/
-migrations/ 
+migrations/
 staticfiles/
 
 *.pyc
