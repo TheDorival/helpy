@@ -1,0 +1,145 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Configurações — Helpy{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+
+{% block content %}
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="mb-5 px-4 py-3 rounded-md bg-green/10 border border-green/20 text-sm text-green">
+        {{ msg }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="max-w-xl flex flex-col gap-5">
+
+    <!-- ── SEGURANÇA ── -->
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-5">Segurança</p>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="alterar_senha" />
+
+        <!-- Senha atual -->
+        <div class="mb-4">
+          <label for="id_old_password" class="block text-xs font-medium text-muted mb-2">Senha atual</label>
+          <input type="password" name="old_password" id="id_old_password" autocomplete="off"
+                 class="w-full bg-bg border {% if senha_form.old_password.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if senha_form.old_password.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ senha_form.old_password.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Nova senha -->
+        <div class="mb-4">
+          <label for="id_new_password1" class="block text-xs font-medium text-muted mb-2">Nova senha</label>
+          <input type="password" name="new_password1" id="id_new_password1" autocomplete="off"
+                 class="w-full bg-bg border {% if senha_form.new_password1.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if senha_form.new_password1.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ senha_form.new_password1.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Confirmar nova senha -->
+        <div class="mb-5">
+          <label for="id_new_password2" class="block text-xs font-medium text-muted mb-2">Confirmar nova senha</label>
+          <input type="password" name="new_password2" id="id_new_password2" autocomplete="off"
+                 class="w-full bg-bg border {% if senha_form.new_password2.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if senha_form.new_password2.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ senha_form.new_password2.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <button type="submit"
+                class="bg-accent hover:opacity-90 text-white text-sm font-medium px-5 py-2 rounded-md transition-opacity">
+          Alterar senha
+        </button>
+      </form>
+    </div>
+
+    <!-- ── PREFERÊNCIAS ── -->
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-5">Preferências</p>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="preferencias" />
+
+        <!-- Moeda -->
+        <div class="mb-4">
+          <label for="id_moeda" class="block text-xs font-medium text-muted mb-2">Moeda padrão</label>
+          <select name="moeda" id="id_moeda"
+                  class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+            {% for value, label in preferencias_form.fields.moeda.choices %}
+              <option value="{{ value }}" {% if preferencias_form.instance.moeda == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Dia de corte -->
+        <div class="mb-5">
+          <label for="id_dia_corte" class="block text-xs font-medium text-muted mb-2">
+            Dia de corte do mês
+            <span class="text-dim font-normal ml-1">(1–28)</span>
+          </label>
+          <input type="number" name="dia_corte" id="id_dia_corte" min="1" max="28"
+                 value="{{ preferencias_form.instance.dia_corte }}"
+                 class="w-full bg-bg border {% if preferencias_form.dia_corte.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors" />
+          <p class="mt-1.5 text-xs text-dim">Define quando começa o seu mês financeiro. Ex.: dia 5 → período vai do dia 5 ao dia 4 do mês seguinte.</p>
+          {% if preferencias_form.dia_corte.errors %}
+            <p class="mt-1 text-xs text-red">{{ preferencias_form.dia_corte.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <button type="submit"
+                class="bg-accent hover:opacity-90 text-white text-sm font-medium px-5 py-2 rounded-md transition-opacity">
+          Salvar preferências
+        </button>
+      </form>
+    </div>
+
+    <!-- ── EXPORTAR DADOS ── -->
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-1">Exportar dados</p>
+      <p class="text-xs text-muted mb-5">Baixe todas as suas transações em formato CSV, compatível com Excel e Google Sheets.</p>
+      <a href="{% url 'exportar_dados' %}"
+         class="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-sm font-medium px-5 py-2 rounded-md transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        Baixar CSV
+      </a>
+    </div>
+
+    <!-- ── ZONA DE PERIGO ── -->
+    <div class="bg-surface border border-red/30 rounded-lg p-6">
+      <p class="text-xs font-medium text-red/70 uppercase tracking-widest mb-1">Zona de perigo</p>
+      <p class="text-xs text-muted mb-5">Esta ação é irreversível. Todos os seus dados serão permanentemente excluídos.</p>
+
+      <form method="post" novalidate
+            onsubmit="return confirm('Tem certeza? Esta ação não pode ser desfeita.');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="excluir_conta" />
+
+        <div class="mb-4">
+          <label for="id_senha" class="block text-xs font-medium text-muted mb-2">Confirme sua senha para excluir</label>
+          <input type="password" name="senha" id="id_senha" autocomplete="current-password"
+                 class="w-full bg-bg border {% if excluir_form.senha.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-red transition-colors" />
+          {% if excluir_form.senha.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ excluir_form.senha.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <button type="submit"
+                class="bg-red/10 hover:bg-red/20 border border-red/30 text-red text-sm font-medium px-5 py-2 rounded-md transition-colors">
+          Excluir minha conta
+        </button>
+      </form>
+    </div>
+
+  </div>
+
+{% endblock %}

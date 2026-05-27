@@ -21,7 +21,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import include, path
 
 from helpy.views import home, painel
-from usuarios.views import cadastro, perfil
+from usuarios.views import cadastro, configuracoes, perfil
 
 urlpatterns = [
     path('', home, name='home'),
@@ -30,6 +30,7 @@ urlpatterns = [
     path('cadastro/', cadastro, name='cadastro'),
     path('painel/', painel, name='painel'),
     path('perfil/', perfil, name='perfil'),
+    path('configuracoes/', configuracoes, name='configuracoes'),
     path('', include('financeiro.urls')),
     path('admin/', admin.site.urls),
 ]
