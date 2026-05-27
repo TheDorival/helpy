@@ -37,7 +37,7 @@
   <!-- Card total -->
   <div class="bg-surface border border-line rounded-lg p-4 mb-5">
     <p class="text-xs text-muted mb-1">Total em {{ mes_nome }}</p>
-    <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total|floatformat:2 }}</p>
+    <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total|floatformat:"2g" }}</p>
     <p class="text-xs text-dim mt-1">{{ transacoes.count }} registro{{ transacoes.count|pluralize }}</p>
   </div>
 
@@ -73,7 +73,7 @@
               {% endif %}
             </td>
             <td class="px-4 py-2 text-right font-semibold text-green whitespace-nowrap">
-              {{ request.user.simbolo_moeda }} {{ t.valor|floatformat:2 }}
+              {{ request.user.simbolo_moeda }} {{ t.valor|floatformat:"2g" }}
             </td>
             <td class="px-4 py-2">
               <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

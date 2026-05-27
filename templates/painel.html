@@ -23,7 +23,7 @@
         </div>
       </div>
       <p class="text-2xl font-semibold {% if saldo >= 0 %}text-tx{% else %}text-red{% endif %}">
-        {{ request.user.simbolo_moeda }} {{ saldo|floatformat:2 }}
+        {{ request.user.simbolo_moeda }} {{ saldo|floatformat:"2g" }}
       </p>
       <p class="mt-1 text-xs text-dim">Receitas − Despesas</p>
     </div>
@@ -37,7 +37,7 @@
           </svg>
         </a>
       </div>
-      <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:2 }}</p>
+      <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:"2g" }}</p>
       <p class="mt-1 text-xs text-dim">
         {% if total_receitas %}Ver no detalhe →{% else %}Nenhuma receita registrada{% endif %}
       </p>
@@ -52,7 +52,7 @@
           </svg>
         </a>
       </div>
-      <p class="text-2xl font-semibold text-red">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:2 }}</p>
+      <p class="text-2xl font-semibold text-red">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</p>
       <p class="mt-1 text-xs text-dim">
         {% if total_despesas %}Ver no detalhe →{% else %}Nenhuma despesa registrada{% endif %}
       </p>
@@ -87,7 +87,7 @@
               </td>
               <td class="px-4 py-2 text-right font-medium whitespace-nowrap
                          {% if t.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
-                {% if t.tipo == 'despesa' %}−{% endif %}{{ request.user.simbolo_moeda }} {{ t.valor|floatformat:2 }}
+                {% if t.tipo == 'despesa' %}−{% endif %}{{ request.user.simbolo_moeda }} {{ t.valor|floatformat:"2g" }}
               </td>
             </tr>
             {% endfor %}

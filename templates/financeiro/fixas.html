@@ -51,7 +51,7 @@
 
             <td class="px-4 py-2 font-semibold whitespace-nowrap
                        {% if item.obj.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
-              {{ request.user.simbolo_moeda }} {{ item.obj.valor|floatformat:2 }}
+              {{ request.user.simbolo_moeda }} {{ item.obj.valor|floatformat:"2g" }}
             </td>
 
             <td class="px-4 py-2 text-muted text-xs">{{ item.obj.get_frequencia_display }}</td>
