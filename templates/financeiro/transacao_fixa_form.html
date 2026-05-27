@@ -1,0 +1,154 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}{{ titulo }} — Helpy{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+
+  <div class="max-w-lg">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="bg-surface border border-line rounded-lg p-6 flex flex-col gap-5">
+
+        <!-- Tipo -->
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Tipo</label>
+          <div class="flex gap-2" id="tipo-group">
+            <label class="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors
+                          border-green/40 bg-green/5 text-green has-[:checked]:bg-green/15 has-[:checked]:border-green">
+              <input type="radio" name="tipo" value="receita"
+                     {% if form.tipo.value == 'receita' or not form.tipo.value %}checked{% endif %}
+                     class="sr-only" />
+              <span class="text-sm font-medium">Receita</span>
+            </label>
+            <label class="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors
+                          border-red/40 bg-red/5 text-red has-[:checked]:bg-red/15 has-[:checked]:border-red">
+              <input type="radio" name="tipo" value="despesa"
+                     {% if form.tipo.value == 'despesa' %}checked{% endif %}
+                     class="sr-only" />
+              <span class="text-sm font-medium">Despesa</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Descrição -->
+        <div>
+          <label for="id_descricao" class="block text-xs font-medium text-muted mb-2">Descrição</label>
+          <input type="text" name="descricao" id="id_descricao"
+                 value="{{ form.descricao.value|default:'' }}"
+                 placeholder="Ex: Salário, Aluguel, Netflix…"
+                 class="w-full bg-bg border {% if form.descricao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if form.descricao.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ form.descricao.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Valor + Frequência -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="id_valor" class="block text-xs font-medium text-muted mb-2">Valor</label>
+            <input type="number" name="valor" id="id_valor" step="0.01" min="0"
+                   value="{{ form.valor.value|default:'' }}"
+                   class="w-full bg-bg border {% if form.valor.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors" />
+            {% if form.valor.errors %}
+              <p class="mt-1.5 text-xs text-red">{{ form.valor.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="id_frequencia" class="block text-xs font-medium text-muted mb-2">Frequência</label>
+            <select name="frequencia" id="id_frequencia"
+                    class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+              {% for value, label in form.fields.frequencia.choices %}
+                <option value="{{ value }}" {% if form.frequencia.value == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Data início + Data fim -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="id_data_inicio" class="block text-xs font-medium text-muted mb-2">Início</label>
+            <input type="date" name="data_inicio" id="id_data_inicio"
+                   value="{{ form.data_inicio.value|date:'Y-m-d'|default:'' }}"
+                   class="w-full bg-bg border {% if form.data_inicio.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors [color-scheme:dark]" />
+            {% if form.data_inicio.errors %}
+              <p class="mt-1.5 text-xs text-red">{{ form.data_inicio.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="id_data_fim" class="block text-xs font-medium text-muted mb-2">
+              Fim <span class="text-dim font-normal">(opcional)</span>
+            </label>
+            <input type="date" name="data_fim" id="id_data_fim"
+                   value="{{ form.data_fim.value|date:'Y-m-d'|default:'' }}"
+                   class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors [color-scheme:dark]" />
+          </div>
+        </div>
+
+        <!-- Categoria -->
+        <div>
+          <label for="id_categoria" class="block text-xs font-medium text-muted mb-2">
+            Categoria <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <select name="categoria" id="id_categoria"
+                  class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+            <option value="">— Sem categoria —</option>
+            {% for cat in todas_cat %}
+              <option value="{{ cat.pk }}"
+                      data-tipo="{{ cat.tipo }}"
+                      {% if form.categoria.value|stringformat:"i" == cat.pk|stringformat:"i" %}selected{% endif %}>
+                {{ cat.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Observação -->
+        <div>
+          <label for="id_observacao" class="block text-xs font-medium text-muted mb-2">
+            Observação <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <textarea name="observacao" id="id_observacao" rows="2"
+                    class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors resize-none"
+                    placeholder="Nota opcional…">{{ form.observacao.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Ações -->
+        <div class="flex items-center gap-3 pt-1">
+          <button type="submit"
+                  class="bg-accent hover:opacity-90 text-white text-sm font-medium px-5 py-2 rounded-md transition-opacity">
+            Salvar
+          </button>
+          <a href="{% url 'fixas' %}" class="text-sm text-muted hover:text-tx transition-colors">Cancelar</a>
+        </div>
+
+      </div>
+    </form>
+  </div>
+
+  <script>
+  (function () {
+    const tipoRadios  = document.querySelectorAll('input[name="tipo"]');
+    const catSelect   = document.getElementById('id_categoria');
+    const catOptions  = [...catSelect.options];
+
+    function filtrar() {
+      const tipo = document.querySelector('input[name="tipo"]:checked')?.value;
+      catOptions.forEach(opt => {
+        if (!opt.value || !opt.dataset.tipo || opt.dataset.tipo === tipo) {
+          opt.hidden = false;
+        } else {
+          opt.hidden = true;
+          if (opt.selected) { opt.selected = false; catSelect.value = ''; }
+        }
+      });
+    }
+
+    tipoRadios.forEach(r => r.addEventListener('change', filtrar));
+    filtrar();
+  })();
+  </script>
+
+{% endblock %}

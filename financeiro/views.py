@@ -7,8 +7,8 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import TransacaoForm
-from .models import Transacao
+from .forms import TransacaoFixaForm, TransacaoForm
+from .models import Categoria, Transacao, TransacaoFixa, _avancar_data
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -56,6 +56,7 @@ def _periodo(request):
 
 @login_required
 def receitas(request):
+    sincronizar_fixas(request.user)
     ctx = _periodo(request)
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='receita',
@@ -68,6 +69,7 @@ def receitas(request):
 
 @login_required
 def despesas(request):
+    sincronizar_fixas(request.user)
     ctx = _periodo(request)
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='despesa',
@@ -136,6 +138,30 @@ def excluir_transacao(request, pk):
     return redirect('receitas' if tipo == 'receita' else 'despesas')
 
 
+def sincronizar_fixas(usuario):
+    """Gera todas as ocorrências pendentes de transações fixas até hoje."""
+    hoje = date.today()
+    for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria'):
+        proxima = _avancar_data(tf.ultima_geracao, tf.frequencia) if tf.ultima_geracao else tf.data_inicio
+        limite  = min(hoje, tf.data_fim) if tf.data_fim else hoje
+
+        novas, ultima = [], tf.ultima_geracao
+        d = proxima
+        while d <= limite:
+            novas.append(Transacao(
+                usuario=tf.usuario, tipo=tf.tipo,
+                descricao=tf.descricao, valor=tf.valor,
+                data=d, categoria=tf.categoria,
+                observacao=tf.observacao,
+            ))
+            ultima = d
+            d = _avancar_data(d, tf.frequencia)
+
+        if novas:
+            Transacao.objects.bulk_create(novas)
+            TransacaoFixa.objects.filter(pk=tf.pk).update(ultima_geracao=ultima)
+
+
 def _mes_atras(hoje, n):
     """Primeiro dia do mês N meses antes do mês atual."""
     total = hoje.year * 12 + (hoje.month - 1) - n
@@ -153,6 +179,7 @@ PERIODOS = [
 
 @login_required
 def graficos(request):
+    sincronizar_fixas(request.user)
     hoje = date.today()
     periodo = request.GET.get('periodo', '6m')
 
@@ -237,6 +264,64 @@ def graficos(request):
         'simbolo':           request.user.simbolo_moeda,
         'tem_dados':         tem_dados,
     })
+
+
+@login_required
+def fixas(request):
+    sincronizar_fixas(request.user)
+    qs = TransacaoFixa.objects.filter(usuario=request.user).select_related('categoria')
+    items = [{'obj': tf, 'proxima': tf.proxima_data()} for tf in qs]
+    return render(request, 'financeiro/fixas.html', {'items': items})
+
+
+@login_required
+def nova_fixa(request):
+    todas_cat = Categoria.objects.filter(usuario=request.user)
+    form = TransacaoFixaForm(request.POST or None, usuario=request.user)
+    if request.method == 'POST' and form.is_valid():
+        tf = form.save(commit=False)
+        tf.usuario = request.user
+        tf.save()
+        sincronizar_fixas(request.user)
+        return redirect('fixas')
+    return render(request, 'financeiro/transacao_fixa_form.html', {
+        'form': form, 'todas_cat': todas_cat, 'titulo': 'Nova recorrente',
+    })
+
+
+@login_required
+def editar_fixa(request, pk):
+    tf = get_object_or_404(TransacaoFixa, pk=pk, usuario=request.user)
+    todas_cat = Categoria.objects.filter(usuario=request.user)
+    form = TransacaoFixaForm(request.POST or None, instance=tf, usuario=request.user)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        obj.ultima_geracao = date.today()   # novas ocorrências usam os valores editados
+        obj.save()
+        return redirect('fixas')
+    return render(request, 'financeiro/transacao_fixa_form.html', {
+        'form': form, 'todas_cat': todas_cat,
+        'titulo': 'Editar recorrente', 'obj': tf,
+    })
+
+
+@login_required
+def excluir_fixa(request, pk):
+    tf = get_object_or_404(TransacaoFixa, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        tf.delete()
+    return redirect('fixas')
+
+
+@login_required
+def toggle_fixa(request, pk):
+    tf = get_object_or_404(TransacaoFixa, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        tf.ativa = not tf.ativa
+        tf.save(update_fields=['ativa'])
+        if tf.ativa:
+            sincronizar_fixas(request.user)
+    return redirect('fixas')
 
 
 @login_required

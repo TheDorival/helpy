@@ -93,6 +93,21 @@
         </a>
       </div>
 
+      <div class="flex items-center rounded-md {% if url == 'fixas' or url == 'nova_fixa' %}bg-surfacehi{% else %}hover:bg-surfacehi{% endif %} transition-colors">
+        <a href="{% url 'nova_fixa' %}"
+           title="Nova recorrente"
+           class="flex-shrink-0 ml-1 w-6 h-6 flex items-center justify-center rounded-md text-accent hover:ring-1 hover:ring-white/20 transition-all">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </a>
+        <a href="{% url 'fixas' %}"
+           class="flex-1 py-1.5 pr-2 text-sm transition-colors
+                  {% if url == 'fixas' or url == 'nova_fixa' %}text-tx{% else %}text-muted hover:text-tx{% endif %}">
+          Recorrentes
+        </a>
+      </div>
+
       <p class="px-2 pt-3 pb-1.5 text-[10px] font-medium text-dim uppercase tracking-widest">Análise</p>
 
       <a href="{% url 'graficos' %}"

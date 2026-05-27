@@ -1,0 +1,115 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Recorrentes — Helpy{% endblock %}
+{% block page_title %}Recorrentes{% endblock %}
+
+{% block content %}
+
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-xs text-muted">Transações geradas automaticamente a cada período definido.</p>
+    <a href="{% url 'nova_fixa' %}"
+       class="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-xs font-medium px-3 py-1.5 rounded-md transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+      Nova recorrente
+    </a>
+  </div>
+
+  {% if items %}
+    <div class="bg-surface border border-line rounded-lg overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-line">
+            <th class="text-left text-xs font-medium text-dim px-5 py-3">Tipo</th>
+            <th class="text-left text-xs font-medium text-dim px-5 py-3">Descrição</th>
+            <th class="text-left text-xs font-medium text-dim px-5 py-3">Valor</th>
+            <th class="text-left text-xs font-medium text-dim px-5 py-3">Frequência</th>
+            <th class="text-left text-xs font-medium text-dim px-5 py-3">Próxima</th>
+            <th class="text-left text-xs font-medium text-dim px-5 py-3">Status</th>
+            <th class="px-5 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for item in items %}
+          <tr class="hover:bg-surfacehi transition-colors group {% if not item.obj.ativa %}opacity-50{% endif %}">
+
+            <td class="px-5 py-3">
+              {% if item.obj.tipo == 'receita' %}
+                <span class="text-xs font-medium text-green bg-green/10 border border-green/20 rounded px-2 py-0.5">Receita</span>
+              {% else %}
+                <span class="text-xs font-medium text-red bg-red/10 border border-red/20 rounded px-2 py-0.5">Despesa</span>
+              {% endif %}
+            </td>
+
+            <td class="px-5 py-3 text-tx">
+              {{ item.obj.descricao }}
+              {% if item.obj.categoria %}
+                <p class="text-xs text-dim mt-0.5">{{ item.obj.categoria }}</p>
+              {% endif %}
+            </td>
+
+            <td class="px-5 py-3 font-semibold whitespace-nowrap
+                       {% if item.obj.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
+              {{ request.user.simbolo_moeda }} {{ item.obj.valor|floatformat:2 }}
+            </td>
+
+            <td class="px-5 py-3 text-muted text-xs">{{ item.obj.get_frequencia_display }}</td>
+
+            <td class="px-5 py-3 text-xs text-muted whitespace-nowrap">
+              {% if item.proxima %}
+                {{ item.proxima|date:"d/m/Y" }}
+              {% else %}
+                <span class="text-dim">Encerrada</span>
+              {% endif %}
+            </td>
+
+            <td class="px-5 py-3">
+              <form method="post" action="{% url 'toggle_fixa' item.obj.pk %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="text-xs px-2 py-0.5 rounded border transition-colors
+                               {% if item.obj.ativa %}border-green/30 text-green hover:bg-green/10{% else %}border-line text-dim hover:text-muted{% endif %}">
+                  {% if item.obj.ativa %}Ativa{% else %}Inativa{% endif %}
+                </button>
+              </form>
+            </td>
+
+            <td class="px-5 py-3">
+              <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a href="{% url 'editar_fixa' item.obj.pk %}"
+                   class="text-xs text-muted hover:text-tx transition-colors">Editar</a>
+                <form method="post" action="{% url 'excluir_fixa' item.obj.pk %}"
+                      onsubmit="return confirm('Excluir esta recorrente? As transações já geradas não serão removidas.')">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+                </form>
+              </div>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% else %}
+    <div class="flex flex-col items-center justify-center py-20 text-center bg-surface border border-line rounded-lg">
+      <div class="w-10 h-10 rounded-full bg-bg border border-line flex items-center justify-center mb-4">
+        <svg class="w-5 h-5 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+      </div>
+      <p class="text-sm text-muted mb-1">Nenhuma transação recorrente</p>
+      <p class="text-xs text-dim mb-5">Adicione salário, aluguel ou qualquer valor que se repete.</p>
+      <a href="{% url 'nova_fixa' %}"
+         class="inline-flex items-center gap-2 text-xs font-medium text-accent border border-accent/30 bg-accent/5 hover:bg-accent/10 px-3 py-1.5 rounded-md transition-colors">
+        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Nova recorrente
+      </a>
+    </div>
+  {% endif %}
+
+{% endblock %}
