@@ -1,4 +1,5 @@
 import csv
+import json
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
@@ -133,6 +134,109 @@ def excluir_transacao(request, pk):
     if request.method == 'POST':
         transacao.delete()
     return redirect('receitas' if tipo == 'receita' else 'despesas')
+
+
+def _mes_atras(hoje, n):
+    """Primeiro dia do mês N meses antes do mês atual."""
+    total = hoje.year * 12 + (hoje.month - 1) - n
+    return date(total // 12, total % 12 + 1, 1)
+
+
+PERIODOS = [
+    ('3m',        'Últimos 3 meses'),
+    ('6m',        'Últimos 6 meses'),
+    ('1a',        'Último ano'),
+    ('ano_atual', 'Ano atual'),
+    ('tudo',      'Todo o período'),
+]
+
+
+@login_required
+def graficos(request):
+    hoje = date.today()
+    periodo = request.GET.get('periodo', '6m')
+
+    if periodo == '3m':
+        inicio = _mes_atras(hoje, 2)
+    elif periodo == '6m':
+        inicio = _mes_atras(hoje, 5)
+    elif periodo == '1a':
+        inicio = _mes_atras(hoje, 11)
+    elif periodo == 'ano_atual':
+        inicio = date(hoje.year, 1, 1)
+    else:
+        inicio = None
+
+    qs = Transacao.objects.filter(usuario=request.user)
+    if inicio:
+        qs = qs.filter(data__gte=inicio)
+
+    tem_dados = qs.exists()
+
+    if tem_dados:
+        primeira = qs.order_by('data').values_list('data', flat=True).first()
+        mes_ini = date(primeira.year, primeira.month, 1)
+        mes_fim = date(hoje.year, hoje.month, 1)
+
+        meses = []
+        m = mes_ini
+        while m <= mes_fim:
+            meses.append(m)
+            m = date(m.year + (m.month == 12), m.month % 12 + 1, 1)
+
+        def agg_mensal(tipo):
+            result = {}
+            for row in (qs.filter(tipo=tipo)
+                          .values('data__year', 'data__month')
+                          .annotate(t=Sum('valor'))):
+                result[date(row['data__year'], row['data__month'], 1)] = float(row['t'])
+            return result
+
+        rec_mens = agg_mensal('receita')
+        desp_mens = agg_mensal('despesa')
+
+        mostrar_ano = len(meses) > 12
+        labels = [MESES[m.month] + (f"/{str(m.year)[-2:]}" if mostrar_ano else '') for m in meses]
+        rec_data  = [rec_mens.get(m, 0)  for m in meses]
+        desp_data = [desp_mens.get(m, 0) for m in meses]
+
+        saldo_data, saldo = [], 0
+        for r, d in zip(rec_data, desp_data):
+            saldo = round(saldo + r - d, 2)
+            saldo_data.append(saldo)
+
+        def agg_cat(tipo):
+            rows = list(qs.filter(tipo=tipo)
+                          .values('categoria__nome')
+                          .annotate(t=Sum('valor'))
+                          .order_by('-t'))
+            return {
+                'labels': [r['categoria__nome'] or 'Sem categoria' for r in rows],
+                'data':   [float(r['t']) for r in rows],
+            }
+
+        cat_desp = agg_cat('despesa')
+        cat_rec  = agg_cat('receita')
+    else:
+        labels = rec_data = desp_data = saldo_data = []
+        cat_desp = cat_rec = {'labels': [], 'data': []}
+
+    return render(request, 'financeiro/graficos.html', {
+        'periodo':           periodo,
+        'periodos':          PERIODOS,
+        'labels':            json.dumps(labels),
+        'rec_data':          json.dumps(rec_data),
+        'desp_data':         json.dumps(desp_data),
+        'saldo_data':        json.dumps(saldo_data),
+        'cat_desp_labels':   json.dumps(cat_desp['labels']),
+        'cat_desp_data':     json.dumps(cat_desp['data']),
+        'cat_desp_count':    len(cat_desp['data']),
+        'cat_rec_labels':    json.dumps(cat_rec['labels']),
+        'cat_rec_data':      json.dumps(cat_rec['data']),
+        'cat_rec_count':     len(cat_rec['data']),
+        'simbolo':           request.user.simbolo_moeda,
+        'tem_dados':         tem_dados,
+    })
 
 
 @login_required
