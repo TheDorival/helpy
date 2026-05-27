@@ -80,6 +80,7 @@
                 <a href="{% url 'editar_fixa' item.obj.pk %}"
                    class="text-xs text-muted hover:text-tx transition-colors">Editar</a>
                 <form method="post" action="{% url 'excluir_fixa' item.obj.pk %}"
+                      class="flex items-center"
                       onsubmit="return confirm('Excluir esta recorrente? As transações já geradas não serão removidas.')">
                   {% csrf_token %}
                   <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
