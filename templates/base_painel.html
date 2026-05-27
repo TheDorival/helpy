@@ -36,6 +36,21 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 3px; }
+
+    /* Autofill do browser no tema escuro */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    textarea:-webkit-autofill,
+    textarea:-webkit-autofill:hover,
+    textarea:-webkit-autofill:focus,
+    select:-webkit-autofill,
+    select:-webkit-autofill:hover,
+    select:-webkit-autofill:focus {
+      -webkit-text-fill-color: #e8e8e6;
+      -webkit-box-shadow: 0 0 0px 1000px #191919 inset;
+      transition: background-color 5000s ease-in-out 0s;
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
