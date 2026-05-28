@@ -57,7 +57,7 @@ def _periodo(request):
 @login_required
 def receitas(request):
     ctx = _periodo(request)
-    sincronizar_fixas(request.user, limite=ctx['fim'])
+    sincronizar_fixas(request.user, limite=min(ctx['fim'], date.today()))
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='receita',
         data__gte=ctx['inicio'], data__lte=ctx['fim'],
@@ -70,7 +70,7 @@ def receitas(request):
 @login_required
 def despesas(request):
     ctx = _periodo(request)
-    sincronizar_fixas(request.user, limite=ctx['fim'])
+    sincronizar_fixas(request.user, limite=min(ctx['fim'], date.today()))
     qs = Transacao.objects.filter(
         usuario=request.user, tipo='despesa',
         data__gte=ctx['inicio'], data__lte=ctx['fim'],
