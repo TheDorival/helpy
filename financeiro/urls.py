@@ -24,4 +24,9 @@ urlpatterns = [
     path('entidades/<int:pk>/editar/', views.editar_entidade, name='editar_entidade'),
     path('entidades/<int:pk>/excluir/', views.excluir_entidade, name='excluir_entidade'),
     path('exportar/', views.exportar_dados, name='exportar_dados'),
+    path('emprestimos/', views.emprestimos, name='emprestimos'),
+    path('emprestimos/novo/', views.novo_emprestimo, name='novo_emprestimo'),
+    path('emprestimos/<int:pk>/editar/', views.editar_emprestimo, name='editar_emprestimo'),
+    path('emprestimos/<int:pk>/excluir/', views.excluir_emprestimo, name='excluir_emprestimo'),
+    path('emprestimos/parcela/<int:pk>/toggle/', views.toggle_parcela, name='toggle_parcela'),
 ]

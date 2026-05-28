@@ -7,8 +7,8 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import CategoriaForm, EntidadeForm, TransacaoFixaForm, TransacaoForm
-from .models import Categoria, Entidade, Transacao, TransacaoFixa, _avancar_data
+from .forms import CategoriaForm, EmprestimoForm, EntidadeForm, TransacaoFixaForm, TransacaoForm
+from .models import Categoria, Emprestimo, Entidade, ParcelaEmprestimo, Transacao, TransacaoFixa, _avancar_data
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -441,6 +441,93 @@ def excluir_entidade(request, pk):
     if request.method == 'POST':
         ent.delete()
     return redirect('entidades')
+
+
+# ── EMPRÉSTIMOS ───────────────────────────────────────────────────────────────
+
+@login_required
+def emprestimos(request):
+    hoje = date.today()
+    qs = (Emprestimo.objects
+          .filter(usuario=request.user)
+          .prefetch_related('parcelas')
+          .select_related('entidade'))
+    items = []
+    for emp in qs:
+        parcelas = list(emp.parcelas.all())
+        n_total = len(parcelas)
+        n_pagas = sum(1 for p in parcelas if p.paga)
+        valor_restante = sum(p.valor for p in parcelas if not p.paga)
+        proxima = next((p for p in parcelas if not p.paga), None)
+        progresso_pct = round(n_pagas / n_total * 100) if n_total else 0
+        items.append({
+            'obj': emp,
+            'n_pagas': n_pagas,
+            'n_total': n_total,
+            'valor_restante': valor_restante,
+            'proxima': proxima,
+            'progresso_pct': progresso_pct,
+        })
+    return render(request, 'financeiro/emprestimos.html', {'items': items, 'hoje': hoje})
+
+
+@login_required
+def novo_emprestimo(request):
+    entidades, _ = _entidades_ctx(request.user)
+    com_juros = False
+    form = EmprestimoForm(request.POST or None, usuario=request.user)
+    if request.method == 'POST':
+        com_juros = bool(request.POST.get('taxa_juros', '').strip())
+        if form.is_valid():
+            emp = form.save(commit=False)
+            emp.usuario = request.user
+            emp.save()
+            emp.gerar_parcelas()
+            return redirect('emprestimos')
+    return render(request, 'financeiro/emprestimo_form.html', {
+        'form': form, 'entidades': entidades,
+        'titulo': 'Novo empréstimo', 'com_juros': com_juros,
+    })
+
+
+@login_required
+def editar_emprestimo(request, pk):
+    emp = get_object_or_404(Emprestimo, pk=pk, usuario=request.user)
+    entidades, _ = _entidades_ctx(request.user)
+    com_juros = emp.com_juros
+    form = EmprestimoForm(request.POST or None, instance=emp, usuario=request.user)
+    if request.method == 'POST':
+        com_juros = bool(request.POST.get('taxa_juros', '').strip())
+        if form.is_valid():
+            campos_fin = ('valor_total', 'n_parcelas', 'taxa_juros', 'tipo_amortizacao', 'data_inicio')
+            antes = {c: getattr(emp, c) for c in campos_fin}
+            obj = form.save()
+            if any(getattr(obj, c) != antes[c] for c in campos_fin):
+                obj.parcelas.all().delete()
+                obj.gerar_parcelas()
+            return redirect('emprestimos')
+    return render(request, 'financeiro/emprestimo_form.html', {
+        'form': form, 'entidades': entidades,
+        'titulo': 'Editar empréstimo', 'obj': emp, 'com_juros': com_juros,
+    })
+
+
+@login_required
+def excluir_emprestimo(request, pk):
+    emp = get_object_or_404(Emprestimo, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        emp.delete()
+    return redirect('emprestimos')
+
+
+@login_required
+def toggle_parcela(request, pk):
+    parcela = get_object_or_404(ParcelaEmprestimo, pk=pk, emprestimo__usuario=request.user)
+    if request.method == 'POST':
+        parcela.paga = not parcela.paga
+        parcela.data_pagamento = date.today() if parcela.paga else None
+        parcela.save(update_fields=['paga', 'data_pagamento'])
+    return redirect('emprestimos')
 
 
 @login_required

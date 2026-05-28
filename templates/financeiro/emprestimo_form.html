@@ -1,0 +1,282 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block skeleton %}
+  <div class="max-w-lg">
+    <div class="sk h-9 w-full rounded-lg mb-4"></div>
+    <div class="bg-surface border border-line rounded-lg p-5 flex flex-col gap-4">
+      <div>
+        <div class="sk h-3 w-8 rounded mb-2"></div>
+        <div class="flex gap-2">
+          <div class="sk flex-1 h-10 rounded-md"></div>
+          <div class="sk flex-1 h-10 rounded-md"></div>
+        </div>
+      </div>
+      <div><div class="sk h-3 w-20 rounded mb-2"></div><div class="sk h-9 w-full rounded-md"></div></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><div class="sk h-3 w-16 rounded mb-2"></div><div class="sk h-9 w-full rounded-md"></div></div>
+        <div><div class="sk h-3 w-20 rounded mb-2"></div><div class="sk h-9 w-full rounded-md"></div></div>
+      </div>
+      <div><div class="sk h-3 w-32 rounded mb-2"></div><div class="sk h-9 w-full rounded-md"></div></div>
+      <div class="flex items-center gap-3 pt-1">
+        <div class="sk h-7 w-16 rounded-md"></div>
+        <div class="sk h-3 w-14 rounded"></div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+
+  <div class="max-w-lg">
+    <form method="post" novalidate id="form-emprestimo">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="mb-4 px-3 py-2 bg-red/10 border border-red/30 rounded-md">
+          {% for erro in form.non_field_errors %}
+            <p class="text-xs text-red">{{ erro }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Seletor de modo -->
+      <div class="flex gap-1 mb-4 bg-surface border border-line rounded-lg p-1">
+        <button type="button" id="btn-simples"
+                class="flex-1 text-xs font-medium py-1.5 rounded-md transition-colors">
+          Simples
+        </button>
+        <button type="button" id="btn-completo"
+                class="flex-1 text-xs font-medium py-1.5 rounded-md transition-colors">
+          Completo (com juros)
+        </button>
+      </div>
+
+      <div class="bg-surface border border-line rounded-lg p-5 flex flex-col gap-4">
+
+        <!-- Tipo (tomado / concedido) -->
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Tipo</label>
+          <div class="flex gap-2">
+            <label class="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors
+                          border-red/40 bg-red/5 text-red has-[:checked]:bg-red/15 has-[:checked]:border-red">
+              <input type="radio" name="tipo" value="tomado"
+                     {% if form.tipo.value == 'tomado' or not form.tipo.value %}checked{% endif %}
+                     class="sr-only" />
+              <span class="text-sm font-medium">Tomado</span>
+            </label>
+            <label class="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors
+                          border-green/40 bg-green/5 text-green has-[:checked]:bg-green/15 has-[:checked]:border-green">
+              <input type="radio" name="tipo" value="concedido"
+                     {% if form.tipo.value == 'concedido' %}checked{% endif %}
+                     class="sr-only" />
+              <span class="text-sm font-medium">Concedido</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Identificação -->
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Identificação</label>
+
+          {% if entidades %}
+            <select name="entidade" id="id_entidade"
+                    class="w-full bg-bg border {% if form.entidade.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+              <option value="" disabled {% if not form.entidade.value and not form.descricao.value %}selected{% endif %}>Selecione...</option>
+              {% regroup entidades by get_tipo_display as grupos %}
+              {% for grupo in grupos %}
+                <optgroup label="{{ grupo.grouper }}">
+                  {% for e in grupo.list %}
+                    <option value="{{ e.pk }}" {% if form.entidade.value|stringformat:"s" == e.pk|stringformat:"s" %}selected{% endif %}>
+                      {{ e.nome }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+              {% endfor %}
+              <option value="__outro__" {% if not form.entidade.value and form.descricao.value %}selected{% endif %}>
+                Outro (descrição livre)
+              </option>
+            </select>
+
+            <div id="descricao-wrapper"
+                 class="mt-2 {% if not form.entidade.value and form.descricao.value %}{% else %}hidden{% endif %}">
+              <input type="text" name="descricao" id="id_descricao"
+                     value="{{ form.descricao.value|default:'' }}"
+                     placeholder="Ex: Banco, amigo, familiar…"
+                     class="w-full bg-bg border {% if form.descricao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+            </div>
+          {% else %}
+            <input type="text" name="descricao" id="id_descricao"
+                   value="{{ form.descricao.value|default:'' }}"
+                   placeholder="Ex: Banco, amigo, familiar…"
+                   class="w-full bg-bg border {% if form.descricao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% endif %}
+
+          {% if form.entidade.errors %}<p class="mt-1.5 text-xs text-red">{{ form.entidade.errors.0 }}</p>{% endif %}
+          {% if form.descricao.errors %}<p class="mt-1.5 text-xs text-red">{{ form.descricao.errors.0 }}</p>{% endif %}
+
+          <div class="mt-1.5">
+            <a href="{% url 'nova_entidade' %}?next={{ request.path }}"
+               class="text-xs text-accent hover:underline">+ Nova entidade</a>
+          </div>
+        </div>
+
+        <!-- Valor total + Parcelas -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="id_valor_total" class="block text-xs font-medium text-muted mb-2">
+              Valor total ({{ request.user.simbolo_moeda }})
+            </label>
+            <input type="text" inputmode="decimal" name="valor_total" id="id_valor_total"
+                   value="{{ form.valor_total.value|default:'' }}"
+                   placeholder="0,00" autocomplete="off"
+                   class="w-full bg-bg border {% if form.valor_total.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+            {% if form.valor_total.errors %}<p class="mt-1.5 text-xs text-red">{{ form.valor_total.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label for="id_n_parcelas" class="block text-xs font-medium text-muted mb-2">Parcelas</label>
+            <input type="number" name="n_parcelas" id="id_n_parcelas"
+                   value="{{ form.n_parcelas.value|default:'' }}"
+                   min="1" placeholder="12"
+                   class="w-full bg-bg border {% if form.n_parcelas.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+            {% if form.n_parcelas.errors %}<p class="mt-1.5 text-xs text-red">{{ form.n_parcelas.errors.0 }}</p>{% endif %}
+          </div>
+        </div>
+
+        <!-- Primeiro vencimento -->
+        <div>
+          <label for="id_data_inicio" class="block text-xs font-medium text-muted mb-2">Primeiro vencimento</label>
+          <input type="date" name="data_inicio" id="id_data_inicio"
+                 value="{{ form.data_inicio.value|date:'Y-m-d'|default:'' }}"
+                 class="w-full bg-bg border {% if form.data_inicio.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors [color-scheme:dark]" />
+          {% if form.data_inicio.errors %}<p class="mt-1.5 text-xs text-red">{{ form.data_inicio.errors.0 }}</p>{% endif %}
+        </div>
+
+        <!-- Campos de juros (modo completo) -->
+        <div id="juros-section">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="id_taxa_juros" class="block text-xs font-medium text-muted mb-2">
+                Taxa de juros (% a.m.)
+              </label>
+              <input type="text" inputmode="decimal" name="taxa_juros" id="id_taxa_juros"
+                     value="{{ form.taxa_juros.value|default:'' }}"
+                     placeholder="Ex: 1,50" autocomplete="off"
+                     class="w-full bg-bg border {% if form.taxa_juros.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+              {% if form.taxa_juros.errors %}<p class="mt-1.5 text-xs text-red">{{ form.taxa_juros.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+              <label for="id_tipo_amortizacao" class="block text-xs font-medium text-muted mb-2">Sistema</label>
+              <select name="tipo_amortizacao" id="id_tipo_amortizacao"
+                      class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+                <option value="price" {% if form.tipo_amortizacao.value == 'price' or not form.tipo_amortizacao.value %}selected{% endif %}>Tabela Price</option>
+                <option value="sac" {% if form.tipo_amortizacao.value == 'sac' %}selected{% endif %}>SAC</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Observação -->
+        <div>
+          <label for="id_observacao" class="block text-xs font-medium text-muted mb-2">
+            Observação <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <textarea name="observacao" id="id_observacao" rows="2"
+                    class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors resize-none"
+                    placeholder="Nota opcional…">{{ form.observacao.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Ações -->
+        <div class="flex items-center gap-3 pt-1">
+          <button type="submit"
+                  class="bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
+            Salvar
+          </button>
+          <a href="{% url 'emprestimos' %}" class="text-xs text-muted hover:text-tx transition-colors">Cancelar</a>
+        </div>
+
+      </div>
+    </form>
+  </div>
+
+  <script>
+  (function () {
+    const btnSimples   = document.getElementById('btn-simples');
+    const btnCompleto  = document.getElementById('btn-completo');
+    const jurosSection = document.getElementById('juros-section');
+    const taxaInput    = document.getElementById('id_taxa_juros');
+    const amortSelect  = document.getElementById('id_tipo_amortizacao');
+
+    let modo = '{{ com_juros|yesno:"completo,simples" }}';
+
+    function setModo(m) {
+      modo = m;
+      const ativos   = ['bg-surfacehi', 'text-tx'];
+      const inativos = ['text-muted'];
+      if (m === 'simples') {
+        jurosSection.classList.add('hidden');
+        btnSimples.classList.add(...ativos);    btnSimples.classList.remove(...inativos);
+        btnCompleto.classList.remove(...ativos); btnCompleto.classList.add(...inativos);
+      } else {
+        jurosSection.classList.remove('hidden');
+        btnCompleto.classList.add(...ativos);   btnCompleto.classList.remove(...inativos);
+        btnSimples.classList.remove(...ativos);  btnSimples.classList.add(...inativos);
+      }
+    }
+
+    setModo(modo);
+    btnSimples.addEventListener('click',  () => setModo('simples'));
+    btnCompleto.addEventListener('click', () => setModo('completo'));
+
+    function parseNum(s) { return parseFloat(String(s).replace(/\./g, '').replace(',', '.')); }
+    function fmtNum(n, dec) { return n.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+
+    const valorInput = document.getElementById('id_valor_total');
+    if (valorInput.value) { const n = parseNum(valorInput.value); if (!isNaN(n)) valorInput.value = fmtNum(n, 2); }
+    valorInput.addEventListener('blur', function () {
+      const n = parseNum(this.value);
+      if (!isNaN(n) && n > 0) this.value = fmtNum(n, 2);
+    });
+
+    if (taxaInput.value) { const n = parseNum(taxaInput.value); if (!isNaN(n)) taxaInput.value = fmtNum(n, 2); }
+    taxaInput.addEventListener('blur', function () {
+      const n = parseNum(this.value);
+      if (!isNaN(n) && n > 0) this.value = fmtNum(n, 2);
+    });
+
+    const entidadeSelect = document.getElementById('id_entidade');
+    const descWrapper    = document.getElementById('descricao-wrapper');
+    const descInput      = document.getElementById('id_descricao');
+
+    if (entidadeSelect && descWrapper) {
+      function toggleDescricao() {
+        if (entidadeSelect.value === '__outro__') {
+          descWrapper.classList.remove('hidden');
+          if (descInput) descInput.focus();
+        } else {
+          descWrapper.classList.add('hidden');
+          if (descInput) descInput.value = '';
+        }
+      }
+      entidadeSelect.addEventListener('change', toggleDescricao);
+    }
+
+    document.getElementById('form-emprestimo').addEventListener('submit', function () {
+      if (modo === 'simples') {
+        taxaInput.value   = '';
+        amortSelect.value = '';
+      }
+      const v = parseNum(valorInput.value);
+      if (!isNaN(v)) valorInput.value = v.toFixed(2);
+      if (modo === 'completo') {
+        const t = parseNum(taxaInput.value);
+        if (!isNaN(t)) taxaInput.value = t.toFixed(4);
+      }
+      if (entidadeSelect && entidadeSelect.value === '__outro__') entidadeSelect.value = '';
+    });
+  })();
+  </script>
+
+{% endblock %}
