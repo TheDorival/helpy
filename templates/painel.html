@@ -93,33 +93,36 @@
       {% endif %}
 
       <!-- Adicionar saldo extra -->
-      <details class="group">
-        <summary class="text-xs text-dim hover:text-muted cursor-pointer list-none flex items-center gap-1 transition-colors">
-          <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Adicionar saldo
-        </summary>
-        <form method="post" action="{% url 'criar_saldo_extra' %}" class="mt-2 space-y-1.5">
+      <button type="button" onclick="toggleAddSaldo()"
+              class="flex items-center gap-1 text-xs text-dim hover:text-muted transition-colors">
+        <svg id="add-saldo-icon" class="w-3 h-3 transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Adicionar saldo
+      </button>
+      <div id="add-saldo-form" class="hidden mt-2 space-y-1.5">
+        <form method="post" action="{% url 'criar_saldo_extra' %}">
           {% csrf_token %}
-          <input type="text" name="nome" placeholder="Nome (ex: VA, Cripto...)" required
-                 class="w-full text-xs bg-bg border border-line rounded px-2 py-1 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
-          <div class="flex gap-1.5">
-            <input type="number" name="valor" placeholder="Valor" step="0.01" required
-                   class="flex-1 text-xs bg-bg border border-line rounded px-2 py-1 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
-            <select name="tipo"
-                    class="text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors">
-              {% for val, label in tipos_saldo_extra %}
-                <option value="{{ val }}">{{ label }}</option>
-              {% endfor %}
-            </select>
+          <div class="space-y-1.5">
+            <input type="text" name="nome" placeholder="Nome (ex: VA, Cripto...)" required
+                   class="w-full text-xs bg-bg border border-line rounded px-2 py-1.5 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+            <div class="flex gap-1.5">
+              <input type="number" name="valor" placeholder="Valor" step="0.01" required
+                     class="flex-1 min-w-0 text-xs bg-bg border border-line rounded px-2 py-1.5 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+              <select name="tipo"
+                      class="text-xs bg-bg border border-line rounded px-2 py-1.5 text-tx outline-none focus:border-accent/50 transition-colors">
+                {% for val, label in tipos_saldo_extra %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit"
+                    class="w-full text-xs bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 rounded px-2 py-1.5 transition-colors">
+              Adicionar
+            </button>
           </div>
-          <button type="submit"
-                  class="w-full text-xs bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 rounded px-2 py-1 transition-colors">
-            Adicionar
-          </button>
         </form>
-      </details>
+      </div>
     </div>
 
     <!-- Widget: Previsão de gastos -->
@@ -262,5 +265,14 @@
     </div>
 
   </div>
+
+  <script>
+  function toggleAddSaldo() {
+    var form = document.getElementById('add-saldo-form');
+    var icon = document.getElementById('add-saldo-icon');
+    var open = form.classList.toggle('hidden');
+    icon.style.transform = open ? '' : 'rotate(45deg)';
+  }
+  </script>
 
 {% endblock %}
