@@ -43,10 +43,11 @@
       100% { background-position:  1200px 0; }
     }
     .sk {
-      background: linear-gradient(90deg, #282828 25%, #333333 50%, #282828 75%);
+      background: linear-gradient(90deg, #242424 25%, #2a2a2a 50%, #242424 75%);
       background-size: 2400px 100%;
       animation: sk-shimmer 1.4s ease-in-out infinite;
       border-radius: 4px;
+      opacity: 0.22;
     }
     @keyframes sk-fade-in {
       from { opacity: 0; transform: translateY(4px); }
@@ -244,51 +245,7 @@
 
       <!-- ── SKELETON (cobre o conteúdo enquanto carrega) ── -->
       <div id="sk" aria-hidden="true" class="absolute inset-0 z-10 bg-bg px-8 py-6">
-        <div class="flex items-center justify-between mb-5">
-          <div class="h-4 w-40 sk rounded"></div>
-          <div class="h-7 w-28 sk rounded-md"></div>
-        </div>
-        <div class="h-20 sk rounded-lg mb-5"></div>
-        <div class="border border-line rounded-lg overflow-hidden">
-          <div class="px-4 py-3 border-b border-line flex items-center gap-4">
-            <div class="h-3 w-10 sk rounded"></div>
-            <div class="h-3 w-36 sk rounded"></div>
-            <div class="h-3 w-20 sk rounded"></div>
-            <div class="h-3 w-14 sk rounded ml-auto"></div>
-          </div>
-          <div class="divide-y divide-line">
-            <div class="px-4 py-3 flex items-center gap-4">
-              <div class="h-3 w-10 sk rounded shrink-0"></div>
-              <div class="h-3 sk rounded flex-1"></div>
-              <div class="h-5 w-20 sk rounded shrink-0"></div>
-              <div class="h-3 w-16 sk rounded shrink-0"></div>
-            </div>
-            <div class="px-4 py-3 flex items-center gap-4">
-              <div class="h-3 w-10 sk rounded shrink-0"></div>
-              <div class="h-3 w-4/5 sk rounded flex-1"></div>
-              <div class="h-5 w-16 sk rounded shrink-0"></div>
-              <div class="h-3 w-16 sk rounded shrink-0"></div>
-            </div>
-            <div class="px-4 py-3 flex items-center gap-4">
-              <div class="h-3 w-10 sk rounded shrink-0"></div>
-              <div class="h-3 w-3/5 sk rounded flex-1"></div>
-              <div class="h-5 w-24 sk rounded shrink-0"></div>
-              <div class="h-3 w-16 sk rounded shrink-0"></div>
-            </div>
-            <div class="px-4 py-3 flex items-center gap-4">
-              <div class="h-3 w-10 sk rounded shrink-0"></div>
-              <div class="h-3 sk rounded flex-1"></div>
-              <div class="h-5 w-20 sk rounded shrink-0"></div>
-              <div class="h-3 w-16 sk rounded shrink-0"></div>
-            </div>
-            <div class="px-4 py-3 flex items-center gap-4">
-              <div class="h-3 w-10 sk rounded shrink-0"></div>
-              <div class="h-3 w-4/6 sk rounded flex-1"></div>
-              <div class="h-5 w-16 sk rounded shrink-0"></div>
-              <div class="h-3 w-16 sk rounded shrink-0"></div>
-            </div>
-          </div>
-        </div>
+        {% block skeleton %}{% endblock %}
       </div>
 
       <!-- ── CONTEÚDO REAL ── -->
