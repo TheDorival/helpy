@@ -178,6 +178,32 @@
           </div>
         </div>
 
+        <!-- Toggle: personalizar parcelas -->
+        <div class="border-t border-line pt-3">
+          <label class="flex items-center gap-2 cursor-pointer select-none w-fit">
+            <input type="checkbox" id="toggle-personalizado" class="accent-accent w-3.5 h-3.5 cursor-pointer" />
+            <span class="text-xs text-muted">Personalizar vencimento e valor de cada parcela</span>
+          </label>
+          <input type="hidden" id="id_personalizado" name="personalizado" value="false" />
+        </div>
+
+        <!-- Tabela de parcelas personalizadas -->
+        <div id="parcelas-personalizadas" class="hidden -mt-2">
+          <div class="border border-line rounded-md overflow-hidden">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-line bg-bg/40">
+                  <th class="px-3 py-2 text-left text-dim font-medium w-6">#</th>
+                  <th class="px-3 py-2 text-left text-dim font-medium">Vencimento</th>
+                  <th class="px-3 py-2 text-left text-dim font-medium">Valor ({{ request.user.simbolo_moeda }})</th>
+                </tr>
+              </thead>
+              <tbody id="parcelas-tbody" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p class="mt-1.5 text-xs text-dim">Os valores foram pré-preenchidos com base no total dividido pelo número de parcelas.</p>
+        </div>
+
         <!-- Observação -->
         <div>
           <label for="id_observacao" class="block text-xs font-medium text-muted mb-2">
@@ -233,11 +259,68 @@
     function parseNum(s) { return parseFloat(String(s).replace(/\./g, '').replace(',', '.')); }
     function fmtNum(n, dec) { return n.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
 
+    // ── Personalizar parcelas ──
+    const toggleChk      = document.getElementById('toggle-personalizado');
+    const hiddenPers     = document.getElementById('id_personalizado');
+    const tabelaSection  = document.getElementById('parcelas-personalizadas');
+    const tbody          = document.getElementById('parcelas-tbody');
+    const nInput         = document.getElementById('id_n_parcelas');
+    const dataInput      = document.getElementById('id_data_inicio');
+
+    let personalizado = false;
+
+    function addMonths(dateStr, months) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      const day   = parseInt(parts[2], 10);
+      let year  = parseInt(parts[0], 10);
+      let month = parseInt(parts[1], 10) - 1 + months;
+      year  += Math.floor(month / 12);
+      month  = month % 12;
+      const maxDay = new Date(year, month + 1, 0).getDate();
+      const d = new Date(year, month, Math.min(day, maxDay));
+      return d.toISOString().split('T')[0];
+    }
+
+    function fillTable() {
+      const n    = parseInt(nInput.value, 10) || 0;
+      const vt   = parseNum(valorInput.value);
+      const base = (!isNaN(vt) && n > 0) ? vt / n : 0;
+      const date = dataInput.value;
+      let rows = '';
+      for (let i = 0; i < n; i++) {
+        const dt  = addMonths(date, i);
+        const val = fmtNum(base, 2);
+        rows += `<tr class="hover:bg-surfacehi/40">
+          <td class="px-3 py-1.5 text-dim">${i + 1}</td>
+          <td class="px-3 py-1.5">
+            <input type="date" name="parcela_data" value="${dt}"
+                   class="bg-bg border border-line rounded px-2 py-1 text-xs text-tx w-full [color-scheme:dark]" required />
+          </td>
+          <td class="px-3 py-1.5">
+            <input type="text" inputmode="decimal" name="parcela_valor" value="${val}"
+                   class="bg-bg border border-line rounded px-2 py-1 text-xs text-tx w-28" required />
+          </td>
+        </tr>`;
+      }
+      tbody.innerHTML = rows;
+    }
+
+    toggleChk.addEventListener('change', function () {
+      personalizado = this.checked;
+      hiddenPers.value = personalizado ? 'true' : 'false';
+      if (personalizado) { fillTable(); tabelaSection.classList.remove('hidden'); }
+      else { tabelaSection.classList.add('hidden'); }
+    });
+
+    nInput.addEventListener('input',    function () { if (personalizado) fillTable(); });
+    dataInput.addEventListener('change', function () { if (personalizado) fillTable(); });
+
     const valorInput = document.getElementById('id_valor_total');
     if (valorInput.value) { const n = parseNum(valorInput.value); if (!isNaN(n)) valorInput.value = fmtNum(n, 2); }
     valorInput.addEventListener('blur', function () {
       const n = parseNum(this.value);
-      if (!isNaN(n) && n > 0) this.value = fmtNum(n, 2);
+      if (!isNaN(n) && n > 0) { this.value = fmtNum(n, 2); if (personalizado) fillTable(); }
     });
 
     if (taxaInput.value) { const n = parseNum(taxaInput.value); if (!isNaN(n)) taxaInput.value = fmtNum(n, 2); }
@@ -273,6 +356,12 @@
       if (modo === 'completo') {
         const t = parseNum(taxaInput.value);
         if (!isNaN(t)) taxaInput.value = t.toFixed(4);
+      }
+      if (personalizado) {
+        tbody.querySelectorAll('input[name="parcela_valor"]').forEach(function (inp) {
+          const n = parseNum(inp.value);
+          if (!isNaN(n)) inp.value = n.toFixed(2);
+        });
       }
       if (entidadeSelect && entidadeSelect.value === '__outro__') entidadeSelect.value = '';
     });

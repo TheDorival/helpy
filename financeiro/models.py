@@ -239,6 +239,19 @@ class Emprestimo(models.Model):
 
         ParcelaEmprestimo.objects.bulk_create(parcelas)
 
+    def criar_parcelas_personalizadas(self, datas, valores):
+        from datetime import datetime
+        parcelas = []
+        for i, (data_str, valor_str) in enumerate(zip(datas, valores)):
+            data = datetime.strptime(data_str.strip(), '%Y-%m-%d').date()
+            valor = Decimal(str(valor_str).replace(',', '.').strip())
+            parcelas.append(ParcelaEmprestimo(
+                emprestimo=self, numero=i + 1,
+                data_vencimento=data, valor=valor,
+                valor_principal=valor, valor_juros=Decimal('0'),
+            ))
+        ParcelaEmprestimo.objects.bulk_create(parcelas)
+
 
 class ParcelaEmprestimo(models.Model):
     emprestimo      = models.ForeignKey(Emprestimo, on_delete=models.CASCADE, related_name='parcelas')

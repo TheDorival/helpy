@@ -479,10 +479,16 @@ def novo_emprestimo(request):
     if request.method == 'POST':
         com_juros = bool(request.POST.get('taxa_juros', '').strip())
         if form.is_valid():
+            personalizado = request.POST.get('personalizado') == 'true'
             emp = form.save(commit=False)
             emp.usuario = request.user
             emp.save()
-            emp.gerar_parcelas()
+            if personalizado:
+                datas = request.POST.getlist('parcela_data')
+                valores = request.POST.getlist('parcela_valor')
+                emp.criar_parcelas_personalizadas(datas, valores)
+            else:
+                emp.gerar_parcelas()
             return redirect('emprestimos')
     return render(request, 'financeiro/emprestimo_form.html', {
         'form': form, 'entidades': entidades,
@@ -499,10 +505,16 @@ def editar_emprestimo(request, pk):
     if request.method == 'POST':
         com_juros = bool(request.POST.get('taxa_juros', '').strip())
         if form.is_valid():
+            personalizado = request.POST.get('personalizado') == 'true'
             campos_fin = ('valor_total', 'n_parcelas', 'taxa_juros', 'tipo_amortizacao', 'data_inicio')
             antes = {c: getattr(emp, c) for c in campos_fin}
             obj = form.save()
-            if any(getattr(obj, c) != antes[c] for c in campos_fin):
+            if personalizado:
+                datas = request.POST.getlist('parcela_data')
+                valores = request.POST.getlist('parcela_valor')
+                obj.parcelas.all().delete()
+                obj.criar_parcelas_personalizadas(datas, valores)
+            elif any(getattr(obj, c) != antes[c] for c in campos_fin):
                 obj.parcelas.all().delete()
                 obj.gerar_parcelas()
             return redirect('emprestimos')
