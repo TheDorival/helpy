@@ -93,14 +93,14 @@
     <script>
     (function () {
       const simbolo   = "{{ simbolo }}";
-      const labels    = {{ labels }};
-      const recData   = {{ rec_data }};
-      const despData  = {{ desp_data }};
-      const saldoData = {{ saldo_data }};
-      const catDespLabels = {{ cat_desp_labels }};
-      const catDespData   = {{ cat_desp_data }};
-      const catRecLabels  = {{ cat_rec_labels }};
-      const catRecData    = {{ cat_rec_data }};
+      const labels    = {{ labels|safe }};
+      const recData   = {{ rec_data|safe }};
+      const despData  = {{ desp_data|safe }};
+      const saldoData = {{ saldo_data|safe }};
+      const catDespLabels = {{ cat_desp_labels|safe }};
+      const catDespData   = {{ cat_desp_data|safe }};
+      const catRecLabels  = {{ cat_rec_labels|safe }};
+      const catRecData    = {{ cat_rec_data|safe }};
 
       const PALETTE = [
         '#4c8eff','#3ecf8e','#f5a623','#a78bfa','#fb923c',
