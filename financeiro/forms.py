@@ -83,6 +83,8 @@ class TransacaoFixaForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if not cleaned.get('entidade') and not cleaned.get('descricao', '').strip():
+            raise forms.ValidationError('Selecione uma entidade ou escolha "Outro" e informe uma descrição.')
         if cleaned.get('frequencia') == 'intervalo':
             intervalo = cleaned.get('intervalo_dias')
             if not intervalo or intervalo < 1:

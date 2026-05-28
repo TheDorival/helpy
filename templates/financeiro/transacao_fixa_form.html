@@ -105,16 +105,54 @@
           </div>
         </div>
 
-        <!-- Descrição -->
+        <!-- Identificação -->
         <div>
-          <label for="id_descricao" class="block text-xs font-medium text-muted mb-2">Descrição</label>
-          <input type="text" name="descricao" id="id_descricao"
-                 value="{{ form.descricao.value|default:'' }}"
-                 placeholder="Ex: Salário, Aluguel, Netflix…"
-                 class="w-full bg-bg border {% if form.descricao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          <label class="block text-xs font-medium text-muted mb-2">Identificação</label>
+
+          {% if entidades %}
+            <select name="entidade" id="id_entidade"
+                    class="w-full bg-bg border {% if form.entidade.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+              <option value="" disabled {% if not form.entidade.value and not form.descricao.value %}selected{% endif %}>Selecione...</option>
+              {% regroup entidades by get_tipo_display as grupos %}
+              {% for grupo in grupos %}
+                <optgroup label="{{ grupo.grouper }}">
+                  {% for e in grupo.list %}
+                    <option value="{{ e.pk }}" {% if form.entidade.value|stringformat:"s" == e.pk|stringformat:"s" %}selected{% endif %}>
+                      {{ e.nome }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+              {% endfor %}
+              <option value="__outro__" {% if not form.entidade.value and form.descricao.value %}selected{% endif %}>
+                Outro (descrição livre)
+              </option>
+            </select>
+
+            <div id="descricao-wrapper"
+                 class="mt-2 {% if not form.entidade.value and form.descricao.value %}{% else %}hidden{% endif %}">
+              <input type="text" name="descricao" id="id_descricao"
+                     value="{{ form.descricao.value|default:'' }}"
+                     placeholder="Ex: Salário, Aluguel, Netflix…"
+                     class="w-full bg-bg border {% if form.descricao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+            </div>
+          {% else %}
+            <input type="text" name="descricao" id="id_descricao"
+                   value="{{ form.descricao.value|default:'' }}"
+                   placeholder="Ex: Salário, Aluguel, Netflix…"
+                   class="w-full bg-bg border {% if form.descricao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% endif %}
+
+          {% if form.entidade.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ form.entidade.errors.0 }}</p>
+          {% endif %}
           {% if form.descricao.errors %}
             <p class="mt-1.5 text-xs text-red">{{ form.descricao.errors.0 }}</p>
           {% endif %}
+
+          <div class="mt-1.5">
+            <a href="{% url 'nova_entidade' %}?next={{ request.path }}"
+               class="text-xs text-accent hover:underline">+ Nova entidade</a>
+          </div>
         </div>
 
         <!-- Valor + Frequência -->
@@ -237,15 +275,10 @@
       if (!isNaN(n) && n > 0) this.value = fmt(n);
     });
 
-    form.addEventListener('submit', function () {
-      const n = parse(valorInput.value);
-      if (!isNaN(n)) valorInput.value = n.toFixed(2);
-    });
-
     // ── Intervalo em dias ──
-    const freqSelect      = document.getElementById('id_frequencia');
+    const freqSelect       = document.getElementById('id_frequencia');
     const intervaloWrapper = document.getElementById('intervalo-wrapper');
-    const intervaloInput  = document.getElementById('id_intervalo_dias');
+    const intervaloInput   = document.getElementById('id_intervalo_dias');
 
     function toggleIntervalo() {
       if (freqSelect.value === 'intervalo') {
@@ -257,6 +290,24 @@
       }
     }
     freqSelect.addEventListener('change', toggleIntervalo);
+
+    // ── Entidade / Descrição livre ──
+    const entidadeSelect = document.getElementById('id_entidade');
+    const descWrapper    = document.getElementById('descricao-wrapper');
+    const descInput      = document.getElementById('id_descricao');
+
+    if (entidadeSelect && descWrapper) {
+      function toggleDescricao() {
+        if (entidadeSelect.value === '__outro__') {
+          descWrapper.classList.remove('hidden');
+          descInput.focus();
+        } else {
+          descWrapper.classList.add('hidden');
+          if (descInput) descInput.value = '';
+        }
+      }
+      entidadeSelect.addEventListener('change', toggleDescricao);
+    }
 
     // ── Filtro de categorias por tipo ──
     const tipoRadios = document.querySelectorAll('input[name="tipo"]');
@@ -277,6 +328,16 @@
 
     tipoRadios.forEach(r => r.addEventListener('change', filtrar));
     filtrar();
+
+    // ── Submit: formata valor + converte __outro__ → '' ──
+    form.addEventListener('submit', function () {
+      const n = parse(valorInput.value);
+      if (!isNaN(n)) valorInput.value = n.toFixed(2);
+
+      if (entidadeSelect && entidadeSelect.value === '__outro__') {
+        entidadeSelect.value = '';
+      }
+    });
   })();
   </script>
 

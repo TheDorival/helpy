@@ -290,6 +290,7 @@ def fixas(request):
 
 @login_required
 def nova_fixa(request):
+    entidades, _ = _entidades_ctx(request.user)
     todas_cat = Categoria.objects.filter(usuario=request.user)
     form = TransacaoFixaForm(request.POST or None, usuario=request.user)
     if request.method == 'POST' and form.is_valid():
@@ -299,13 +300,15 @@ def nova_fixa(request):
         sincronizar_fixas(request.user)
         return redirect('fixas')
     return render(request, 'financeiro/transacao_fixa_form.html', {
-        'form': form, 'todas_cat': todas_cat, 'titulo': 'Nova recorrente',
+        'form': form, 'todas_cat': todas_cat, 'entidades': entidades,
+        'titulo': 'Nova recorrente',
     })
 
 
 @login_required
 def editar_fixa(request, pk):
     tf = get_object_or_404(TransacaoFixa, pk=pk, usuario=request.user)
+    entidades, _ = _entidades_ctx(request.user)
     todas_cat = Categoria.objects.filter(usuario=request.user)
     form = TransacaoFixaForm(request.POST or None, instance=tf, usuario=request.user)
     if request.method == 'POST' and form.is_valid():
@@ -314,7 +317,7 @@ def editar_fixa(request, pk):
         obj.save()
         return redirect('fixas')
     return render(request, 'financeiro/transacao_fixa_form.html', {
-        'form': form, 'todas_cat': todas_cat,
+        'form': form, 'todas_cat': todas_cat, 'entidades': entidades,
         'titulo': 'Editar recorrente', 'obj': tf,
     })
 
