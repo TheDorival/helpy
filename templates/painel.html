@@ -4,56 +4,34 @@
 {% block page_title %}Visão geral{% endblock %}
 
 {% block skeleton %}
-  <!-- Welcome -->
   <div class="mb-5">
     <div class="sk h-3 w-28 rounded mb-2"></div>
     <div class="sk h-6 w-52 rounded"></div>
   </div>
-
-  <!-- 3 cards -->
-  <div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="grid grid-cols-3 gap-4 mb-4">
     {% for i in "abc" %}
-    <div class="bg-surface border border-line rounded-lg p-5">
-      <div class="flex items-center justify-between mb-3">
-        <div class="sk h-3 w-28 rounded"></div>
-        <div class="sk w-7 h-7 rounded-md"></div>
-      </div>
-      <div class="sk h-8 w-36 rounded mb-2"></div>
+    <div class="bg-surface border border-line rounded-lg p-4">
+      <div class="sk h-3 w-28 rounded mb-3"></div>
+      <div class="sk h-7 w-36 rounded mb-2"></div>
       <div class="sk h-3 w-24 rounded"></div>
     </div>
     {% endfor %}
   </div>
-
-  <!-- 2/3 + 1/3 -->
-  <div class="grid grid-cols-3 gap-6">
-    <!-- Tabela de transações -->
-    <div class="col-span-2 bg-surface border border-line rounded-lg">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-line">
-        <div class="sk h-4 w-36 rounded"></div>
-        <div class="sk h-3 w-36 rounded"></div>
-      </div>
-      {% for i in "abcdefgh" %}
-      <div class="flex items-center gap-4 px-4 py-2.5 border-b border-line last:border-0">
-        <div class="sk h-3 w-10 rounded flex-shrink-0"></div>
-        <div class="sk h-3 w-40 rounded"></div>
-        <div class="sk h-5 w-20 rounded ml-auto flex-shrink-0"></div>
+  <div class="grid grid-cols-3 gap-4">
+    <div class="col-span-2 bg-surface border border-line rounded-lg p-4">
+      <div class="sk h-3 w-28 rounded mb-4"></div>
+      <div class="sk h-3 w-full rounded mb-2"></div>
+      <div class="sk h-16 w-full rounded mb-3"></div>
+      <div class="sk h-3 w-3/4 rounded"></div>
+    </div>
+    <div class="bg-surface border border-line rounded-lg p-4">
+      <div class="sk h-3 w-24 rounded mb-4"></div>
+      {% for i in "abcd" %}
+      <div class="flex items-center gap-3 mb-2">
+        <div class="sk w-4 h-4 rounded flex-shrink-0"></div>
+        <div class="sk h-3 w-28 rounded"></div>
       </div>
       {% endfor %}
-    </div>
-
-    <!-- Atalhos -->
-    <div class="bg-surface border border-line rounded-lg">
-      <div class="px-5 py-3 border-b border-line">
-        <div class="sk h-4 w-16 rounded"></div>
-      </div>
-      <div class="p-2 space-y-0.5">
-        {% for i in "abcd" %}
-        <div class="flex items-center gap-3 px-3 py-2">
-          <div class="sk w-4 h-4 rounded flex-shrink-0"></div>
-          <div class="sk h-3 w-28 rounded"></div>
-        </div>
-        {% endfor %}
-      </div>
     </div>
   </div>
 {% endblock %}
@@ -65,135 +43,221 @@
     <h2 class="text-xl font-semibold text-tx">{{ request.user.get_full_name|default:request.user.username }}</h2>
   </div>
 
-  <!-- Cards de resumo -->
-  <div class="grid grid-cols-3 gap-4 mb-6">
+  <!-- Linha 1: Saldo em conta | Previsão de gastos | Previsão de economias -->
+  <div class="grid grid-cols-3 gap-4 mb-4">
 
-    <div class="bg-surface border border-line rounded-lg p-5">
+    <!-- Widget: Saldo em conta -->
+    <div class="bg-surface border border-line rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <p class="text-xs font-medium text-muted">Saldo em {{ mes_nome }}</p>
-        <div class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center">
-          <svg class="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
+        <p class="text-xs font-medium text-muted">Saldo em conta</p>
+        <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
       </div>
-      <p class="text-2xl font-semibold {% if saldo >= 0 %}text-tx{% else %}text-red{% endif %}">
-        {{ request.user.simbolo_moeda }} {{ saldo|floatformat:"2g" }}
-      </p>
-      <p class="mt-1 text-xs text-dim">Receitas − Despesas</p>
-    </div>
 
-    <div class="bg-surface border border-line rounded-lg p-5">
-      <div class="flex items-center justify-between mb-3">
-        <p class="text-xs font-medium text-muted">Receitas em {{ mes_nome }}</p>
-        <a href="{% url 'receitas' %}" class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center hover:border-green/50 transition-colors">
-          <svg class="w-3.5 h-3.5 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <p class="text-xl font-semibold {% if saldo_historico >= 0 %}text-tx{% else %}text-red{% endif %} mb-0.5">
+        {{ request.user.simbolo_moeda }} {{ saldo_historico|floatformat:"2g" }}
+      </p>
+      <p class="text-xs text-dim mb-3">Histórico transações</p>
+
+      {% if saldos_extras %}
+        <div class="space-y-1.5 mb-3">
+          {% for se in saldos_extras %}
+          <div class="flex items-center justify-between group">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xs text-dim truncate">{{ se.nome }}</span>
+              <span class="text-[10px] text-dim/70 bg-bg border border-line rounded px-1 flex-shrink-0">{{ se.get_tipo_display }}</span>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <form method="post" action="{% url 'atualizar_saldo_extra' se.pk %}" class="flex items-center gap-1">
+                {% csrf_token %}
+                <input type="number" name="valor" value="{{ se.valor }}" step="0.01"
+                       class="w-20 text-right text-xs bg-transparent border-b border-transparent focus:border-line outline-none text-tx py-0.5 transition-colors"
+                       onchange="this.form.submit()">
+              </form>
+              <form method="post" action="{% url 'excluir_saldo_extra' se.pk %}"
+                    onsubmit="return confirm('Remover {{ se.nome }}?')">
+                {% csrf_token %}
+                <button type="submit" class="text-dim hover:text-red opacity-0 group-hover:opacity-100 transition-all text-xs leading-none">×</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="border-t border-line pt-2 mb-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-muted">Total</span>
+            <span class="text-xs font-semibold text-tx">{{ request.user.simbolo_moeda }} {{ saldo_total|floatformat:"2g" }}</span>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Adicionar saldo extra -->
+      <details class="group">
+        <summary class="text-xs text-dim hover:text-muted cursor-pointer list-none flex items-center gap-1 transition-colors">
+          <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-        </a>
-      </div>
-      <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:"2g" }}</p>
-      <p class="mt-1 text-xs text-dim">
-        {% if total_receitas %}Ver no detalhe →{% else %}Nenhuma receita registrada{% endif %}
-      </p>
+          Adicionar saldo
+        </summary>
+        <form method="post" action="{% url 'criar_saldo_extra' %}" class="mt-2 space-y-1.5">
+          {% csrf_token %}
+          <input type="text" name="nome" placeholder="Nome (ex: VA, Cripto...)" required
+                 class="w-full text-xs bg-bg border border-line rounded px-2 py-1 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+          <div class="flex gap-1.5">
+            <input type="number" name="valor" placeholder="Valor" step="0.01" required
+                   class="flex-1 text-xs bg-bg border border-line rounded px-2 py-1 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+            <select name="tipo"
+                    class="text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors">
+              {% for val, label in tipos_saldo_extra %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit"
+                  class="w-full text-xs bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 rounded px-2 py-1 transition-colors">
+            Adicionar
+          </button>
+        </form>
+      </details>
     </div>
 
-    <div class="bg-surface border border-line rounded-lg p-5">
+    <!-- Widget: Previsão de gastos -->
+    <div class="bg-surface border border-line rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <p class="text-xs font-medium text-muted">Despesas em {{ mes_nome }}</p>
-        <a href="{% url 'despesas' %}" class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center hover:border-red/50 transition-colors">
-          <svg class="w-3.5 h-3.5 text-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
-          </svg>
-        </a>
+        <p class="text-xs font-medium text-muted">Previsão de gastos</p>
+        <svg class="w-4 h-4 text-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+        </svg>
       </div>
-      <p class="text-2xl font-semibold text-red">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</p>
-      <p class="mt-1 text-xs text-dim">
-        {% if total_despesas %}Ver no detalhe →{% else %}Nenhuma despesa registrada{% endif %}
+
+      <p class="text-xl font-semibold text-tx mb-0.5">
+        {{ request.user.simbolo_moeda }} {{ desp_mes_atual|floatformat:"2g" }}
       </p>
+      <p class="text-xs text-dim mb-3">Gasto em {{ hoje|date:"F" }}</p>
+
+      {% if avg_desp_3m > 0 %}
+        {% widthratio desp_mes_atual avg_desp_3m 100 as pct_raw %}
+        {% if pct_raw > 100 %}
+          <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
+            <div class="h-1.5 rounded-full bg-red" style="width: 100%"></div>
+          </div>
+          <p class="text-xs text-red mb-1">
+            {{ pct_raw }}% da média — acima do esperado
+          </p>
+        {% else %}
+          <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
+            <div class="h-1.5 rounded-full {% if pct_raw > 80 %}bg-red{% elif pct_raw > 60 %}bg-amber-400{% else %}bg-green{% endif %}"
+                 style="width: {{ pct_raw }}%"></div>
+          </div>
+          <p class="text-xs text-dim mb-1">{{ pct_raw }}% da média mensal</p>
+        {% endif %}
+        <p class="text-xs text-dim">Média últimos 3 meses: {{ request.user.simbolo_moeda }} {{ avg_desp_3m|floatformat:"2g" }}</p>
+      {% else %}
+        <p class="text-xs text-dim">Sem histórico dos últimos 3 meses para comparar.</p>
+      {% endif %}
+
+      <a href="{% url 'resumo' %}" class="mt-3 inline-block text-xs text-accent hover:underline">Ver resumo do mês →</a>
+    </div>
+
+    <!-- Widget: Previsão de economias -->
+    <div class="bg-surface border border-line rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Previsão de economias</p>
+        <svg class="w-4 h-4 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+
+      {% if rec_prevista > 0 or desp_prevista > 0 %}
+        <p class="text-xl font-semibold {% if economia_prevista >= 0 %}text-green{% else %}text-red{% endif %} mb-0.5">
+          {{ request.user.simbolo_moeda }} {{ economia_prevista|floatformat:"2g" }}
+        </p>
+        <p class="text-xs text-dim mb-3">Economia mensal estimada</p>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-dim">Receitas fixas/mês</span>
+            <span class="text-xs text-green font-medium">+{{ request.user.simbolo_moeda }} {{ rec_prevista|floatformat:"2g" }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-dim">Despesas fixas/mês</span>
+            <span class="text-xs text-red font-medium">−{{ request.user.simbolo_moeda }} {{ desp_prevista|floatformat:"2g" }}</span>
+          </div>
+        </div>
+        <p class="text-xs text-dim/70 mt-3">Baseado em recorrentes ativas</p>
+      {% else %}
+        <p class="text-xl font-semibold text-dim mb-0.5">—</p>
+        <p class="text-xs text-dim mb-3">Sem recorrentes ativas</p>
+        <a href="{% url 'nova_fixa' %}" class="text-xs text-accent hover:underline">Adicionar recorrente →</a>
+      {% endif %}
     </div>
 
   </div>
 
-  <!-- Transações recentes + Atalhos -->
-  <div class="grid grid-cols-3 gap-6">
+  <!-- Linha 2: Metas | Atalhos -->
+  <div class="grid grid-cols-3 gap-4">
 
-    <div class="col-span-2 bg-surface border border-line rounded-lg">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-line">
-        <h3 class="text-sm font-semibold text-tx">Transações recentes</h3>
-        <div class="flex items-center gap-2">
-          <a href="{% url 'receitas' %}" class="text-xs text-muted hover:text-tx transition-colors">Ver receitas</a>
-          <span class="text-dim">|</span>
-          <a href="{% url 'despesas' %}" class="text-xs text-muted hover:text-tx transition-colors">Ver despesas</a>
-        </div>
+    <!-- Widget: Metas (placeholder) -->
+    <div class="col-span-2 bg-surface border border-line rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Metas</p>
+        <svg class="w-4 h-4 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
+        </svg>
       </div>
 
-      {% if recentes %}
-        <table class="w-full text-sm">
-          <tbody class="divide-y divide-line">
-            {% for t in recentes %}
-            <tr class="hover:bg-surfacehi transition-colors">
-              <td class="px-4 py-2 text-xs text-muted whitespace-nowrap w-16">{{ t.data|date:"d/m" }}</td>
-              <td class="px-4 py-2 text-tx">{{ t.nome_display }}</td>
-              <td class="px-4 py-2">
-                {% if t.categoria %}
-                  <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ t.categoria }}</span>
-                {% endif %}
-              </td>
-              <td class="px-4 py-2 text-right font-medium whitespace-nowrap
-                         {% if t.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
-                {% if t.tipo == 'despesa' %}−{% endif %}{{ request.user.simbolo_moeda }} {{ t.valor|floatformat:"2g" }}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="flex flex-col items-center justify-center py-12 px-6 text-center">
-          <div class="w-9 h-9 rounded-full bg-bg border border-line flex items-center justify-center mb-3">
-            <svg class="w-4 h-4 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-            </svg>
-          </div>
-          <p class="text-sm text-muted mb-1">Nenhuma transação registrada</p>
-          <p class="text-xs text-dim mb-4">Comece registrando uma receita ou despesa.</p>
-          <div class="flex gap-3">
-            <a href="{% url 'nova_receita' %}" class="inline-flex items-center gap-1.5 text-xs font-medium text-green border border-green/30 bg-green/5 hover:bg-green/10 px-3 py-1.5 rounded-md transition-colors">
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-              Receita
-            </a>
-            <a href="{% url 'nova_despesa' %}" class="inline-flex items-center gap-1.5 text-xs font-medium text-red border border-red/30 bg-red/5 hover:bg-red/10 px-3 py-1.5 rounded-md transition-colors">
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
-              Despesa
-            </a>
-          </div>
+      <div class="flex flex-col items-center justify-center py-6 text-center">
+        <div class="w-8 h-8 rounded-full bg-bg border border-line flex items-center justify-center mb-3">
+          <svg class="w-4 h-4 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
+          </svg>
         </div>
-      {% endif %}
+        <p class="text-sm text-muted mb-1">Em breve</p>
+        <p class="text-xs text-dim">Defina metas financeiras e acompanhe seu progresso.</p>
+      </div>
     </div>
 
-    <div class="space-y-4">
-      <div class="bg-surface border border-line rounded-lg">
-        <div class="px-5 py-3 border-b border-line">
-          <h3 class="text-sm font-semibold text-tx">Atalhos</h3>
-        </div>
-        <div class="p-2 space-y-0.5">
-          <a href="{% url 'nova_receita' %}" class="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
-            <svg class="w-4 h-4 text-green flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-            Nova receita
-          </a>
-          <a href="{% url 'nova_despesa' %}" class="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
-            <svg class="w-4 h-4 text-red flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
-            Nova despesa
-          </a>
-          <a href="{% url 'receitas' %}" class="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-            Ver receitas
-          </a>
-          <a href="{% url 'despesas' %}" class="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-            Ver despesas
-          </a>
-        </div>
+    <!-- Widget: Atalhos -->
+    <div class="bg-surface border border-line rounded-lg p-4">
+      <p class="text-xs font-medium text-muted mb-3">Atalhos</p>
+      <div class="space-y-0.5">
+        <a href="{% url 'nova_receita' %}" class="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
+          <svg class="w-4 h-4 text-green flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Nova receita
+        </a>
+        <a href="{% url 'nova_despesa' %}" class="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
+          <svg class="w-4 h-4 text-red flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
+          </svg>
+          Nova despesa
+        </a>
+        <a href="{% url 'nova_fixa' %}" class="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
+          <svg class="w-4 h-4 text-accent flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          Nova recorrente
+        </a>
+        <a href="{% url 'novo_emprestimo' %}" class="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
+          <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+          </svg>
+          Novo empréstimo
+        </a>
+        <a href="{% url 'resumo' %}" class="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+          </svg>
+          Ver resumo do mês
+        </a>
+        <a href="{% url 'graficos' %}" class="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted hover:text-tx hover:bg-surfacehi transition-colors">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+          </svg>
+          Gráficos
+        </a>
       </div>
     </div>
 
