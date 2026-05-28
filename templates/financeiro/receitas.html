@@ -3,6 +3,43 @@
 {% block title %}Receitas{% endblock %}
 {% block page_title %}Receitas{% endblock %}
 
+{% block skeleton %}
+  <!-- Header: navegação de mês + botão -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-3">
+      <div class="sk w-7 h-7 rounded-md flex-shrink-0"></div>
+      <div class="sk h-4 w-36 rounded"></div>
+      <div class="sk w-7 h-7 rounded-md flex-shrink-0"></div>
+    </div>
+    <div class="sk h-7 w-28 rounded-md"></div>
+  </div>
+
+  <!-- Card total -->
+  <div class="bg-surface border border-line rounded-lg p-4 mb-5">
+    <div class="sk h-3 w-24 rounded mb-2"></div>
+    <div class="sk h-8 w-40 rounded mb-2"></div>
+    <div class="sk h-3 w-20 rounded"></div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="bg-surface border border-line rounded-lg overflow-hidden">
+    <div class="flex gap-4 px-4 py-2 border-b border-line">
+      <div class="sk h-3 w-12 rounded"></div>
+      <div class="sk h-3 w-32 rounded"></div>
+      <div class="sk h-3 w-24 rounded"></div>
+      <div class="sk h-3 w-16 rounded ml-auto"></div>
+    </div>
+    {% for i in "abcdefg" %}
+    <div class="flex items-center gap-4 px-4 py-2.5 border-b border-line last:border-0">
+      <div class="sk h-3 w-14 rounded flex-shrink-0"></div>
+      <div class="sk h-3 w-44 rounded"></div>
+      <div class="sk h-5 w-20 rounded"></div>
+      <div class="sk h-3 w-20 rounded ml-auto flex-shrink-0"></div>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
 {% block content %}
 
   <!-- Cabeçalho + navegação de mês -->

@@ -3,6 +3,30 @@
 {% block title %}Entidades{% endblock %}
 {% block page_title %}Entidades{% endblock %}
 
+{% block skeleton %}
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="sk h-3 w-72 rounded"></div>
+    <div class="sk h-7 w-28 rounded-md"></div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="bg-surface border border-line rounded-lg overflow-hidden">
+    <div class="flex gap-4 px-4 py-2 border-b border-line">
+      <div class="sk h-3 w-20 rounded"></div>
+      <div class="sk h-3 w-16 rounded"></div>
+      <div class="sk h-3 w-20 rounded"></div>
+    </div>
+    {% for i in "abcdef" %}
+    <div class="flex items-center gap-4 px-4 py-2.5 border-b border-line last:border-0">
+      <div class="sk h-3 w-32 rounded"></div>
+      <div class="sk h-5 w-16 rounded"></div>
+      <div class="sk h-3 w-40 rounded"></div>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
 {% block content %}
 
   <div class="flex items-center justify-between mb-5">

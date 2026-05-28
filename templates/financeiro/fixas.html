@@ -3,6 +3,38 @@
 {% block title %}Recorrentes{% endblock %}
 {% block page_title %}Recorrentes{% endblock %}
 
+{% block skeleton %}
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="sk h-3 w-64 rounded"></div>
+    <div class="sk h-7 w-32 rounded-md"></div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="bg-surface border border-line rounded-lg overflow-hidden">
+    <!-- Cabeçalho da tabela -->
+    <div class="flex gap-4 px-4 py-2 border-b border-line">
+      <div class="sk h-3 w-10 rounded"></div>
+      <div class="sk h-3 w-28 rounded"></div>
+      <div class="sk h-3 w-16 rounded"></div>
+      <div class="sk h-3 w-20 rounded"></div>
+      <div class="sk h-3 w-16 rounded"></div>
+      <div class="sk h-3 w-14 rounded"></div>
+    </div>
+    <!-- Linhas -->
+    {% for i in "abcde" %}
+    <div class="flex items-center gap-4 px-4 py-3 border-b border-line last:border-0">
+      <div class="sk h-5 w-16 rounded flex-shrink-0"></div>
+      <div class="sk h-3 w-36 rounded"></div>
+      <div class="sk h-3 w-20 rounded flex-shrink-0"></div>
+      <div class="sk h-3 w-20 rounded flex-shrink-0"></div>
+      <div class="sk h-3 w-20 rounded flex-shrink-0"></div>
+      <div class="sk h-5 w-14 rounded flex-shrink-0"></div>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
 {% block content %}
 
   <div class="flex items-center justify-between mb-5">

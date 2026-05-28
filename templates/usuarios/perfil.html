@@ -3,6 +3,85 @@
 {% block title %}Perfil{% endblock %}
 {% block page_title %}Perfil{% endblock %}
 
+{% block skeleton %}
+  <div class="grid grid-cols-3 gap-6">
+
+    <!-- Coluna esquerda (2/3) -->
+    <div class="col-span-2 flex flex-col gap-5">
+
+      <!-- Card: Informações pessoais -->
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <div class="sk h-3 w-40 rounded mb-4"></div>
+        <div class="grid grid-cols-2 gap-4 mb-5">
+          <div>
+            <div class="sk h-3 w-12 rounded mb-2"></div>
+            <div class="sk h-9 w-full rounded-md"></div>
+          </div>
+          <div>
+            <div class="sk h-3 w-20 rounded mb-2"></div>
+            <div class="sk h-9 w-full rounded-md"></div>
+          </div>
+        </div>
+        <div class="mb-4">
+          <div class="sk h-3 w-14 rounded mb-2"></div>
+          <div class="sk h-9 w-full rounded-md"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <div class="sk h-3 w-20 rounded mb-2"></div>
+            <div class="sk h-9 w-full rounded-md"></div>
+          </div>
+          <div>
+            <div class="sk h-3 w-20 rounded mb-2"></div>
+            <div class="sk h-9 w-full rounded-md"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Bio -->
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <div class="sk h-3 w-8 rounded mb-4"></div>
+        <div class="sk h-20 w-full rounded-md mb-4"></div>
+        <div class="sk h-7 w-28 rounded-md"></div>
+      </div>
+
+    </div>
+
+    <!-- Coluna direita (1/3) -->
+    <div class="flex flex-col gap-5">
+
+      <!-- Card: Avatar -->
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <div class="sk h-3 w-28 rounded mb-4"></div>
+        <div class="flex flex-col items-center gap-3">
+          <div class="sk w-20 h-20 rounded-full"></div>
+          <div class="sk h-7 w-24 rounded-md"></div>
+        </div>
+      </div>
+
+      <!-- Card: Conta -->
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <div class="sk h-3 w-12 rounded mb-4"></div>
+        <div class="space-y-4">
+          <div>
+            <div class="sk h-3 w-16 rounded mb-1.5"></div>
+            <div class="sk h-4 w-28 rounded"></div>
+          </div>
+          <div class="border-t border-line pt-4">
+            <div class="sk h-3 w-24 rounded mb-1.5"></div>
+            <div class="sk h-4 w-20 rounded"></div>
+          </div>
+          <div class="border-t border-line pt-4">
+            <div class="sk h-3 w-24 rounded mb-1.5"></div>
+            <div class="sk h-4 w-32 rounded"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}
+
 {% block content %}
 
   {% if messages %}

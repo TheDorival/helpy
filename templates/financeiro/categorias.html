@@ -3,6 +3,34 @@
 {% block title %}Categorias{% endblock %}
 {% block page_title %}Categorias{% endblock %}
 
+{% block skeleton %}
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="sk h-3 w-52 rounded"></div>
+    <div class="sk h-7 w-32 rounded-md"></div>
+  </div>
+
+  <!-- Grid 2 colunas -->
+  <div class="grid grid-cols-2 gap-5">
+    {% for i in "ab" %}
+    <div class="bg-surface border border-line rounded-lg overflow-hidden">
+      <!-- Cabeçalho da coluna -->
+      <div class="flex items-center gap-2 px-4 py-2 border-b border-line">
+        <div class="sk w-2 h-2 rounded-full flex-shrink-0"></div>
+        <div class="sk h-3 w-16 rounded"></div>
+        <div class="sk h-3 w-6 rounded ml-auto"></div>
+      </div>
+      <!-- Itens da lista -->
+      {% for j in "abcde" %}
+      <div class="flex items-center justify-between px-4 py-2.5 border-b border-line last:border-0">
+        <div class="sk h-3 w-32 rounded"></div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
 {% block content %}
 
   <div class="flex items-center justify-between mb-5">

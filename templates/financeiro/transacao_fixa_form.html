@@ -3,11 +3,84 @@
 {% block title %}{{ titulo }}{% endblock %}
 {% block page_title %}{{ titulo }}{% endblock %}
 
+{% block skeleton %}
+  <div class="max-w-lg">
+    <div class="bg-surface border border-line rounded-lg p-5 flex flex-col gap-4">
+
+      <!-- Tipo -->
+      <div>
+        <div class="sk h-3 w-8 rounded mb-2"></div>
+        <div class="flex gap-2">
+          <div class="sk flex-1 h-10 rounded-md"></div>
+          <div class="sk flex-1 h-10 rounded-md"></div>
+        </div>
+      </div>
+
+      <!-- Descrição -->
+      <div>
+        <div class="sk h-3 w-20 rounded mb-2"></div>
+        <div class="sk h-9 w-full rounded-md"></div>
+      </div>
+
+      <!-- Valor + Frequência -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <div class="sk h-3 w-16 rounded mb-2"></div>
+          <div class="sk h-9 w-full rounded-md"></div>
+        </div>
+        <div>
+          <div class="sk h-3 w-20 rounded mb-2"></div>
+          <div class="sk h-9 w-full rounded-md"></div>
+        </div>
+      </div>
+
+      <!-- Início + Fim -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <div class="sk h-3 w-12 rounded mb-2"></div>
+          <div class="sk h-9 w-full rounded-md"></div>
+        </div>
+        <div>
+          <div class="sk h-3 w-8 rounded mb-2"></div>
+          <div class="sk h-9 w-full rounded-md"></div>
+        </div>
+      </div>
+
+      <!-- Categoria -->
+      <div>
+        <div class="sk h-3 w-20 rounded mb-2"></div>
+        <div class="sk h-9 w-full rounded-md"></div>
+      </div>
+
+      <!-- Observação -->
+      <div>
+        <div class="sk h-3 w-24 rounded mb-2"></div>
+        <div class="sk h-14 w-full rounded-md"></div>
+      </div>
+
+      <!-- Ações -->
+      <div class="flex items-center gap-3 pt-1">
+        <div class="sk h-7 w-16 rounded-md"></div>
+        <div class="sk h-3 w-14 rounded"></div>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}
+
 {% block content %}
 
   <div class="max-w-lg">
     <form method="post" novalidate>
       {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="mb-4 px-3 py-2 bg-red/10 border border-red/30 rounded-md">
+          {% for erro in form.non_field_errors %}
+            <p class="text-xs text-red">{{ erro }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
 
       <div class="bg-surface border border-line rounded-lg p-5 flex flex-col gap-4">
 

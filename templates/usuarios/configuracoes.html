@@ -3,6 +3,57 @@
 {% block title %}Configurações{% endblock %}
 {% block page_title %}Configurações{% endblock %}
 
+{% block skeleton %}
+  <div class="max-w-xl flex flex-col gap-5">
+
+    <!-- Card: Segurança -->
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="sk h-3 w-20 rounded mb-4"></div>
+      {% for i in "abc" %}
+      <div class="mb-3">
+        <div class="sk h-3 w-28 rounded mb-2"></div>
+        <div class="sk h-9 w-full rounded-md"></div>
+      </div>
+      {% endfor %}
+      <div class="sk h-7 w-28 rounded-md mt-1"></div>
+    </div>
+
+    <!-- Card: Preferências -->
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="sk h-3 w-24 rounded mb-4"></div>
+      <div class="mb-3">
+        <div class="sk h-3 w-24 rounded mb-2"></div>
+        <div class="sk h-9 w-full rounded-md"></div>
+      </div>
+      <div class="mb-3">
+        <div class="sk h-3 w-36 rounded mb-2"></div>
+        <div class="sk h-9 w-full rounded-md"></div>
+        <div class="sk h-3 w-full rounded mt-1.5"></div>
+      </div>
+      <div class="sk h-7 w-32 rounded-md mt-1"></div>
+    </div>
+
+    <!-- Card: Exportar dados -->
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="sk h-3 w-28 rounded mb-2"></div>
+      <div class="sk h-3 w-full rounded mb-5"></div>
+      <div class="sk h-7 w-24 rounded-md"></div>
+    </div>
+
+    <!-- Card: Zona de perigo -->
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="sk h-3 w-28 rounded mb-2"></div>
+      <div class="sk h-3 w-full rounded mb-5"></div>
+      <div class="mb-3">
+        <div class="sk h-3 w-52 rounded mb-2"></div>
+        <div class="sk h-9 w-full rounded-md"></div>
+      </div>
+      <div class="sk h-7 w-36 rounded-md"></div>
+    </div>
+
+  </div>
+{% endblock %}
+
 {% block content %}
 
   {% if messages %}
