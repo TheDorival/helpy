@@ -20,7 +20,7 @@ from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import include, path
 
-from helpy.views import home, painel
+from helpy.views import home, painel, resumo
 from usuarios.views import cadastro, configuracoes, perfil
 
 urlpatterns = [
@@ -29,6 +29,7 @@ urlpatterns = [
     path('sair/', LogoutView.as_view(), name='logout'),
     path('cadastro/', cadastro, name='cadastro'),
     path('painel/', painel, name='painel'),
+    path('resumo/', resumo, name='resumo'),
     path('perfil/', perfil, name='perfil'),
     path('configuracoes/', configuracoes, name='configuracoes'),
     path('', include('financeiro.urls')),

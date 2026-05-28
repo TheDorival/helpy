@@ -1,0 +1,278 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Resumo{% endblock %}
+{% block page_title %}Resumo{% endblock %}
+
+{% block skeleton %}
+  <!-- Navegação -->
+  <div class="flex items-center gap-3 mb-6">
+    <div class="sk w-7 h-7 rounded-md flex-shrink-0"></div>
+    <div class="sk h-4 w-36 rounded"></div>
+    <div class="sk w-7 h-7 rounded-md flex-shrink-0"></div>
+  </div>
+
+  <!-- 3 cards -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    {% for i in "abc" %}
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="sk h-3 w-28 rounded mb-3"></div>
+      <div class="sk h-8 w-36 rounded mb-2"></div>
+      <div class="sk h-3 w-20 rounded"></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Gráficos -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="col-span-2 bg-surface border border-line rounded-lg p-4">
+      <div class="sk h-3 w-40 rounded mb-4"></div>
+      <div class="sk h-40 w-full rounded"></div>
+    </div>
+    <div class="bg-surface border border-line rounded-lg p-4">
+      <div class="sk h-3 w-32 rounded mb-4"></div>
+      <div class="sk h-40 w-full rounded"></div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="bg-surface border border-line rounded-lg">
+    {% for i in "abcdefg" %}
+    <div class="flex items-center gap-4 px-4 py-2.5 border-b border-line last:border-0">
+      <div class="sk h-3 w-14 rounded flex-shrink-0"></div>
+      <div class="sk h-3 w-44 rounded"></div>
+      <div class="sk h-5 w-20 rounded"></div>
+      <div class="sk h-3 w-20 rounded ml-auto flex-shrink-0"></div>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+  <!-- Cabeçalho: navegação de mês -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <a href="?mes={{ mes_anterior.mes }}&ano={{ mes_anterior.ano }}"
+         class="w-7 h-7 rounded-md border border-line flex items-center justify-center text-muted hover:text-tx hover:border-muted transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </a>
+      <span class="text-sm font-semibold text-tx w-36 text-center">{{ mes_nome }} {{ ano }}</span>
+      <a href="?mes={{ mes_proximo.mes }}&ano={{ mes_proximo.ano }}"
+         class="w-7 h-7 rounded-md border border-line flex items-center justify-center text-muted hover:text-tx hover:border-muted transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </a>
+    </div>
+    <p class="text-xs text-dim">{{ transacoes.count }} transaç{{ transacoes.count|pluralize:"ão,ões" }}</p>
+  </div>
+
+  <!-- 3 cards de resumo -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Saldo em {{ mes_nome }}</p>
+        <div class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+      <p class="text-2xl font-semibold {% if saldo >= 0 %}text-tx{% else %}text-red{% endif %}">
+        {{ request.user.simbolo_moeda }} {{ saldo|floatformat:"2g" }}
+      </p>
+      <p class="mt-1 text-xs text-dim">Receitas − Despesas</p>
+    </div>
+
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Receitas em {{ mes_nome }}</p>
+        <a href="{% url 'receitas' %}?mes={{ mes }}&ano={{ ano }}"
+           class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center hover:border-green/50 transition-colors">
+          <svg class="w-3.5 h-3.5 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </a>
+      </div>
+      <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:"2g" }}</p>
+      <p class="mt-1 text-xs text-dim">Ver no detalhe →</p>
+    </div>
+
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-muted">Despesas em {{ mes_nome }}</p>
+        <a href="{% url 'despesas' %}?mes={{ mes }}&ano={{ ano }}"
+           class="w-7 h-7 rounded-md bg-bg border border-line flex items-center justify-center hover:border-red/50 transition-colors">
+          <svg class="w-3.5 h-3.5 text-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
+          </svg>
+        </a>
+      </div>
+      <p class="text-2xl font-semibold text-red">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</p>
+      <p class="mt-1 text-xs text-dim">Ver no detalhe →</p>
+    </div>
+
+  </div>
+
+  <!-- Gráficos -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+
+    <!-- Gráfico semanal -->
+    <div class="col-span-2 bg-surface border border-line rounded-lg p-4">
+      <p class="text-xs font-medium text-muted mb-4">Receitas e despesas por semana</p>
+      <div class="relative h-44">
+        <canvas id="chartSemanal"></canvas>
+      </div>
+    </div>
+
+    <!-- Gráfico por categoria -->
+    <div class="bg-surface border border-line rounded-lg p-4">
+      <p class="text-xs font-medium text-muted mb-4">Despesas por categoria</p>
+      {% if cat_labels != "[]" %}
+        <div class="relative h-44">
+          <canvas id="chartCategorias"></canvas>
+        </div>
+      {% else %}
+        <div class="flex items-center justify-center h-44">
+          <p class="text-xs text-dim">Sem despesas</p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Tabela de transações -->
+  <div class="bg-surface border border-line rounded-lg overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-line">
+      <h3 class="text-sm font-semibold text-tx">Transações</h3>
+      <div class="flex items-center gap-2">
+        <a href="{% url 'receitas' %}?mes={{ mes }}&ano={{ ano }}" class="text-xs text-muted hover:text-tx transition-colors">Receitas</a>
+        <span class="text-dim">|</span>
+        <a href="{% url 'despesas' %}?mes={{ mes }}&ano={{ ano }}" class="text-xs text-muted hover:text-tx transition-colors">Despesas</a>
+      </div>
+    </div>
+
+    {% if transacoes %}
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-line">
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Data</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Descrição</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Categoria</th>
+            <th class="text-right text-xs font-medium text-dim px-4 py-2">Valor</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for t in transacoes %}
+          <tr class="hover:bg-surfacehi transition-colors">
+            <td class="px-4 py-2 text-xs text-muted whitespace-nowrap">{{ t.data|date:"d/m/Y" }}</td>
+            <td class="px-4 py-2 text-tx">{{ t.nome_display }}</td>
+            <td class="px-4 py-2">
+              {% if t.categoria %}
+                <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ t.categoria }}</span>
+              {% else %}
+                <span class="text-xs text-dim">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2 text-right font-medium whitespace-nowrap
+                       {% if t.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
+              {% if t.tipo == 'despesa' %}−{% endif %}{{ request.user.simbolo_moeda }} {{ t.valor|floatformat:"2g" }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="flex flex-col items-center justify-center py-12 text-center">
+        <p class="text-sm text-muted mb-1">Nenhuma transação em {{ mes_nome }}</p>
+        <p class="text-xs text-dim">Navegue para outro mês ou registre transações.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+  (function () {
+    Chart.defaults.color = '#8b8b8b';
+    Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+    Chart.defaults.font.size = 11;
+
+    var semLabels = {{ semanas_labels|safe }};
+    var semRec    = {{ semanas_rec|safe }};
+    var semDesp   = {{ semanas_desp|safe }};
+
+    if (semLabels.length > 0) {
+      new Chart(document.getElementById('chartSemanal'), {
+        type: 'bar',
+        data: {
+          labels: semLabels,
+          datasets: [
+            {
+              label: 'Receitas',
+              data: semRec,
+              backgroundColor: 'rgba(62,207,142,0.25)',
+              borderColor: '#3ecf8e',
+              borderWidth: 1.5,
+              borderRadius: 4,
+            },
+            {
+              label: 'Despesas',
+              data: semDesp,
+              backgroundColor: 'rgba(241,96,96,0.2)',
+              borderColor: '#f16060',
+              borderWidth: 1.5,
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } },
+          scales: {
+            x: { grid: { color: '#2e2e2e' }, ticks: { maxRotation: 0 } },
+            y: { grid: { color: '#2e2e2e' }, beginAtZero: true },
+          },
+        },
+      });
+    }
+
+    var catLabels = {{ cat_labels|safe }};
+    var catValores = {{ cat_valores|safe }};
+
+    if (catLabels.length > 0) {
+      var PALETTE = [
+        '#4c8eff','#3ecf8e','#f16060','#f59e0b','#a78bfa',
+        '#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6',
+      ];
+      new Chart(document.getElementById('chartCategorias'), {
+        type: 'doughnut',
+        data: {
+          labels: catLabels,
+          datasets: [{
+            data: catValores,
+            backgroundColor: PALETTE,
+            borderColor: '#222222',
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8 } },
+          },
+          cutout: '60%',
+        },
+      });
+    }
+  })();
+  </script>
+
+{% endblock %}
