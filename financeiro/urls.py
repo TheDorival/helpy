@@ -29,4 +29,7 @@ urlpatterns = [
     path('emprestimos/<int:pk>/editar/', views.editar_emprestimo, name='editar_emprestimo'),
     path('emprestimos/<int:pk>/excluir/', views.excluir_emprestimo, name='excluir_emprestimo'),
     path('emprestimos/parcela/<int:pk>/toggle/', views.toggle_parcela, name='toggle_parcela'),
+    path('saldo-extra/novo/', views.criar_saldo_extra, name='criar_saldo_extra'),
+    path('saldo-extra/<int:pk>/atualizar/', views.atualizar_saldo_extra, name='atualizar_saldo_extra'),
+    path('saldo-extra/<int:pk>/excluir/', views.excluir_saldo_extra, name='excluir_saldo_extra'),
 ]

@@ -267,3 +267,27 @@ class ParcelaEmprestimo(models.Model):
         verbose_name = 'Parcela de empréstimo'
         verbose_name_plural = 'Parcelas de empréstimo'
         ordering = ['numero']
+
+
+class SaldoExtra(models.Model):
+    TIPO_CHOICES = [
+        ('conta',        'Conta'),
+        ('investimento', 'Investimento'),
+        ('cripto',       'Cripto'),
+        ('vale',         'Vale alimentação/refeição'),
+        ('outro',        'Outro'),
+    ]
+
+    usuario      = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saldos_extras')
+    nome         = models.CharField(max_length=100)
+    valor        = models.DecimalField(max_digits=12, decimal_places=2)
+    tipo         = models.CharField(max_length=15, choices=TIPO_CHOICES, default='outro')
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Saldo extra'
+        verbose_name_plural = 'Saldos extras'
+        ordering = ['tipo', 'nome']
+
+    def __str__(self):
+        return f'{self.nome} — R$ {self.valor}'

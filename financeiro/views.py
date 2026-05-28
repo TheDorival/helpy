@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CategoriaForm, EmprestimoForm, EntidadeForm, TransacaoFixaForm, TransacaoForm
-from .models import Categoria, Emprestimo, Entidade, ParcelaEmprestimo, Transacao, TransacaoFixa, _avancar_data
+from .models import Categoria, Emprestimo, Entidade, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa, _avancar_data
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -571,3 +571,37 @@ def exportar_dados(request):
         ])
 
     return response
+
+
+@login_required
+def criar_saldo_extra(request):
+    if request.method == 'POST':
+        nome = request.POST.get('nome', '').strip()
+        valor_str = request.POST.get('valor', '0').replace(',', '.')
+        tipo = request.POST.get('tipo', 'outro')
+        if nome:
+            from decimal import Decimal
+            SaldoExtra.objects.create(
+                usuario=request.user, nome=nome,
+                valor=Decimal(valor_str), tipo=tipo,
+            )
+    return redirect('painel')
+
+
+@login_required
+def atualizar_saldo_extra(request, pk):
+    se = get_object_or_404(SaldoExtra, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        from decimal import Decimal
+        valor_str = request.POST.get('valor', '0').replace(',', '.')
+        se.valor = Decimal(valor_str)
+        se.save(update_fields=['valor', 'atualizado_em'])
+    return redirect('painel')
+
+
+@login_required
+def excluir_saldo_extra(request, pk):
+    se = get_object_or_404(SaldoExtra, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        se.delete()
+    return redirect('painel')
