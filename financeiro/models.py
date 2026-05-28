@@ -118,13 +118,13 @@ class TransacaoFixa(models.Model):
 
     def proxima_data(self):
         base = self.ultima_geracao
-        d = _avancar_data(base, self.frequencia, self.intervalo_dias) if base else self.data_inicio
+        d = _avancar_data(base, self.frequencia, self.intervalo_dias, self.data_inicio.day) if base else self.data_inicio
         if self.data_fim and d > self.data_fim:
             return None
         return d
 
 
-def _avancar_data(data, frequencia, intervalo_dias=None):
+def _avancar_data(data, frequencia, intervalo_dias=None, dia_alvo=None):
     from datetime import date, timedelta
     meses = {'mensal': 1, 'bimestral': 2, 'trimestral': 3, 'semestral': 6, 'anual': 12}
     if frequencia == 'diaria':
@@ -138,5 +138,6 @@ def _avancar_data(data, frequencia, intervalo_dias=None):
     n = meses.get(frequencia, 1)
     total = data.year * 12 + (data.month - 1) + n
     ano, mes = total // 12, total % 12 + 1
-    dia = min(data.day, calendar.monthrange(ano, mes)[1])
+    # usa o dia original (data_inicio.day) para evitar drift em meses curtos
+    dia = min(dia_alvo or data.day, calendar.monthrange(ano, mes)[1])
     return date(ano, mes, dia)

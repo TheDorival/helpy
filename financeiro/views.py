@@ -156,7 +156,7 @@ def sincronizar_fixas(usuario, limite=None):
     """Gera todas as ocorrências pendentes de transações fixas até `limite` (padrão: hoje)."""
     ate = limite if limite is not None else date.today()
     for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade'):
-        proxima  = _avancar_data(tf.ultima_geracao, tf.frequencia, tf.intervalo_dias) if tf.ultima_geracao else tf.data_inicio
+        proxima  = _avancar_data(tf.ultima_geracao, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day) if tf.ultima_geracao else tf.data_inicio
         lim_fixa = min(ate, tf.data_fim) if tf.data_fim else ate
 
         novas, ultima = [], tf.ultima_geracao
@@ -169,7 +169,7 @@ def sincronizar_fixas(usuario, limite=None):
                 categoria=tf.categoria, observacao=tf.observacao,
             ))
             ultima = d
-            d = _avancar_data(d, tf.frequencia, tf.intervalo_dias)
+            d = _avancar_data(d, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day)
 
         if novas:
             Transacao.objects.bulk_create(novas)
