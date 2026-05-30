@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import render
 
-from financeiro.models import Meta, SaldoExtra, Transacao, TransacaoFixa
+from financeiro.models import Essencial, Meta, SaldoExtra, Transacao, TransacaoFixa
 from financeiro.views import _periodo, sincronizar_fixas
 
 
@@ -87,6 +87,16 @@ def painel(request):
     tipos_saldo_extra = SaldoExtra.TIPO_CHOICES
     metas_resumo = list(Meta.objects.filter(usuario=request.user, concluida=False).select_related('categoria')[:4])
 
+    salario_pendente = None
+    try:
+        ess_sal = Essencial.objects.select_related('categoria').get(
+            usuario=request.user, categoria__slug='salario', ativa=True,
+        )
+        if ess_sal.salario_pendente_hoje():
+            salario_pendente = ess_sal
+    except Essencial.DoesNotExist:
+        pass
+
     return render(request, 'painel.html', {
         'saldo_historico': saldo_historico,
         'saldos_extras': saldos_extras,
@@ -98,6 +108,7 @@ def painel(request):
         'economia_prevista': economia_prevista,
         'tipos_saldo_extra': tipos_saldo_extra,
         'metas_resumo': metas_resumo,
+        'salario_pendente': salario_pendente,
         'hoje': hoje,
     })
 

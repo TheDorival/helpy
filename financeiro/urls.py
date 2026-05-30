@@ -33,6 +33,7 @@ urlpatterns = [
     path('essenciais/<slug:slug>/ativar/', views.ativar_essencial, name='ativar_essencial'),
     path('essenciais/<slug:slug>/editar/', views.editar_essencial, name='editar_essencial'),
     path('essenciais/<slug:slug>/desativar/', views.desativar_essencial, name='desativar_essencial'),
+    path('essenciais/registrar-salario/', views.registrar_salario, name='registrar_salario'),
     path('metas/', views.metas, name='metas'),
     path('metas/nova/', views.nova_meta, name='nova_meta'),
     path('metas/<int:pk>/editar/', views.editar_meta, name='editar_meta'),

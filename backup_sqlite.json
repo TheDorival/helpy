@@ -1,0 +1,348 @@
+[
+{
+  "model": "sessions.session",
+  "pk": "hhc9r71jeob65crtsw4tqdc6rzbenwsq",
+  "fields": {
+    "session_data": ".eJxVjMEOwiAQRP-FsyFlKSAevfcbyC4LUjU0Ke3J-O9K0oMeZ96beYmA-1bC3tIaZhYXocTptyOMj1Q74DvW2yLjUrd1JtkVedAmp4XT83q4fwcFW-lrGBwSgHJ-RKPPYzQZGMyQOLLXPiNS8kxZf4MjqzJSBIvZq2yNjuL9AezSOJM:1wP7s4:6CKeRXyZrunyEbpgXCXVBmj-2_DkRtFh4WSYHpnOCi4",
+    "expire_date": "2026-06-01T23:59:40.728Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "jn387x5zx7amcq4wevawfsco7dmu6eci",
+  "fields": {
+    "session_data": ".eJxVjEEOwiAQRe_C2pAylMK4dO8ZyAxMpWpoUtqV8e7apAvd_vfef6lI21ri1mSJU1ZnBer0uzGlh9Qd5DvV26zTXNdlYr0r-qBNX-csz8vh_h0UauVbYwgIHQL6LgcDFPqE6Kxhtl7EwwgkjpgcGC9mMGj6kZB5ICHrs1XvD7peN3s:1wPSaU:CMFYHngEU4IGDRL1zOUHpV8l9-ivaJNroH_DxM74YDc",
+    "expire_date": "2026-06-02T22:06:54.101Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "x0pflv59o0u85opdxovsv99s6s147h2t",
+  "fields": {
+    "session_data": ".eJxVjEEOwiAQRe_C2pAylMK4dO8ZyAxMpWpoUtqV8e7apAvd_vfef6lI21ri1mSJU1ZnBer0uzGlh9Qd5DvV26zTXNdlYr0r-qBNX-csz8vh_h0UauVbYwgIHQL6LgcDFPqE6Kxhtl7EwwgkjpgcGC9mMGj6kZB5ICHrs1XvD7peN3s:1wSQUH:TgpeVD4ufbRHVYV_igEBWJz9T-hAHH6GFqdRvbpgzEU",
+    "expire_date": "2026-06-11T02:28:45.531Z"
+  }
+},
+{
+  "model": "usuarios.usuario",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$lwCD7nj7uPSBkUhhBvqI8C$2dZ27JLv3s7QaICUvlgVfPoNWfDVjwx/qed5BXST8/E=",
+    "last_login": "2026-05-19T00:14:45.986Z",
+    "is_superuser": true,
+    "username": "leo",
+    "first_name": "",
+    "last_name": "",
+    "email": "leonomiabr@gmail.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-05-18T23:58:45.113Z",
+    "bio": "",
+    "telefone": "",
+    "data_nascimento": null,
+    "avatar": "",
+    "moeda": "BRL",
+    "dia_corte": 1,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "usuarios.usuario",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$stJ76PTE0dRjHrFQVtkRgu$Nu1wPGlTLOQsq3tqaCi605SbGfsdPiBsjrlJ29Blp/w=",
+    "last_login": "2026-05-28T02:28:45.524Z",
+    "is_superuser": false,
+    "username": "leoferro",
+    "first_name": "Leonardo",
+    "last_name": "Moreira",
+    "email": "leonardoluccas0@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-19T00:20:29.654Z",
+    "bio": "",
+    "telefone": "82996967485",
+    "data_nascimento": "2004-07-12",
+    "avatar": "",
+    "moeda": "BRL",
+    "dia_corte": 1,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "financeiro.transacaofixa",
+  "pk": 1,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "despesa",
+    "entidade": null,
+    "descricao": "Aluguel da Casa",
+    "valor": "650.00",
+    "categoria": 2,
+    "frequencia": "mensal",
+    "intervalo_dias": null,
+    "data_inicio": "2026-05-30",
+    "data_fim": null,
+    "observacao": "",
+    "ativa": true,
+    "ultima_geracao": "2026-05-30",
+    "criado_em": "2026-05-27T17:30:00.757Z"
+  }
+},
+{
+  "model": "financeiro.transacaofixa",
+  "pk": 3,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "despesa",
+    "entidade": null,
+    "descricao": "Faculdade Débora",
+    "valor": "550.00",
+    "categoria": 3,
+    "frequencia": "mensal",
+    "intervalo_dias": null,
+    "data_inicio": "2026-05-30",
+    "data_fim": null,
+    "observacao": "",
+    "ativa": true,
+    "ultima_geracao": "2026-05-30",
+    "criado_em": "2026-05-27T19:04:18.084Z"
+  }
+},
+{
+  "model": "financeiro.transacaofixa",
+  "pk": 4,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "receita",
+    "entidade": null,
+    "descricao": "Bolsa Fundepes",
+    "valor": "2000.00",
+    "categoria": 5,
+    "frequencia": "mensal",
+    "intervalo_dias": null,
+    "data_inicio": "2026-05-30",
+    "data_fim": null,
+    "observacao": "Bolsa Fundepes do projeto de automação.",
+    "ativa": true,
+    "ultima_geracao": "2026-05-30",
+    "criado_em": "2026-05-27T20:50:54.949Z"
+  }
+},
+{
+  "model": "financeiro.transacao",
+  "pk": 5,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "receita",
+    "entidade": null,
+    "descricao": "Bonificação Almoço",
+    "valor": "20.00",
+    "data": "2026-05-27",
+    "categoria": null,
+    "observacao": "Bonificação do Thiago para almoçar na empresa.",
+    "criado_em": "2026-05-27T19:16:36.189Z"
+  }
+},
+{
+  "model": "financeiro.transacao",
+  "pk": 13,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "despesa",
+    "entidade": null,
+    "descricao": "Lanche IFAL",
+    "valor": "20.00",
+    "data": "2026-05-27",
+    "categoria": null,
+    "observacao": "",
+    "criado_em": "2026-05-28T01:59:57.114Z"
+  }
+},
+{
+  "model": "financeiro.transacao",
+  "pk": 14,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "receita",
+    "entidade": null,
+    "descricao": "Bolsa Fundepes",
+    "valor": "2000.00",
+    "data": "2026-05-30",
+    "categoria": 5,
+    "observacao": "Bolsa Fundepes do projeto de automação.",
+    "criado_em": "2026-05-28T02:25:32.647Z"
+  }
+},
+{
+  "model": "financeiro.transacao",
+  "pk": 15,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "despesa",
+    "entidade": null,
+    "descricao": "Faculdade Débora",
+    "valor": "550.00",
+    "data": "2026-05-30",
+    "categoria": 3,
+    "observacao": "",
+    "criado_em": "2026-05-28T02:25:32.657Z"
+  }
+},
+{
+  "model": "financeiro.transacao",
+  "pk": 16,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "despesa",
+    "entidade": null,
+    "descricao": "Aluguel da Casa",
+    "valor": "650.00",
+    "data": "2026-05-30",
+    "categoria": 2,
+    "observacao": "",
+    "criado_em": "2026-05-28T02:25:32.667Z"
+  }
+},
+{
+  "model": "financeiro.transacao",
+  "pk": 17,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "despesa",
+    "entidade": 1,
+    "descricao": "",
+    "valor": "450.00",
+    "data": "2026-05-30",
+    "categoria": 1,
+    "observacao": "",
+    "criado_em": "2026-05-28T02:29:27.060Z"
+  }
+},
+{
+  "model": "financeiro.transacao",
+  "pk": 18,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "tipo": "receita",
+    "entidade": null,
+    "descricao": "Bonificação Almoço",
+    "valor": "20.00",
+    "data": "2026-05-28",
+    "categoria": null,
+    "observacao": "",
+    "criado_em": "2026-05-28T17:34:32.307Z"
+  }
+},
+{
+  "model": "financeiro.entidade",
+  "pk": 1,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Robert",
+    "tipo": "pessoa",
+    "notas": "Meu amigo querido e agiota bonzinho."
+  }
+},
+{
+  "model": "financeiro.entidade",
+  "pk": 2,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Seune",
+    "tipo": "empresa",
+    "notas": "Faculdade Débora"
+  }
+},
+{
+  "model": "financeiro.entidade",
+  "pk": 3,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Sandra",
+    "tipo": "pessoa",
+    "notas": "Aluguel da casa."
+  }
+},
+{
+  "model": "financeiro.categoria",
+  "pk": 1,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Empréstimo",
+    "tipo": "despesa"
+  }
+},
+{
+  "model": "financeiro.categoria",
+  "pk": 2,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Aluguel",
+    "tipo": "despesa"
+  }
+},
+{
+  "model": "financeiro.categoria",
+  "pk": 3,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Faculdade",
+    "tipo": "despesa"
+  }
+},
+{
+  "model": "financeiro.categoria",
+  "pk": 4,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Salário",
+    "tipo": "receita"
+  }
+},
+{
+  "model": "financeiro.categoria",
+  "pk": 5,
+  "fields": {
+    "usuario": [
+      "leoferro"
+    ],
+    "nome": "Bolsa",
+    "tipo": "receita"
+  }
+}
+]

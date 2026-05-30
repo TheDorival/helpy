@@ -63,18 +63,34 @@ class CategoriaEssencial(models.Model):
 
 
 class Essencial(models.Model):
-    usuario         = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='essenciais')
-    categoria       = models.ForeignKey(CategoriaEssencial, on_delete=models.PROTECT, related_name='instancias')
-    valor           = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    dia_vencimento  = models.PositiveSmallIntegerField(null=True, blank=True, help_text='Dia do mês (1–31)')
-    data_inicio     = models.DateField()
-    observacao      = models.TextField(blank=True, default='')
-    ativa           = models.BooleanField(default=True)
-    transacao_fixa  = models.OneToOneField(
+    TIPO_SALARIO_CHOICES = [
+        ('fixo',          'Salário fixo'),
+        ('comissao',      'Comissão pura'),
+        ('fixo_comissao', 'Fixo + Comissão'),
+    ]
+    FREQ_PAGAMENTO_CHOICES = [
+        ('mensal',    'Mensal'),
+        ('quinzenal', 'Quinzenal'),
+        ('semanal',   'Semanal'),
+    ]
+
+    usuario            = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='essenciais')
+    categoria          = models.ForeignKey(CategoriaEssencial, on_delete=models.PROTECT, related_name='instancias')
+    valor              = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    dia_vencimento     = models.PositiveSmallIntegerField(null=True, blank=True, help_text='Dia do mês (1–31)')
+    data_inicio        = models.DateField()
+    observacao         = models.TextField(blank=True, default='')
+    ativa              = models.BooleanField(default=True)
+    transacao_fixa     = models.OneToOneField(
         'TransacaoFixa', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='essencial',
     )
-    criado_em       = models.DateTimeField(auto_now_add=True)
+    # Campos exclusivos do salário
+    tipo_salario       = models.CharField(max_length=15, choices=TIPO_SALARIO_CHOICES, blank=True, default='')
+    valor_fixo         = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    freq_pagamento     = models.CharField(max_length=10, choices=FREQ_PAGAMENTO_CHOICES, blank=True, default='mensal')
+    ultimo_registro    = models.DateField(null=True, blank=True)
+    criado_em          = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'Essencial'
@@ -94,6 +110,22 @@ class Essencial(models.Model):
         if self.categoria.variavel:
             return 'Variável'
         return self.valor
+
+    def salario_pendente_hoje(self):
+        """True se hoje é dia de recebimento e a comissão ainda não foi registrada."""
+        if self.categoria.slug != 'salario' or self.tipo_salario == 'fixo':
+            return False
+        if not self.dia_vencimento or not self.ativa:
+            return False
+        from datetime import date
+        hoje = date.today()
+        dias_pagamento = {self.dia_vencimento}
+        if self.freq_pagamento == 'quinzenal':
+            segundo = ((self.dia_vencimento - 1 + 15) % 28) + 1
+            dias_pagamento.add(segundo)
+        if hoje.day not in dias_pagamento:
+            return False
+        return not (self.ultimo_registro and self.ultimo_registro == hoje)
 
 
 class Categoria(models.Model):
