@@ -778,14 +778,16 @@ def ativar_essencial(request, slug):
         dia2 = request.POST.get('dia_vencimento_2', '').strip()
         dia_int  = int(dia)  if dia.isdigit()  and 1 <= int(dia)  <= 31 else None
         dia2_int = int(dia2) if dia2.isdigit() and 1 <= int(dia2) <= 31 else None
-        dia_util = request.POST.get('dia_util') == '1'
+        dia_util   = request.POST.get('dia_util')   == '1'
+        dia_util_2 = request.POST.get('dia_util_2') == '1'
         data_inicio = request.POST.get('data_inicio') or str(date.today())
         obs = request.POST.get('observacao', '').strip()
 
         ess = Essencial(
             usuario=request.user, categoria=cat,
             valor=valor, dia_vencimento=dia_int, dia_vencimento_2=dia2_int,
-            dia_util=dia_util, data_inicio=data_inicio, observacao=obs,
+            dia_util=dia_util, dia_util_2=dia_util_2,
+            data_inicio=data_inicio, observacao=obs,
         )
 
         tf = None
@@ -829,7 +831,8 @@ def editar_essencial(request, slug):
         dia2 = request.POST.get('dia_vencimento_2', '').strip()
         ess.dia_vencimento   = int(dia)  if dia.isdigit()  and 1 <= int(dia)  <= 31 else None
         ess.dia_vencimento_2 = int(dia2) if dia2.isdigit() and 1 <= int(dia2) <= 31 else None
-        ess.dia_util         = request.POST.get('dia_util') == '1'
+        ess.dia_util         = request.POST.get('dia_util')   == '1'
+        ess.dia_util_2       = request.POST.get('dia_util_2') == '1'
         ess.observacao       = obs
 
         if cat.slug == 'salario':

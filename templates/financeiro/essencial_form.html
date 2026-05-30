@@ -156,59 +156,64 @@
                  class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
         </div>
 
-        <!-- Tipo de dia: fixo ou útil -->
-        {% if cat.slug == 'salario' %}
-        <div>
-          <label class="block text-xs font-medium text-muted mb-2">Tipo de dia</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="dia-tipo-opt flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
-                          {% if not ess or not ess.dia_util %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
-              <input type="radio" name="dia_tipo" value="fixo" class="sr-only"
-                     {% if not ess or not ess.dia_util %}checked{% endif %}>
-              <div>
-                <p class="text-xs font-medium {% if not ess or not ess.dia_util %}text-tx{% else %}text-muted{% endif %}">Dia fixo</p>
-                <p class="text-[10px] text-dim">Ex: todo dia 5</p>
-              </div>
-            </label>
-            <label class="dia-tipo-opt flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
-                          {% if ess and ess.dia_util %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
-              <input type="radio" name="dia_tipo" value="util" class="sr-only"
-                     {% if ess and ess.dia_util %}checked{% endif %}>
-              <div>
-                <p class="text-xs font-medium {% if ess and ess.dia_util %}text-tx{% else %}text-muted{% endif %}">Dia útil</p>
-                <p class="text-[10px] text-dim">Ex: todo 5º útil</p>
-              </div>
-            </label>
-          </div>
-          <input type="hidden" name="dia_util" id="dia_util_hidden" value="{% if ess and ess.dia_util %}1{% else %}0{% endif %}">
-        </div>
-        {% endif %}
+        <!-- Campo(s) de dia com toggle fixo/útil por recebimento -->
+        <div id="dias-wrapper" class="space-y-3">
 
-        <!-- Campo(s) de dia -->
-        <div id="dias-wrapper">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium text-muted mb-1" id="dia1-label">
-                <span id="dia1-label-txt">Dia do pagamento</span>
-                <span class="text-dim font-normal">(opcional)</span>
-              </label>
+          <!-- 1º pagamento -->
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1.5" id="dia1-label-txt">Dia do pagamento</label>
+            <div class="flex items-center gap-2">
+              <!-- toggle fixo/útil dia 1 -->
+              <div class="flex rounded-md overflow-hidden border border-line flex-shrink-0">
+                <button type="button" id="dia1-fixo-btn"
+                        onclick="setDiaUtil('dia1', false)"
+                        class="text-[10px] px-2.5 py-1.5 transition-colors {% if not ess or not ess.dia_util %}bg-accent/10 text-accent{% else %}text-dim hover:text-muted{% endif %}">
+                  Fixo
+                </button>
+                <button type="button" id="dia1-util-btn"
+                        onclick="setDiaUtil('dia1', true)"
+                        class="text-[10px] px-2.5 py-1.5 border-l border-line transition-colors {% if ess and ess.dia_util %}bg-accent/10 text-accent{% else %}text-dim hover:text-muted{% endif %}">
+                  Útil
+                </button>
+              </div>
+              <input type="hidden" name="dia_util" id="dia_util_hidden" value="{% if ess and ess.dia_util %}1{% else %}0{% endif %}">
               <input type="number" name="dia_vencimento" id="dia_vencimento" min="1" max="31"
                      value="{% if ess %}{{ ess.dia_vencimento|default:'' }}{% endif %}"
-                     placeholder="Ex: 5"
-                     class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+                     placeholder="{% if ess and ess.dia_util %}Ex: 5º útil{% else %}Ex: dia 5{% endif %}"
+                     class="flex-1 text-sm bg-bg border border-line rounded-md px-3 py-1.5 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
             </div>
-            <!-- 2º dia (quinzenal) -->
-            <div id="dia2-wrapper" class="hidden">
-              <label class="block text-xs font-medium text-muted mb-1">
-                <span id="dia2-label-txt">2º pagamento</span>
-                <span class="text-dim font-normal">(opcional)</span>
-              </label>
+            <p id="dia1-hint" class="text-[10px] text-dim mt-1 {% if not ess or not ess.dia_util %}hidden{% endif %}">
+              O sistema calcula o N-ésimo dia útil (seg–sex) do mês de forma automática.
+            </p>
+          </div>
+
+          <!-- 2º pagamento (quinzenal) -->
+          <div id="dia2-wrapper" class="hidden">
+            <label class="block text-xs font-medium text-muted mb-1.5" id="dia2-label-txt">2º pagamento</label>
+            <div class="flex items-center gap-2">
+              <div class="flex rounded-md overflow-hidden border border-line flex-shrink-0">
+                <button type="button" id="dia2-fixo-btn"
+                        onclick="setDiaUtil('dia2', false)"
+                        class="text-[10px] px-2.5 py-1.5 transition-colors {% if not ess or not ess.dia_util_2 %}bg-accent/10 text-accent{% else %}text-dim hover:text-muted{% endif %}">
+                  Fixo
+                </button>
+                <button type="button" id="dia2-util-btn"
+                        onclick="setDiaUtil('dia2', true)"
+                        class="text-[10px] px-2.5 py-1.5 border-l border-line transition-colors {% if ess and ess.dia_util_2 %}bg-accent/10 text-accent{% else %}text-dim hover:text-muted{% endif %}">
+                  Útil
+                </button>
+              </div>
+              <input type="hidden" name="dia_util_2" id="dia_util_2_hidden" value="{% if ess and ess.dia_util_2 %}1{% else %}0{% endif %}">
               <input type="number" name="dia_vencimento_2" id="dia_vencimento_2" min="1" max="31"
                      value="{% if ess %}{{ ess.dia_vencimento_2|default:'' }}{% endif %}"
-                     placeholder="Ex: 20"
-                     class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+                     placeholder="{% if ess and ess.dia_util_2 %}Ex: 5º útil{% else %}Ex: dia 20{% endif %}"
+                     class="flex-1 text-sm bg-bg border border-line rounded-md px-3 py-1.5 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
             </div>
+            <p id="dia2-hint" class="text-[10px] text-dim mt-1 {% if not ess or not ess.dia_util_2 %}hidden{% endif %}">
+              O sistema calcula o N-ésimo dia útil (seg–sex) do mês de forma automática.
+            </p>
           </div>
+
         </div>
 
         <div>
@@ -234,6 +239,29 @@
 
   {% if cat.slug == 'salario' %}
   <script>
+  function setDiaUtil(which, isUtil) {
+    var hidden   = document.getElementById(which + '_util_hidden');
+    var fixoBtn  = document.getElementById(which + '-fixo-btn');
+    var utilBtn  = document.getElementById(which + '-util-btn');
+    var hint     = document.getElementById(which + '-hint');
+    var input    = document.getElementById('dia_vencimento' + (which === 'dia2' ? '_2' : ''));
+
+    if (hidden)  hidden.value = isUtil ? '1' : '0';
+    if (hint)    hint.classList.toggle('hidden', !isUtil);
+    if (input)   input.placeholder = isUtil ? 'Ex: 5º útil' : (which === 'dia2' ? 'Ex: dia 20' : 'Ex: dia 5');
+
+    var activeClass   = ['bg-accent/10', 'text-accent'];
+    var inactiveClass = ['text-dim'];
+
+    function applyBtn(btn, active) {
+      if (!btn) return;
+      if (active) { btn.classList.add(...activeClass);    btn.classList.remove(...inactiveClass); }
+      else        { btn.classList.remove(...activeClass); btn.classList.add(...inactiveClass); }
+    }
+    applyBtn(fixoBtn, !isUtil);
+    applyBtn(utilBtn,  isUtil);
+  }
+
   (function () {
 
     /* Aplica estado ativo/inativo num card de opção */
@@ -287,25 +315,11 @@
     function applyFreq(val) {
       var isQ = val === 'quinzenal';
       dia2Wrap.classList.toggle('hidden', !isQ);
-      var isUtil = (document.querySelector('input[name="dia_tipo"]:checked') || {}).value === 'util';
-      dia1LblTx.textContent = isUtil ? '1º dia útil nº' : (isQ ? '1º pagamento — dia' : 'Dia do pagamento');
-      dia2LblTx.textContent = isUtil ? '2º dia útil nº' : '2º pagamento — dia';
+      dia1LblTx.textContent = isQ ? '1º pagamento' : 'Dia do pagamento';
+      dia2LblTx.textContent = '2º pagamento';
     }
 
     bindCards('.freq-option', 'freq_pagamento', applyFreq);
-
-    // ── Tipo de dia: fixo / útil ──
-    var diaUtilHidden = document.getElementById('dia_util_hidden');
-
-    function applyDiaTipo(val) {
-      var isUtil = val === 'util';
-      if (diaUtilHidden) diaUtilHidden.value = isUtil ? '1' : '0';
-      var isQ = (document.querySelector('input[name="freq_pagamento"]:checked') || {}).value === 'quinzenal';
-      dia1LblTx.textContent = isUtil ? '1º dia útil nº' : (isQ ? '1º pagamento — dia' : 'Dia do pagamento');
-      dia2LblTx.textContent = isUtil ? '2º dia útil nº' : '2º pagamento — dia';
-    }
-
-    bindCards('.dia-tipo-opt', 'dia_tipo', applyDiaTipo);
 
     /* Dispara freq na carga para mostrar/ocultar dia2 corretamente */
     var checkedFreq = document.querySelector('input[name="freq_pagamento"]:checked');
