@@ -235,95 +235,82 @@
   {% if cat.slug == 'salario' %}
   <script>
   (function () {
+
+    /* Aplica estado ativo/inativo num card de opção */
+    function setCard(opt, active) {
+      var p = opt.querySelector('p.text-xs');
+      if (active) {
+        opt.classList.add('border-accent/50', 'bg-accent/5');
+        opt.classList.remove('border-line');
+        if (p) { p.classList.add('text-tx'); p.classList.remove('text-muted'); }
+      } else {
+        opt.classList.remove('border-accent/50', 'bg-accent/5');
+        opt.classList.add('border-line');
+        if (p) { p.classList.remove('text-tx'); p.classList.add('text-muted'); }
+      }
+    }
+
+    function bindCards(selector, radioName, onChange) {
+      var opts = document.querySelectorAll(selector);
+      opts.forEach(function (opt) {
+        opt.addEventListener('click', function () {
+          var r = this.querySelector('input[type=radio]');
+          if (!r) return;
+          r.checked = true;
+          opts.forEach(function (o) { setCard(o, o.querySelector('input[type=radio]').value === r.value); });
+          if (onChange) onChange(r.value);
+        });
+      });
+      var checked = document.querySelector('input[name="' + radioName + '"]:checked');
+      if (checked) opts.forEach(function (o) {
+        setCard(o, o.querySelector('input[type=radio]').value === checked.value);
+      });
+      return opts;
+    }
+
     // ── Tipo de salário ──
-    var salOpts   = document.querySelectorAll('.sal-option');
     var fixoRow   = document.getElementById('fixo-row');
     var comInfo   = document.getElementById('comissao-info');
     var fixoLabel = document.getElementById('fixo-label');
 
-    function updateTipo(val) {
+    bindCards('.sal-option', 'tipo_salario', function (val) {
       fixoRow.classList.toggle('hidden', val === 'comissao');
       comInfo.classList.toggle('hidden', val !== 'comissao');
       fixoLabel.textContent = val === 'fixo' ? 'Salário fixo' : 'Salário base fixo';
-      salOpts.forEach(function (opt) {
-        var r = opt.querySelector('input[type=radio]');
-        var active = r.value === val;
-        opt.classList.toggle('border-accent/50', active);
-        opt.classList.toggle('bg-accent/5', active);
-      });
-    }
-
-    salOpts.forEach(function (opt) {
-      opt.addEventListener('click', function () {
-        var r = this.querySelector('input[type=radio]');
-        r.checked = true; updateTipo(r.value);
-      });
     });
-    var checkedTipo = document.querySelector('input[name="tipo_salario"]:checked');
-    if (checkedTipo) updateTipo(checkedTipo.value);
 
     // ── Frequência de pagamento ──
-    var freqOpts  = document.querySelectorAll('.freq-option');
     var dia2Wrap  = document.getElementById('dia2-wrapper');
     var dia1LblTx = document.getElementById('dia1-label-txt');
     var dia2LblTx = document.getElementById('dia2-label-txt');
 
-    function updateFreq(val) {
+    function applyFreq(val) {
       var isQ = val === 'quinzenal';
       dia2Wrap.classList.toggle('hidden', !isQ);
-      updateDiaTipo(document.querySelector('input[name="dia_tipo"]:checked')?.value || 'fixo');
-
-      freqOpts.forEach(function (opt) {
-        var r = opt.querySelector('input[type=radio]');
-        var active = r.value === val;
-        opt.classList.toggle('border-accent/50', active);
-        opt.classList.toggle('bg-accent/5', active);
-        opt.querySelector('p.text-xs').classList.toggle('text-tx', active);
-        opt.querySelector('p.text-xs').classList.toggle('text-muted', !active);
-      });
+      var isUtil = (document.querySelector('input[name="dia_tipo"]:checked') || {}).value === 'util';
+      dia1LblTx.textContent = isUtil ? '1º dia útil nº' : (isQ ? '1º pagamento — dia' : 'Dia do pagamento');
+      dia2LblTx.textContent = isUtil ? '2º dia útil nº' : '2º pagamento — dia';
     }
 
-    freqOpts.forEach(function (opt) {
-      opt.addEventListener('click', function () {
-        var r = this.querySelector('input[type=radio]');
-        r.checked = true; updateFreq(r.value);
-      });
-    });
+    bindCards('.freq-option', 'freq_pagamento', applyFreq);
 
     // ── Tipo de dia: fixo / útil ──
-    var diaTipoOpts  = document.querySelectorAll('.dia-tipo-opt');
     var diaUtilHidden = document.getElementById('dia_util_hidden');
 
-    function updateDiaTipo(val) {
+    function applyDiaTipo(val) {
       var isUtil = val === 'util';
       if (diaUtilHidden) diaUtilHidden.value = isUtil ? '1' : '0';
       var isQ = (document.querySelector('input[name="freq_pagamento"]:checked') || {}).value === 'quinzenal';
       dia1LblTx.textContent = isUtil ? '1º dia útil nº' : (isQ ? '1º pagamento — dia' : 'Dia do pagamento');
       dia2LblTx.textContent = isUtil ? '2º dia útil nº' : '2º pagamento — dia';
-
-      if (diaTipoOpts) diaTipoOpts.forEach(function (opt) {
-        var r = opt.querySelector('input[type=radio]');
-        var active = r.value === val;
-        opt.classList.toggle('border-accent/50', active);
-        opt.classList.toggle('bg-accent/5', active);
-        opt.querySelector('p.text-xs').classList.toggle('text-tx', active);
-        opt.querySelector('p.text-xs').classList.toggle('text-muted', !active);
-      });
     }
 
-    if (diaTipoOpts) {
-      diaTipoOpts.forEach(function (opt) {
-        opt.addEventListener('click', function () {
-          var r = this.querySelector('input[type=radio]');
-          r.checked = true; updateDiaTipo(r.value);
-        });
-      });
-      var checkedDiaTipo = document.querySelector('input[name="dia_tipo"]:checked');
-      if (checkedDiaTipo) updateDiaTipo(checkedDiaTipo.value);
-    }
+    bindCards('.dia-tipo-opt', 'dia_tipo', applyDiaTipo);
 
+    /* Dispara freq na carga para mostrar/ocultar dia2 corretamente */
     var checkedFreq = document.querySelector('input[name="freq_pagamento"]:checked');
-    if (checkedFreq) updateFreq(checkedFreq.value);
+    if (checkedFreq) applyFreq(checkedFreq.value);
+
   })();
   </script>
   {% endif %}
