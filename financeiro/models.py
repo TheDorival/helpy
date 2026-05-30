@@ -91,6 +91,7 @@ class Essencial(models.Model):
     freq_pagamento     = models.CharField(max_length=10, choices=FREQ_PAGAMENTO_CHOICES, blank=True, default='mensal')
     dia_util           = models.BooleanField(default=False)
     dia_vencimento_2   = models.PositiveSmallIntegerField(null=True, blank=True)
+    dia_util_2         = models.BooleanField(default=False)
     ultimo_registro    = models.DateField(null=True, blank=True)
     criado_em          = models.DateTimeField(auto_now_add=True)
 
@@ -122,18 +123,24 @@ class Essencial(models.Model):
         from datetime import date
         hoje = date.today()
 
-        if self.dia_util:
-            dias = {_nth_business_day(hoje.year, hoje.month, self.dia_vencimento)}
-            if self.freq_pagamento == 'quinzenal' and self.dia_vencimento_2:
-                dias.add(_nth_business_day(hoje.year, hoje.month, self.dia_vencimento_2))
-            if hoje not in dias - {None}:
-                return False
-        else:
-            dias = {self.dia_vencimento}
-            if self.freq_pagamento == 'quinzenal':
-                dias.add(self.dia_vencimento_2 or ((self.dia_vencimento - 1 + 15) % 28) + 1)
-            if hoje.day not in dias:
-                return False
+        # Constrói o conjunto de datas/dias válidos para hoje
+        dias_datas = set()   # date objects (dia_util)
+        dias_fixos = set()   # day-of-month ints
+
+        def _add_dia(n, util):
+            if util:
+                d = _nth_business_day(hoje.year, hoje.month, n)
+                if d:
+                    dias_datas.add(d)
+            else:
+                dias_fixos.add(n)
+
+        _add_dia(self.dia_vencimento, self.dia_util)
+        if self.freq_pagamento == 'quinzenal' and self.dia_vencimento_2:
+            _add_dia(self.dia_vencimento_2, self.dia_util_2)
+
+        if hoje not in dias_datas and hoje.day not in dias_fixos:
+            return False
 
         return not (self.ultimo_registro and self.ultimo_registro == hoje)
 
