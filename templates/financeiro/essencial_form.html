@@ -148,35 +148,67 @@
         {% endif %}
         {% endif %}
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-medium text-muted mb-1">
-              {% if cat.tipo == 'receita' %}Data de início{% else %}Data de início{% endif %}
-            </label>
-            <input type="date" name="data_inicio"
-                   value="{% if ess %}{{ ess.data_inicio|date:'Y-m-d' }}{% else %}{{ hoje|date:'Y-m-d' }}{% endif %}"
-                   class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-muted mb-1" id="dia-label">
-              Dia do pagamento <span class="text-dim font-normal">(opcional)</span>
-            </label>
-            <input type="number" name="dia_vencimento" id="dia_vencimento" min="1" max="28"
-                   value="{% if ess %}{{ ess.dia_vencimento|default:'' }}{% endif %}"
-                   placeholder="Ex: 5"
-                   class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
-          </div>
+        <!-- Data de início -->
+        <div>
+          <label class="block text-xs font-medium text-muted mb-1">Data de início</label>
+          <input type="date" name="data_inicio"
+                 value="{% if ess %}{{ ess.data_inicio|date:'Y-m-d' }}{% else %}{{ hoje|date:'Y-m-d' }}{% endif %}"
+                 class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
         </div>
 
-        <!-- Hint quinzenal: mostra os dois dias -->
-        <div id="quinzenal-hint" class="hidden bg-accent/5 border border-accent/20 rounded-lg px-4 py-2.5">
-          <p class="text-xs text-dim">
-            Pagamentos nos dias
-            <span id="dia1-txt" class="text-tx font-medium">—</span>
-            e
-            <span id="dia2-txt" class="text-tx font-medium">—</span>
-            de cada mês.
-          </p>
+        <!-- Tipo de dia: fixo ou útil -->
+        {% if cat.slug == 'salario' %}
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Tipo de dia</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="dia-tipo-opt flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
+                          {% if not ess or not ess.dia_util %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
+              <input type="radio" name="dia_tipo" value="fixo" class="sr-only"
+                     {% if not ess or not ess.dia_util %}checked{% endif %}>
+              <div>
+                <p class="text-xs font-medium {% if not ess or not ess.dia_util %}text-tx{% else %}text-muted{% endif %}">Dia fixo</p>
+                <p class="text-[10px] text-dim">Ex: todo dia 5</p>
+              </div>
+            </label>
+            <label class="dia-tipo-opt flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
+                          {% if ess and ess.dia_util %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
+              <input type="radio" name="dia_tipo" value="util" class="sr-only"
+                     {% if ess and ess.dia_util %}checked{% endif %}>
+              <div>
+                <p class="text-xs font-medium {% if ess and ess.dia_util %}text-tx{% else %}text-muted{% endif %}">Dia útil</p>
+                <p class="text-[10px] text-dim">Ex: todo 5º útil</p>
+              </div>
+            </label>
+          </div>
+          <input type="hidden" name="dia_util" id="dia_util_hidden" value="{% if ess and ess.dia_util %}1{% else %}0{% endif %}">
+        </div>
+        {% endif %}
+
+        <!-- Campo(s) de dia -->
+        <div id="dias-wrapper">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1" id="dia1-label">
+                <span id="dia1-label-txt">Dia do pagamento</span>
+                <span class="text-dim font-normal">(opcional)</span>
+              </label>
+              <input type="number" name="dia_vencimento" id="dia_vencimento" min="1" max="31"
+                     value="{% if ess %}{{ ess.dia_vencimento|default:'' }}{% endif %}"
+                     placeholder="Ex: 5"
+                     class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+            </div>
+            <!-- 2º dia (quinzenal) -->
+            <div id="dia2-wrapper" class="hidden">
+              <label class="block text-xs font-medium text-muted mb-1">
+                <span id="dia2-label-txt">2º pagamento</span>
+                <span class="text-dim font-normal">(opcional)</span>
+              </label>
+              <input type="number" name="dia_vencimento_2" id="dia_vencimento_2" min="1" max="31"
+                     value="{% if ess %}{{ ess.dia_vencimento_2|default:'' }}{% endif %}"
+                     placeholder="Ex: 20"
+                     class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+            </div>
+          </div>
         </div>
 
         <div>
@@ -231,31 +263,15 @@
     if (checkedTipo) updateTipo(checkedTipo.value);
 
     // ── Frequência de pagamento ──
-    var freqOpts = document.querySelectorAll('.freq-option');
-    var diaInput = document.getElementById('dia_vencimento');
-    var hint     = document.getElementById('quinzenal-hint');
-    var dia1Txt  = document.getElementById('dia1-txt');
-    var dia2Txt  = document.getElementById('dia2-txt');
-    var diaLabel = document.getElementById('dia-label');
-
-    function segundoDia(d) {
-      var d2 = ((d - 1 + 15) % 28) + 1;
-      return d2;
-    }
-
-    function updateHint() {
-      var d = parseInt(diaInput.value, 10);
-      if (isNaN(d) || d < 1 || d > 28) {
-        dia1Txt.textContent = '—'; dia2Txt.textContent = '—';
-      } else {
-        dia1Txt.textContent = d; dia2Txt.textContent = segundoDia(d);
-      }
-    }
+    var freqOpts  = document.querySelectorAll('.freq-option');
+    var dia2Wrap  = document.getElementById('dia2-wrapper');
+    var dia1LblTx = document.getElementById('dia1-label-txt');
+    var dia2LblTx = document.getElementById('dia2-label-txt');
 
     function updateFreq(val) {
       var isQ = val === 'quinzenal';
-      hint.classList.toggle('hidden', !isQ);
-      diaLabel.querySelector('span.text-dim').textContent = isQ ? '(dias 1 e 2)' : '(opcional)';
+      dia2Wrap.classList.toggle('hidden', !isQ);
+      updateDiaTipo(document.querySelector('input[name="dia_tipo"]:checked')?.value || 'fixo');
 
       freqOpts.forEach(function (opt) {
         var r = opt.querySelector('input[type=radio]');
@@ -265,7 +281,6 @@
         opt.querySelector('p.text-xs').classList.toggle('text-tx', active);
         opt.querySelector('p.text-xs').classList.toggle('text-muted', !active);
       });
-      if (isQ) updateHint();
     }
 
     freqOpts.forEach(function (opt) {
@@ -274,10 +289,39 @@
         r.checked = true; updateFreq(r.value);
       });
     });
-    diaInput.addEventListener('input', function () {
-      var checkedFreq = document.querySelector('input[name="freq_pagamento"]:checked');
-      if (checkedFreq && checkedFreq.value === 'quinzenal') updateHint();
-    });
+
+    // ── Tipo de dia: fixo / útil ──
+    var diaTipoOpts  = document.querySelectorAll('.dia-tipo-opt');
+    var diaUtilHidden = document.getElementById('dia_util_hidden');
+
+    function updateDiaTipo(val) {
+      var isUtil = val === 'util';
+      if (diaUtilHidden) diaUtilHidden.value = isUtil ? '1' : '0';
+      var isQ = (document.querySelector('input[name="freq_pagamento"]:checked') || {}).value === 'quinzenal';
+      dia1LblTx.textContent = isUtil ? '1º dia útil nº' : (isQ ? '1º pagamento — dia' : 'Dia do pagamento');
+      dia2LblTx.textContent = isUtil ? '2º dia útil nº' : '2º pagamento — dia';
+
+      if (diaTipoOpts) diaTipoOpts.forEach(function (opt) {
+        var r = opt.querySelector('input[type=radio]');
+        var active = r.value === val;
+        opt.classList.toggle('border-accent/50', active);
+        opt.classList.toggle('bg-accent/5', active);
+        opt.querySelector('p.text-xs').classList.toggle('text-tx', active);
+        opt.querySelector('p.text-xs').classList.toggle('text-muted', !active);
+      });
+    }
+
+    if (diaTipoOpts) {
+      diaTipoOpts.forEach(function (opt) {
+        opt.addEventListener('click', function () {
+          var r = this.querySelector('input[type=radio]');
+          r.checked = true; updateDiaTipo(r.value);
+        });
+      });
+      var checkedDiaTipo = document.querySelector('input[name="dia_tipo"]:checked');
+      if (checkedDiaTipo) updateDiaTipo(checkedDiaTipo.value);
+    }
+
     var checkedFreq = document.querySelector('input[name="freq_pagamento"]:checked');
     if (checkedFreq) updateFreq(checkedFreq.value);
   })();

@@ -89,6 +89,8 @@ class Essencial(models.Model):
     tipo_salario       = models.CharField(max_length=15, choices=TIPO_SALARIO_CHOICES, blank=True, default='')
     valor_fixo         = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     freq_pagamento     = models.CharField(max_length=10, choices=FREQ_PAGAMENTO_CHOICES, blank=True, default='mensal')
+    dia_util           = models.BooleanField(default=False)
+    dia_vencimento_2   = models.PositiveSmallIntegerField(null=True, blank=True)
     ultimo_registro    = models.DateField(null=True, blank=True)
     criado_em          = models.DateTimeField(auto_now_add=True)
 
@@ -119,12 +121,20 @@ class Essencial(models.Model):
             return False
         from datetime import date
         hoje = date.today()
-        dias_pagamento = {self.dia_vencimento}
-        if self.freq_pagamento == 'quinzenal':
-            segundo = ((self.dia_vencimento - 1 + 15) % 28) + 1
-            dias_pagamento.add(segundo)
-        if hoje.day not in dias_pagamento:
-            return False
+
+        if self.dia_util:
+            dias = {_nth_business_day(hoje.year, hoje.month, self.dia_vencimento)}
+            if self.freq_pagamento == 'quinzenal' and self.dia_vencimento_2:
+                dias.add(_nth_business_day(hoje.year, hoje.month, self.dia_vencimento_2))
+            if hoje not in dias - {None}:
+                return False
+        else:
+            dias = {self.dia_vencimento}
+            if self.freq_pagamento == 'quinzenal':
+                dias.add(self.dia_vencimento_2 or ((self.dia_vencimento - 1 + 15) % 28) + 1)
+            if hoje.day not in dias:
+                return False
+
         return not (self.ultimo_registro and self.ultimo_registro == hoje)
 
 
@@ -246,6 +256,22 @@ class TransacaoFixa(models.Model):
         if self.data_fim and d > self.data_fim:
             return None
         return d
+
+
+def _nth_business_day(year, month, n):
+    """Retorna a data do N-ésimo dia útil (seg–sex) do mês."""
+    from datetime import date
+    day, count = 1, 0
+    while True:
+        try:
+            d = date(year, month, day)
+        except ValueError:
+            return None
+        if d.weekday() < 5:
+            count += 1
+            if count == n:
+                return d
+        day += 1
 
 
 def _data_parcela(data_inicio, offset_meses):
