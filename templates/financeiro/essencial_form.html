@@ -53,6 +53,56 @@
       <form method="post" class="px-6 py-5 space-y-4">
         {% csrf_token %}
 
+        {% if cat.slug == 'salario' %}
+        <!-- Tipo de salário -->
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Tipo de salário</label>
+          <div class="grid grid-cols-3 gap-2" id="tipo-sal-group">
+            {% for val, label in ess.TIPO_SALARIO_CHOICES|default:"" %}{% endfor %}
+            {% for val, lbl in sal_choices %}
+            <label class="sal-option flex flex-col items-center gap-1.5 p-3 rounded-lg border cursor-pointer transition-all
+                          {% if ess and ess.tipo_salario == val %}border-accent/50 bg-accent/5 text-tx{% elif not ess and val == 'fixo' %}border-accent/50 bg-accent/5 text-tx{% else %}border-line text-muted hover:border-muted{% endif %}">
+              <input type="radio" name="tipo_salario" value="{{ val }}" class="sr-only"
+                     {% if ess and ess.tipo_salario == val %}checked{% elif not ess and val == 'fixo' %}checked{% endif %}>
+              <span class="text-lg">{% if val == 'fixo' %}💼{% elif val == 'comissao' %}📈{% else %}💼📈{% endif %}</span>
+              <span class="text-[10px] font-medium text-center leading-tight">{{ lbl }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Frequência de pagamento -->
+        <div>
+          <label class="block text-xs font-medium text-muted mb-1">Frequência de pagamento</label>
+          <select name="freq_pagamento"
+                  class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
+            <option value="mensal"    {% if ess and ess.freq_pagamento == 'mensal'    %}selected{% endif %}>Mensal</option>
+            <option value="quinzenal" {% if ess and ess.freq_pagamento == 'quinzenal' %}selected{% endif %}>Quinzenal (2x por mês)</option>
+            <option value="semanal"   {% if ess and ess.freq_pagamento == 'semanal'   %}selected{% endif %}>Semanal</option>
+          </select>
+        </div>
+
+        <!-- Valor fixo (oculto para comissao pura) -->
+        <div id="fixo-row" class="{% if ess and ess.tipo_salario == 'comissao' %}hidden{% endif %}">
+          <label class="block text-xs font-medium text-muted mb-1">
+            <span id="fixo-label">Salário fixo</span>
+          </label>
+          <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden focus-within:border-accent/50 transition-colors">
+            <span class="text-sm text-dim px-3 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
+            <input type="number" name="valor_fixo" id="valor_fixo" step="0.01" min="0"
+                   value="{% if ess %}{{ ess.valor_fixo|default:ess.valor|default:'' }}{% endif %}"
+                   placeholder="0,00"
+                   class="flex-1 text-sm bg-transparent px-3 py-2 text-tx outline-none">
+          </div>
+        </div>
+
+        <!-- Info para comissão pura -->
+        <div id="comissao-info" class="{% if not ess or ess.tipo_salario != 'comissao' %}hidden{% endif %} bg-green/5 border border-green/20 rounded-lg px-4 py-3">
+          <p class="text-xs text-dim">O valor será registrado manualmente a cada recebimento, via modal que aparecerá automaticamente no dia configurado.</p>
+        </div>
+
+        {% else %}
+        <!-- Campo valor padrão para não-salário -->
         {% if not cat.variavel %}
         <div>
           <label class="block text-xs font-medium text-muted mb-1">
@@ -69,11 +119,10 @@
         </div>
         {% else %}
         <div class="bg-bg border border-line rounded-lg px-4 py-3">
-          <p class="text-xs text-dim">
-            Este item tem valor variável — o valor exato é registrado mês a mês nas transações geradas pela recorrente.
-          </p>
+          <p class="text-xs text-dim">Este item tem valor variável — o valor é registrado nas transações da recorrente.</p>
         </div>
         <input type="hidden" name="valor" value="">
+        {% endif %}
         {% endif %}
 
         <div class="grid grid-cols-2 gap-3">
@@ -116,4 +165,43 @@
       </form>
     </div>
   </div>
+
+  {% if cat.slug == 'salario' %}
+  <script>
+  (function () {
+    var radios    = document.querySelectorAll('input[name="tipo_salario"]');
+    var fixoRow   = document.getElementById('fixo-row');
+    var comInfo   = document.getElementById('comissao-info');
+    var fixoLabel = document.getElementById('fixo-label');
+    var options   = document.querySelectorAll('.sal-option');
+
+    function update(val) {
+      fixoRow.classList.toggle('hidden', val === 'comissao');
+      comInfo.classList.toggle('hidden', val !== 'comissao');
+      fixoLabel.textContent = val === 'fixo' ? 'Salário fixo' : 'Salário base fixo';
+      options.forEach(function (opt) {
+        var r = opt.querySelector('input[type=radio]');
+        var active = r.value === val;
+        opt.classList.toggle('border-accent/50', active);
+        opt.classList.toggle('bg-accent/5', active);
+        opt.classList.toggle('text-tx', active);
+        opt.classList.toggle('border-line', !active);
+        opt.classList.toggle('text-muted', !active);
+      });
+    }
+
+    radios.forEach(function (r) {
+      r.addEventListener('change', function () { update(this.value); });
+      if (r.checked) update(r.value);
+    });
+    options.forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var r = this.querySelector('input[type=radio]');
+        r.checked = true; update(r.value);
+      });
+    });
+  })();
+  </script>
+  {% endif %}
+
 {% endblock %}

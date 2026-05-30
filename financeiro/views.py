@@ -741,6 +741,28 @@ def essenciais(request):
     })
 
 
+def _salvar_essencial_salario(request, ess, is_novo=False):
+    """Lê os campos de salário do POST e atualiza/cria o Essencial."""
+    from decimal import Decimal as D
+    tipo_sal  = request.POST.get('tipo_salario', 'fixo')
+    freq_pag  = request.POST.get('freq_pagamento', 'mensal')
+    valor_str = request.POST.get('valor', '').replace(',', '.').strip()
+    fixo_str  = request.POST.get('valor_fixo', '').replace(',', '.').strip()
+    valor     = D(valor_str) if valor_str else None
+    valor_fixo = D(fixo_str) if fixo_str else None
+
+    ess.tipo_salario   = tipo_sal
+    ess.freq_pagamento = freq_pag
+    ess.valor_fixo     = valor_fixo
+    # Para fixo: valor = fixo; para comissao: valor = None; fixo_comissao: valor = fixo (base)
+    if tipo_sal == 'fixo':
+        ess.valor = valor
+    elif tipo_sal == 'fixo_comissao':
+        ess.valor = valor_fixo
+    else:
+        ess.valor = None
+
+
 @login_required
 def ativar_essencial(request, slug):
     _ensure_catalogo()
@@ -757,33 +779,38 @@ def ativar_essencial(request, slug):
         data_inicio = request.POST.get('data_inicio') or str(date.today())
         obs = request.POST.get('observacao', '').strip()
 
-        # Criar TransacaoFixa
-        cat_fin = _get_or_create_categoria_financeiro(request.user, cat.nome, cat.tipo)
-        tf = TransacaoFixa.objects.create(
-            usuario=request.user,
-            tipo=cat.tipo,
-            descricao=cat.nome,
-            valor=valor or D('0'),
-            frequencia=cat.frequencia,
-            data_inicio=data_inicio,
-            categoria=cat_fin,
-            observacao=obs,
-            ativa=True,
+        ess = Essencial(
+            usuario=request.user, categoria=cat,
+            valor=valor, dia_vencimento=dia_int,
+            data_inicio=data_inicio, observacao=obs,
         )
 
-        Essencial.objects.create(
-            usuario=request.user,
-            categoria=cat,
-            valor=valor,
-            dia_vencimento=dia_int,
-            data_inicio=data_inicio,
-            observacao=obs,
-            transacao_fixa=tf,
-        )
+        tf = None
+        if cat.slug == 'salario':
+            _salvar_essencial_salario(request, ess)
+            # Só cria recorrente automática para salário fixo
+            if ess.tipo_salario == 'fixo':
+                cat_fin = _get_or_create_categoria_financeiro(request.user, cat.nome, cat.tipo)
+                tf = TransacaoFixa.objects.create(
+                    usuario=request.user, tipo=cat.tipo, descricao=cat.nome,
+                    valor=ess.valor or D('0'), frequencia=cat.frequencia,
+                    data_inicio=data_inicio, categoria=cat_fin, observacao=obs, ativa=True,
+                )
+        else:
+            cat_fin = _get_or_create_categoria_financeiro(request.user, cat.nome, cat.tipo)
+            tf = TransacaoFixa.objects.create(
+                usuario=request.user, tipo=cat.tipo, descricao=cat.nome,
+                valor=valor or D('0'), frequencia=cat.frequencia,
+                data_inicio=data_inicio, categoria=cat_fin, observacao=obs, ativa=True,
+            )
+
+        ess.transacao_fixa = tf
+        ess.save()
         return redirect('essenciais')
 
     return render(request, 'financeiro/essencial_form.html', {
         'cat': cat, 'acao': 'ativar', 'hoje': date.today(),
+        'sal_choices': Essencial.TIPO_SALARIO_CHOICES,
     })
 
 
@@ -794,26 +821,67 @@ def editar_essencial(request, slug):
 
     if request.method == 'POST':
         from decimal import Decimal as D
-        valor_str = request.POST.get('valor', '').replace(',', '.').strip()
-        valor = D(valor_str) if valor_str else None
+        obs = request.POST.get('observacao', '').strip()
         dia = request.POST.get('dia_vencimento', '').strip()
         dia_int = int(dia) if dia.isdigit() and 1 <= int(dia) <= 31 else None
-        obs = request.POST.get('observacao', '').strip()
-
-        ess.valor = valor
         ess.dia_vencimento = dia_int
         ess.observacao = obs
-        ess.save(update_fields=['valor', 'dia_vencimento', 'observacao'])
 
-        if ess.transacao_fixa_id:
-            TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(
-                valor=valor or D('0'), observacao=obs,
-            )
+        if cat.slug == 'salario':
+            _salvar_essencial_salario(request, ess)
+            if ess.transacao_fixa_id:
+                # Só mantém recorrente ativa se for fixo
+                TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(
+                    valor=ess.valor or D('0'),
+                    ativa=(ess.tipo_salario == 'fixo'),
+                    observacao=obs,
+                )
+        else:
+            valor_str = request.POST.get('valor', '').replace(',', '.').strip()
+            ess.valor = D(valor_str) if valor_str else None
+            if ess.transacao_fixa_id:
+                TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(
+                    valor=ess.valor or D('0'), observacao=obs,
+                )
+
+        ess.save()
         return redirect('essenciais')
 
     return render(request, 'financeiro/essencial_form.html', {
         'cat': cat, 'ess': ess, 'acao': 'editar', 'hoje': date.today(),
+        'sal_choices': Essencial.TIPO_SALARIO_CHOICES,
     })
+
+
+@login_required
+def registrar_salario(request):
+    """Registra o recebimento do salário (comissão ou fixo+comissão) via modal."""
+    try:
+        ess = Essencial.objects.get(usuario=request.user, categoria__slug='salario', ativa=True)
+    except Essencial.DoesNotExist:
+        return redirect('painel')
+
+    if request.method == 'POST':
+        from decimal import Decimal as D
+        comissao_str = request.POST.get('comissao', '0').replace(',', '.').strip()
+        fixo_str     = request.POST.get('valor_fixo', '0').replace(',', '.').strip()
+        comissao = D(comissao_str) if comissao_str else D('0')
+        fixo     = D(fixo_str)     if fixo_str     else D('0')
+        total = fixo + comissao
+
+        cat_fin = _get_or_create_categoria_financeiro(request.user, 'Salário', 'receita')
+        descricao = 'Salário'
+        if comissao > 0:
+            descricao = 'Salário + Comissão' if fixo > 0 else 'Comissão'
+        Transacao.objects.create(
+            usuario=request.user, tipo='receita',
+            descricao=descricao, valor=total,
+            data=date.today(), categoria=cat_fin,
+        )
+        ess.ultimo_registro = date.today()
+        ess.save(update_fields=['ultimo_registro'])
+
+    return redirect('painel')
 
 
 @login_required
