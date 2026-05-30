@@ -73,13 +73,29 @@
 
         <!-- Frequência de pagamento -->
         <div>
-          <label class="block text-xs font-medium text-muted mb-1">Frequência de pagamento</label>
-          <select name="freq_pagamento"
-                  class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
-            <option value="mensal"    {% if ess and ess.freq_pagamento == 'mensal'    %}selected{% endif %}>Mensal</option>
-            <option value="quinzenal" {% if ess and ess.freq_pagamento == 'quinzenal' %}selected{% endif %}>Quinzenal (2x por mês)</option>
-            <option value="semanal"   {% if ess and ess.freq_pagamento == 'semanal'   %}selected{% endif %}>Semanal</option>
-          </select>
+          <label class="block text-xs font-medium text-muted mb-2">Frequência de pagamento</label>
+          <div class="grid grid-cols-2 gap-2">
+            {% with cur=ess.freq_pagamento|default:'mensal' %}
+            <label class="freq-option flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
+                          {% if cur == 'mensal' %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
+              <input type="radio" name="freq_pagamento" value="mensal" class="sr-only"
+                     {% if cur == 'mensal' %}checked{% endif %}>
+              <div>
+                <p class="text-xs font-medium {% if cur == 'mensal' %}text-tx{% else %}text-muted{% endif %}">Mensal</p>
+                <p class="text-[10px] text-dim">1 pagamento por mês</p>
+              </div>
+            </label>
+            <label class="freq-option flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
+                          {% if cur == 'quinzenal' %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
+              <input type="radio" name="freq_pagamento" value="quinzenal" class="sr-only"
+                     {% if cur == 'quinzenal' %}checked{% endif %}>
+              <div>
+                <p class="text-xs font-medium {% if cur == 'quinzenal' %}text-tx{% else %}text-muted{% endif %}">Quinzenal</p>
+                <p class="text-[10px] text-dim">2 pagamentos por mês</p>
+              </div>
+            </label>
+            {% endwith %}
+          </div>
         </div>
 
         <!-- Valor fixo (oculto para comissao pura) -->
@@ -135,21 +151,32 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-medium text-muted mb-1">
-              {% if cat.tipo == 'receita' %}Data de recebimento{% else %}Data de início{% endif %}
+              {% if cat.tipo == 'receita' %}Data de início{% else %}Data de início{% endif %}
             </label>
             <input type="date" name="data_inicio"
                    value="{% if ess %}{{ ess.data_inicio|date:'Y-m-d' }}{% else %}{{ hoje|date:'Y-m-d' }}{% endif %}"
                    class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
           </div>
           <div>
-            <label class="block text-xs font-medium text-muted mb-1">
-              Dia do mês <span class="text-dim font-normal">(opcional)</span>
+            <label class="block text-xs font-medium text-muted mb-1" id="dia-label">
+              Dia do pagamento <span class="text-dim font-normal">(opcional)</span>
             </label>
-            <input type="number" name="dia_vencimento" min="1" max="31"
+            <input type="number" name="dia_vencimento" id="dia_vencimento" min="1" max="28"
                    value="{% if ess %}{{ ess.dia_vencimento|default:'' }}{% endif %}"
                    placeholder="Ex: 5"
                    class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
           </div>
+        </div>
+
+        <!-- Hint quinzenal: mostra os dois dias -->
+        <div id="quinzenal-hint" class="hidden bg-accent/5 border border-accent/20 rounded-lg px-4 py-2.5">
+          <p class="text-xs text-dim">
+            Pagamentos nos dias
+            <span id="dia1-txt" class="text-tx font-medium">—</span>
+            e
+            <span id="dia2-txt" class="text-tx font-medium">—</span>
+            de cada mês.
+          </p>
         </div>
 
         <div>
@@ -176,37 +203,83 @@
   {% if cat.slug == 'salario' %}
   <script>
   (function () {
-    var radios    = document.querySelectorAll('input[name="tipo_salario"]');
+    // ── Tipo de salário ──
+    var salOpts   = document.querySelectorAll('.sal-option');
     var fixoRow   = document.getElementById('fixo-row');
     var comInfo   = document.getElementById('comissao-info');
     var fixoLabel = document.getElementById('fixo-label');
-    var options   = document.querySelectorAll('.sal-option');
 
-    function update(val) {
+    function updateTipo(val) {
       fixoRow.classList.toggle('hidden', val === 'comissao');
       comInfo.classList.toggle('hidden', val !== 'comissao');
       fixoLabel.textContent = val === 'fixo' ? 'Salário fixo' : 'Salário base fixo';
-      options.forEach(function (opt) {
+      salOpts.forEach(function (opt) {
         var r = opt.querySelector('input[type=radio]');
         var active = r.value === val;
         opt.classList.toggle('border-accent/50', active);
         opt.classList.toggle('bg-accent/5', active);
-        opt.classList.toggle('text-tx', active);
-        opt.classList.toggle('border-line', !active);
-        opt.classList.toggle('text-muted', !active);
       });
     }
 
-    radios.forEach(function (r) {
-      r.addEventListener('change', function () { update(this.value); });
-      if (r.checked) update(r.value);
-    });
-    options.forEach(function (opt) {
+    salOpts.forEach(function (opt) {
       opt.addEventListener('click', function () {
         var r = this.querySelector('input[type=radio]');
-        r.checked = true; update(r.value);
+        r.checked = true; updateTipo(r.value);
       });
     });
+    var checkedTipo = document.querySelector('input[name="tipo_salario"]:checked');
+    if (checkedTipo) updateTipo(checkedTipo.value);
+
+    // ── Frequência de pagamento ──
+    var freqOpts = document.querySelectorAll('.freq-option');
+    var diaInput = document.getElementById('dia_vencimento');
+    var hint     = document.getElementById('quinzenal-hint');
+    var dia1Txt  = document.getElementById('dia1-txt');
+    var dia2Txt  = document.getElementById('dia2-txt');
+    var diaLabel = document.getElementById('dia-label');
+
+    function segundoDia(d) {
+      var d2 = ((d - 1 + 15) % 28) + 1;
+      return d2;
+    }
+
+    function updateHint() {
+      var d = parseInt(diaInput.value, 10);
+      if (isNaN(d) || d < 1 || d > 28) {
+        dia1Txt.textContent = '—'; dia2Txt.textContent = '—';
+      } else {
+        dia1Txt.textContent = d; dia2Txt.textContent = segundoDia(d);
+      }
+    }
+
+    function updateFreq(val) {
+      var isQ = val === 'quinzenal';
+      hint.classList.toggle('hidden', !isQ);
+      diaLabel.querySelector('span.text-dim').textContent = isQ ? '(dias 1 e 2)' : '(opcional)';
+
+      freqOpts.forEach(function (opt) {
+        var r = opt.querySelector('input[type=radio]');
+        var active = r.value === val;
+        opt.classList.toggle('border-accent/50', active);
+        opt.classList.toggle('bg-accent/5', active);
+        opt.querySelector('p.text-xs').classList.toggle('text-tx', active);
+        opt.querySelector('p.text-xs').classList.toggle('text-muted', !active);
+      });
+      if (isQ) updateHint();
+    }
+
+    freqOpts.forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var r = this.querySelector('input[type=radio]');
+        r.checked = true; updateFreq(r.value);
+      });
+    });
+    diaInput.addEventListener('input', function () {
+      var checkedFreq = document.querySelector('input[name="freq_pagamento"]:checked');
+      if (checkedFreq && checkedFreq.value === 'quinzenal') updateHint();
+    });
+    var checkedFreq = document.querySelector('input[name="freq_pagamento"]:checked');
+    if (checkedFreq) updateFreq(checkedFreq.value);
   })();
   </script>
   {% endif %}
