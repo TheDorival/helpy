@@ -2,7 +2,7 @@ from datetime import date
 
 from django import forms
 
-from .models import Categoria, Emprestimo, Entidade, Transacao, TransacaoFixa
+from .models import Categoria, Emprestimo, Entidade, Meta, Transacao, TransacaoFixa
 
 
 class CategoriaForm(forms.ModelForm):
@@ -89,6 +89,39 @@ class TransacaoFixaForm(forms.ModelForm):
             intervalo = cleaned.get('intervalo_dias')
             if not intervalo or intervalo < 1:
                 self.add_error('intervalo_dias', 'Informe o número de dias (mínimo 1).')
+        return cleaned
+
+
+class MetaForm(forms.ModelForm):
+    class Meta:
+        model = Meta
+        fields = ['nome', 'tipo', 'valor_alvo', 'categoria', 'data_inicio', 'data_fim', 'observacao']
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        date_widget = lambda: forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
+        self.fields['data_inicio'].widget = date_widget()
+        self.fields['data_inicio'].input_formats = ['%Y-%m-%d']
+        self.fields['data_fim'].widget = date_widget()
+        self.fields['data_fim'].input_formats = ['%Y-%m-%d']
+        self.fields['data_fim'].required = False
+        self.fields['categoria'].required = False
+        self.fields['observacao'].required = False
+        if not self.instance.pk:
+            self.fields['data_inicio'].initial = date.today()
+        if usuario:
+            self.fields['categoria'].queryset = Categoria.objects.filter(usuario=usuario, tipo='despesa')
+        else:
+            self.fields['categoria'].queryset = Categoria.objects.none()
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('tipo') == 'limite_gasto' and not cleaned.get('categoria'):
+            self.add_error('categoria', 'Selecione uma categoria para o limite de gasto.')
+        data_inicio = cleaned.get('data_inicio')
+        data_fim = cleaned.get('data_fim')
+        if data_inicio and data_fim and data_fim <= data_inicio:
+            self.add_error('data_fim', 'A data fim deve ser posterior à data de início.')
         return cleaned
 
 

@@ -269,6 +269,86 @@ class ParcelaEmprestimo(models.Model):
         ordering = ['numero']
 
 
+class Meta(models.Model):
+    TIPO_CHOICES = [
+        ('economia',     'Economia'),
+        ('limite_gasto', 'Limite de gasto'),
+        ('receita',      'Meta de receita'),
+    ]
+
+    usuario     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='metas')
+    nome        = models.CharField(max_length=150)
+    tipo        = models.CharField(max_length=15, choices=TIPO_CHOICES)
+    valor_alvo  = models.DecimalField(max_digits=12, decimal_places=2)
+    ajuste      = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    categoria   = models.ForeignKey('Categoria', on_delete=models.SET_NULL, null=True, blank=True, related_name='metas')
+    data_inicio = models.DateField()
+    data_fim    = models.DateField(null=True, blank=True)
+    observacao  = models.TextField(blank=True, default='')
+    concluida   = models.BooleanField(default=False)
+    criado_em   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Meta'
+        verbose_name_plural = 'Metas'
+        ordering = ['concluida', '-criado_em']
+
+    def __str__(self):
+        return self.nome
+
+    def valor_atual(self):
+        from django.db.models import Sum
+        from datetime import date
+        hoje = date.today()
+        fim = min(self.data_fim, hoje) if self.data_fim else hoje
+        inicio = self.data_inicio
+
+        if self.tipo in ('economia', 'receita'):
+            total = (
+                Transacao.objects
+                .filter(usuario=self.usuario, tipo='receita', data__gte=inicio, data__lte=fim)
+                .aggregate(t=Sum('valor'))['t'] or 0
+            )
+        else:  # limite_gasto
+            qs = Transacao.objects.filter(
+                usuario=self.usuario, tipo='despesa',
+                data__gte=inicio, data__lte=fim,
+            )
+            if self.categoria_id:
+                qs = qs.filter(categoria_id=self.categoria_id)
+            total = qs.aggregate(t=Sum('valor'))['t'] or 0
+
+        return Decimal(str(total)) + self.ajuste
+
+    def progresso_pct(self):
+        alvo = float(self.valor_alvo)
+        if alvo <= 0:
+            return 0
+        return min(round(float(self.valor_atual()) / alvo * 100, 1), 200)
+
+    def dias_restantes(self):
+        from datetime import date
+        if not self.data_fim:
+            return None
+        return (self.data_fim - date.today()).days
+
+    def status_cor(self):
+        """Retorna 'green', 'amber' ou 'red' para a barra de progresso."""
+        pct = self.progresso_pct()
+        if self.tipo == 'limite_gasto':
+            if pct >= 100:
+                return 'red'
+            if pct >= 80:
+                return 'amber'
+            return 'green'
+        else:
+            if pct >= 100:
+                return 'green'
+            if pct >= 50:
+                return 'accent'
+            return 'red'
+
+
 class SaldoExtra(models.Model):
     TIPO_CHOICES = [
         ('conta',        'Conta'),

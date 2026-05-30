@@ -7,8 +7,8 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import CategoriaForm, EmprestimoForm, EntidadeForm, TransacaoFixaForm, TransacaoForm
-from .models import Categoria, Emprestimo, Entidade, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa, _avancar_data
+from .forms import CategoriaForm, EmprestimoForm, EntidadeForm, MetaForm, TransacaoFixaForm, TransacaoForm
+from .models import Categoria, Emprestimo, Entidade, Meta, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa, _avancar_data
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -571,6 +571,66 @@ def exportar_dados(request):
         ])
 
     return response
+
+
+@login_required
+def metas(request):
+    qs = Meta.objects.filter(usuario=request.user).select_related('categoria')
+    return render(request, 'financeiro/metas.html', {'metas': qs})
+
+
+@login_required
+def nova_meta(request):
+    form = MetaForm(request.POST or None, usuario=request.user)
+    if request.method == 'POST' and form.is_valid():
+        m = form.save(commit=False)
+        m.usuario = request.user
+        m.save()
+        return redirect('metas')
+    return render(request, 'financeiro/meta_form.html', {
+        'form': form, 'titulo': 'Nova meta', 'categorias': Categoria.objects.filter(usuario=request.user, tipo='despesa'),
+    })
+
+
+@login_required
+def editar_meta(request, pk):
+    meta = get_object_or_404(Meta, pk=pk, usuario=request.user)
+    form = MetaForm(request.POST or None, instance=meta, usuario=request.user)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('metas')
+    return render(request, 'financeiro/meta_form.html', {
+        'form': form, 'titulo': 'Editar meta', 'meta': meta,
+        'categorias': Categoria.objects.filter(usuario=request.user, tipo='despesa'),
+    })
+
+
+@login_required
+def excluir_meta(request, pk):
+    meta = get_object_or_404(Meta, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        meta.delete()
+    return redirect('metas')
+
+
+@login_required
+def toggle_meta(request, pk):
+    meta = get_object_or_404(Meta, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        meta.concluida = not meta.concluida
+        meta.save(update_fields=['concluida'])
+    return redirect('metas')
+
+
+@login_required
+def ajustar_meta(request, pk):
+    meta = get_object_or_404(Meta, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        from decimal import Decimal
+        val = request.POST.get('ajuste', '0').replace(',', '.')
+        meta.ajuste = Decimal(val)
+        meta.save(update_fields=['ajuste'])
+    return redirect('metas')
 
 
 @login_required

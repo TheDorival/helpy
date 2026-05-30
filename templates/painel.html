@@ -210,15 +210,30 @@
         </svg>
       </div>
 
-      <div class="flex flex-col items-center justify-center py-6 text-center">
-        <div class="w-8 h-8 rounded-full bg-bg border border-line flex items-center justify-center mb-3">
-          <svg class="w-4 h-4 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
-          </svg>
+      {% if metas_resumo %}
+        <div class="space-y-3">
+          {% for meta in metas_resumo %}
+          {% with pct=meta.progresso_pct cor=meta.status_cor %}
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs text-tx truncate">{{ meta.nome }}</span>
+              <span class="text-xs {% if cor == 'green' %}text-green{% elif cor == 'amber' %}text-amber-400{% elif cor == 'red' %}text-red{% else %}text-accent{% endif %} flex-shrink-0 ml-2">{{ pct }}%</span>
+            </div>
+            <div class="bg-line rounded-full h-1 overflow-hidden">
+              <div class="h-1 rounded-full {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
+                   style="width: {% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%"></div>
+            </div>
+          </div>
+          {% endwith %}
+          {% endfor %}
         </div>
-        <p class="text-sm text-muted mb-1">Em breve</p>
-        <p class="text-xs text-dim">Defina metas financeiras e acompanhe seu progresso.</p>
-      </div>
+        <a href="{% url 'metas' %}" class="mt-3 inline-block text-xs text-accent hover:underline">Ver todas as metas →</a>
+      {% else %}
+        <div class="flex flex-col items-center justify-center py-4 text-center">
+          <p class="text-xs text-dim mb-2">Nenhuma meta ativa ainda.</p>
+          <a href="{% url 'nova_meta' %}" class="text-xs text-accent hover:underline">Criar primeira meta →</a>
+        </div>
+      {% endif %}
     </div>
 
     <!-- Widget: Atalhos -->

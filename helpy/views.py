@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import render
 
-from financeiro.models import SaldoExtra, Transacao, TransacaoFixa
+from financeiro.models import Meta, SaldoExtra, Transacao, TransacaoFixa
 from financeiro.views import _periodo, sincronizar_fixas
 
 
@@ -85,6 +85,7 @@ def painel(request):
     economia_prevista = rec_prevista - desp_prevista
 
     tipos_saldo_extra = SaldoExtra.TIPO_CHOICES
+    metas_resumo = list(Meta.objects.filter(usuario=request.user, concluida=False).select_related('categoria')[:4])
 
     return render(request, 'painel.html', {
         'saldo_historico': saldo_historico,
@@ -96,6 +97,7 @@ def painel(request):
         'desp_prevista': desp_prevista,
         'economia_prevista': economia_prevista,
         'tipos_saldo_extra': tipos_saldo_extra,
+        'metas_resumo': metas_resumo,
         'hoje': hoje,
     })
 

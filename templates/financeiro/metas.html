@@ -1,0 +1,183 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Metas{% endblock %}
+{% block page_title %}Metas{% endblock %}
+
+{% block skeleton %}
+  <div class="flex items-center justify-between mb-5">
+    <div class="sk h-3 w-64 rounded"></div>
+    <div class="sk h-7 w-32 rounded-md"></div>
+  </div>
+  <div class="grid grid-cols-2 gap-4">
+    {% for i in "abcd" %}
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="sk h-4 w-20 rounded-full"></div>
+        <div class="sk h-4 w-32 rounded"></div>
+      </div>
+      <div class="sk h-6 w-40 rounded mb-1"></div>
+      <div class="sk h-3 w-24 rounded mb-4"></div>
+      <div class="sk h-1.5 w-full rounded-full mb-2"></div>
+      <div class="sk h-3 w-32 rounded"></div>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
+{% block content %}
+
+  <div class="flex items-center justify-between mb-5">
+    <p class="text-xs text-muted">Acompanhe suas metas de economia, gastos e receita.</p>
+    <a href="{% url 'nova_meta' %}"
+       class="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-xs font-medium px-3 py-1.5 rounded-md transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+      Nova meta
+    </a>
+  </div>
+
+  {% if metas %}
+
+    {% comment %} Separa ativas e concluídas {% endcomment %}
+    {% with ativas=metas|dictsort:"concluida" %}
+
+    <div class="grid grid-cols-2 gap-4">
+      {% for meta in metas %}
+
+        {% with pct=meta.progresso_pct atual=meta.valor_atual cor=meta.status_cor dias=meta.dias_restantes %}
+        <div class="bg-surface border border-line rounded-lg p-5 {% if meta.concluida %}opacity-60{% endif %}">
+
+          <!-- Cabeçalho -->
+          <div class="flex items-start justify-between mb-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              {% if meta.tipo == 'economia' %}
+                <span class="text-[10px] font-medium text-green bg-green/10 border border-green/20 rounded-full px-2 py-0.5">Economia</span>
+              {% elif meta.tipo == 'limite_gasto' %}
+                <span class="text-[10px] font-medium text-red bg-red/10 border border-red/20 rounded-full px-2 py-0.5">Limite de gasto</span>
+              {% else %}
+                <span class="text-[10px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-full px-2 py-0.5">Meta de receita</span>
+              {% endif %}
+              {% if meta.categoria %}
+                <span class="text-[10px] text-dim bg-bg border border-line rounded-full px-2 py-0.5">{{ meta.categoria }}</span>
+              {% endif %}
+              {% if meta.concluida %}
+                <span class="text-[10px] font-medium text-green bg-green/10 border border-green/20 rounded-full px-2 py-0.5">✓ Concluída</span>
+              {% endif %}
+            </div>
+
+            <!-- Ações -->
+            <div class="flex items-center gap-3 flex-shrink-0 ml-2">
+              <form method="post" action="{% url 'toggle_meta' meta.pk %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="text-xs text-dim hover:text-muted transition-colors"
+                        title="{% if meta.concluida %}Reabrir{% else %}Marcar como concluída{% endif %}">
+                  {% if meta.concluida %}↩{% else %}✓{% endif %}
+                </button>
+              </form>
+              <a href="{% url 'editar_meta' meta.pk %}" class="text-xs text-dim hover:text-tx transition-colors">Editar</a>
+              <form method="post" action="{% url 'excluir_meta' meta.pk %}"
+                    onsubmit="return confirm('Excluir a meta \'{{ meta.nome }}\'?')">
+                {% csrf_token %}
+                <button type="submit" class="text-xs text-dim hover:text-red transition-colors">Excluir</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Nome -->
+          <p class="text-sm font-semibold text-tx mb-3">{{ meta.nome }}</p>
+
+          <!-- Valores -->
+          <div class="flex items-baseline gap-1.5 mb-1">
+            <span class="text-lg font-semibold
+              {% if cor == 'green' %}text-green{% elif cor == 'amber' %}text-amber-400{% elif cor == 'red' %}text-red{% else %}text-accent{% endif %}">
+              {{ request.user.simbolo_moeda }} {{ atual|floatformat:"2g" }}
+            </span>
+            <span class="text-xs text-dim">de {{ request.user.simbolo_moeda }} {{ meta.valor_alvo|floatformat:"2g" }}</span>
+          </div>
+
+          <!-- Barra de progresso -->
+          <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
+            <div class="h-1.5 rounded-full transition-all
+              {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
+                 style="width: {% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%"></div>
+          </div>
+
+          <!-- Rodapé: % e prazo -->
+          <div class="flex items-center justify-between text-xs text-dim">
+            <span>
+              {% if meta.tipo == 'limite_gasto' %}
+                {% if pct >= 100 %}Limite ultrapassado ({{ pct }}%){% else %}{{ pct }}% do limite{% endif %}
+              {% else %}
+                {{ pct }}% da meta
+              {% endif %}
+            </span>
+            <span>
+              {% if dias is not None %}
+                {% if dias < 0 %}
+                  <span class="text-red">Vencida há {{ dias|stringformat:"d"|slice:"1:" }} dias</span>
+                {% elif dias == 0 %}
+                  <span class="text-amber-400">Vence hoje</span>
+                {% elif dias <= 7 %}
+                  <span class="text-amber-400">{{ dias }} dia{{ dias|pluralize }} restante{{ dias|pluralize }}</span>
+                {% else %}
+                  {{ dias }} dias restantes
+                {% endif %}
+              {% else %}
+                Sem prazo
+              {% endif %}
+            </span>
+          </div>
+
+          <!-- Ajuste manual -->
+          <div class="mt-3 pt-3 border-t border-line">
+            <form method="post" action="{% url 'ajustar_meta' meta.pk %}" class="flex items-center gap-2">
+              {% csrf_token %}
+              <label class="text-xs text-dim flex-shrink-0">Ajuste manual:</label>
+              <input type="number" name="ajuste" value="{{ meta.ajuste }}" step="0.01"
+                     class="flex-1 min-w-0 text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors text-right"
+                     placeholder="0,00">
+              <button type="submit"
+                      class="text-xs text-dim hover:text-tx border border-line rounded px-2 py-1 hover:border-muted transition-colors flex-shrink-0">
+                Salvar
+              </button>
+            </form>
+            {% if meta.ajuste != 0 %}
+              <p class="text-[10px] text-dim mt-1">
+                Automático: {{ request.user.simbolo_moeda }} {{ atual|floatformat:"2g" }} · Ajuste: {% if meta.ajuste > 0 %}+{% endif %}{{ meta.ajuste|floatformat:"2g" }}
+              </p>
+            {% endif %}
+          </div>
+
+          {% if meta.observacao %}
+            <p class="mt-2 text-xs text-dim">{{ meta.observacao }}</p>
+          {% endif %}
+
+        </div>
+        {% endwith %}
+
+      {% endfor %}
+    </div>
+    {% endwith %}
+
+  {% else %}
+    <div class="flex flex-col items-center justify-center py-20 text-center bg-surface border border-line rounded-lg">
+      <div class="w-10 h-10 rounded-full bg-bg border border-line flex items-center justify-center mb-4">
+        <svg class="w-5 h-5 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
+        </svg>
+      </div>
+      <p class="text-sm text-muted mb-1">Nenhuma meta cadastrada</p>
+      <p class="text-xs text-dim mb-5">Defina objetivos financeiros e acompanhe seu progresso.</p>
+      <a href="{% url 'nova_meta' %}"
+         class="inline-flex items-center gap-2 text-xs font-medium text-accent border border-accent/30 bg-accent/5 hover:bg-accent/10 px-3 py-1.5 rounded-md transition-colors">
+        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Criar primeira meta
+      </a>
+    </div>
+  {% endif %}
+
+{% endblock %}
