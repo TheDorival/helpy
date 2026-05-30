@@ -65,10 +65,10 @@
             <td class="px-4 py-2">
               <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a href="{% url 'editar_entidade' e.pk %}" class="text-xs text-muted hover:text-tx transition-colors leading-none">Editar</a>
-                <form method="post" action="{% url 'excluir_entidade' e.pk %}" class="flex items-center"
+                <form method="post" action="{% url 'excluir_entidade' e.pk %}" style="display:contents"
                       onsubmit="return confirm('Excluir {{ e.nome }}? As transações vinculadas perderão a identificação.')">
                   {% csrf_token %}
-                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors leading-none">Excluir</button>
+                  <button type="submit" class="text-xs leading-none text-muted hover:text-red transition-colors">Excluir</button>
                 </form>
               </div>
             </td>

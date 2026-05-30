@@ -61,10 +61,10 @@
               <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a href="{% url 'editar_categoria' cat.pk %}" class="text-xs text-muted hover:text-tx">Editar</a>
                 <form method="post" action="{% url 'excluir_categoria' cat.pk %}"
-                      class="flex items-center"
+                      style="display:contents"
                       onsubmit="return confirm('Excluir categoria {{ cat.nome }}?')">
                   {% csrf_token %}
-                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+                  <button type="submit" class="text-xs leading-none text-muted hover:text-red transition-colors">Excluir</button>
                 </form>
               </div>
             </li>
@@ -92,10 +92,10 @@
               <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a href="{% url 'editar_categoria' cat.pk %}" class="text-xs text-muted hover:text-tx">Editar</a>
                 <form method="post" action="{% url 'excluir_categoria' cat.pk %}"
-                      class="flex items-center"
+                      style="display:contents"
                       onsubmit="return confirm('Excluir categoria {{ cat.nome }}?')">
                   {% csrf_token %}
-                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+                  <button type="submit" class="text-xs leading-none text-muted hover:text-red transition-colors">Excluir</button>
                 </form>
               </div>
             </li>
