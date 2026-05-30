@@ -37,25 +37,20 @@
     </p>
   </div>
 
-  {% for (tipo, prioridade), itens in grupos %}
+  {% for grupo in grupos %}
+  {% with tipo=grupo.tipo prioridade=grupo.prioridade itens=grupo.itens %}
 
-    {% if forloop.first or tipo != prev_tipo %}
-      {% if not forloop.first %}<div class="mb-2"></div>{% endif %}
+    {% if grupo.mostrar_cabecalho %}
       <div class="flex items-center gap-3 mb-4 {% if not forloop.first %}mt-8{% endif %}">
         {% if tipo == 'receita' %}
-          <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-green"></div>
-            <span class="text-xs font-semibold text-tx uppercase tracking-widest">Receitas</span>
-          </div>
+          <div class="w-2 h-2 rounded-full bg-green"></div>
+          <span class="text-xs font-semibold text-tx uppercase tracking-widest">Receitas</span>
         {% else %}
-          <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-red"></div>
-            <span class="text-xs font-semibold text-tx uppercase tracking-widest">Despesas</span>
-          </div>
+          <div class="w-2 h-2 rounded-full bg-red"></div>
+          <span class="text-xs font-semibold text-tx uppercase tracking-widest">Despesas</span>
         {% endif %}
       </div>
     {% endif %}
-    {% with prev_tipo=tipo %}{% endwith %}
 
     <!-- Subtítulo de prioridade -->
     <div class="flex items-center gap-2 mb-3">
@@ -135,6 +130,7 @@
       {% endfor %}
     </div>
 
+  {% endwith %}
   {% endfor %}
 
 {% endblock %}

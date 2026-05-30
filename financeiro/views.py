@@ -719,7 +719,20 @@ def essenciais(request):
         grupos.setdefault(key, []).append({'cat': cat, 'essencial': ativas.get(cat.pk)})
 
     ORDEM_PRIORIDADE = {'fundamental': 0, 'importante': 1, 'opcional': 2}
-    grupos_ordenados = sorted(grupos.items(), key=lambda x: (x[0][0] != 'receita', ORDEM_PRIORIDADE.get(x[0][1], 9)))
+    prev_tipo = None
+    grupos_ordenados = []
+    for (tipo, prioridade), itens in sorted(
+        grupos.items(),
+        key=lambda x: (x[0][0] != 'receita', ORDEM_PRIORIDADE.get(x[0][1], 9)),
+    ):
+        mostrar_cabecalho = tipo != prev_tipo
+        grupos_ordenados.append({
+            'tipo': tipo,
+            'prioridade': prioridade,
+            'itens': itens,
+            'mostrar_cabecalho': mostrar_cabecalho,
+        })
+        prev_tipo = tipo
 
     return render(request, 'financeiro/essenciais.html', {
         'grupos': grupos_ordenados,
