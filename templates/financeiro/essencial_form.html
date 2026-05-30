@@ -126,7 +126,7 @@
             <span class="text-sm text-dim px-3 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
             <input type="number" name="valor_2" step="0.01" min="0"
                    value="{% if ess %}{{ ess.valor_2|default:'' }}{% endif %}"
-                   placeholder="Mesmo do 1º se vazio"
+                   placeholder="0,00"
                    class="flex-1 text-sm bg-transparent px-3 py-2 text-tx outline-none">
           </div>
           <p class="text-[10px] text-dim mt-1">Se vazio, usa o mesmo valor do 1º pagamento.</p>
@@ -161,7 +161,7 @@
             <span class="text-sm text-dim px-3 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
             <input type="number" name="valor_2" step="0.01" min="0"
                    value="{% if ess %}{{ ess.valor_2|default:'' }}{% endif %}"
-                   placeholder="Mesmo do 1º se vazio"
+                   placeholder="0,00"
                    class="flex-1 text-sm bg-transparent px-3 py-2 text-tx outline-none">
           </div>
           <p class="text-[10px] text-dim mt-1">Se vazio, usa o mesmo valor do 1º pagamento.</p>
