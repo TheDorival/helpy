@@ -134,9 +134,12 @@
           <form method="post" action="{% url 'ajustar_meta' meta.pk %}" class="flex items-center gap-1.5 flex-1 min-w-0">
             {% csrf_token %}
             <span class="text-xs text-dim flex-shrink-0">Ajuste</span>
-            <input type="number" name="ajuste" value="{{ meta.ajuste }}" step="0.01"
-                   class="w-24 text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors text-right"
-                   placeholder="0,00">
+            <div class="flex items-center bg-bg border border-line rounded overflow-hidden focus-within:border-accent/50 transition-colors">
+              <span class="text-xs text-dim px-1.5 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
+              <input type="number" name="ajuste" value="{{ meta.ajuste }}" step="0.01"
+                     class="w-20 text-xs bg-transparent px-2 py-1 text-tx outline-none text-right"
+                     placeholder="0,00">
+            </div>
             <button type="submit"
                     class="text-xs text-dim hover:text-tx border border-line rounded px-2 py-1 hover:border-muted transition-colors flex-shrink-0">
               Salvar
@@ -149,17 +152,16 @@
           <!-- Ações -->
           <div class="flex items-center gap-3 flex-shrink-0">
             <a href="{% url 'editar_meta' meta.pk %}"
-               class="text-xs text-muted hover:text-tx transition-colors">Editar</a>
+               class="text-xs text-muted hover:text-tx transition-colors leading-none">Editar</a>
             <form method="post" action="{% url 'excluir_meta' meta.pk %}"
-                  onsubmit="return confirm('Excluir a meta \'{{ meta.nome }}\'?')">
+                  onsubmit="return confirm('Excluir a meta \'{{ meta.nome }}\'?')" class="flex items-center">
               {% csrf_token %}
-              <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+              <button type="submit" class="text-xs text-muted hover:text-red transition-colors leading-none">Excluir</button>
             </form>
-            <form method="post" action="{% url 'toggle_meta' meta.pk %}">
+            <form method="post" action="{% url 'toggle_meta' meta.pk %}" class="flex items-center">
               {% csrf_token %}
               <button type="submit"
-                      title="{% if meta.concluida %}Reabrir meta{% else %}Marcar como concluída{% endif %}"
-                      class="text-xs text-muted hover:text-green transition-colors">
+                      class="text-xs text-muted hover:text-green transition-colors leading-none">
                 {% if meta.concluida %}Reabrir{% else %}Concluir{% endif %}
               </button>
             </form>
