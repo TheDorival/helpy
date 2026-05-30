@@ -8,31 +8,32 @@
     <div class="sk h-3 w-64 rounded"></div>
     <div class="sk h-7 w-32 rounded-md"></div>
   </div>
-  <div class="grid grid-cols-2 gap-4">
-    {% for i in "abcd" %}
-    <div class="bg-surface border border-line rounded-lg p-5">
-      <div class="flex items-center gap-2 mb-3">
-        <div class="sk h-4 w-20 rounded-full"></div>
-        <div class="sk h-4 w-24 rounded-full"></div>
+  <div class="grid grid-cols-5 gap-5">
+    <div class="col-span-3 space-y-4">
+      {% for i in "ab" %}
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <div class="flex gap-2 mb-3"><div class="sk h-4 w-24 rounded-full"></div><div class="sk h-4 w-20 rounded-full"></div></div>
+        <div class="sk h-5 w-40 rounded mb-4"></div>
+        <div class="sk h-7 w-36 rounded mb-1"></div>
+        <div class="sk h-1.5 w-full rounded-full mb-2"></div>
+        <div class="sk h-3 w-32 rounded mb-5"></div>
+        <div class="sk h-px w-full rounded mb-3"></div>
+        <div class="flex justify-between"><div class="sk h-7 w-40 rounded"></div><div class="sk h-3 w-32 rounded"></div></div>
       </div>
-      <div class="sk h-5 w-40 rounded mb-4"></div>
-      <div class="sk h-7 w-36 rounded mb-1"></div>
-      <div class="sk h-3 w-24 rounded mb-3"></div>
-      <div class="sk h-1.5 w-full rounded-full mb-2"></div>
-      <div class="flex justify-between mb-4">
-        <div class="sk h-3 w-20 rounded"></div>
-        <div class="sk h-3 w-24 rounded"></div>
-      </div>
-      <div class="sk h-px w-full rounded mb-3"></div>
-      <div class="flex items-center justify-between">
-        <div class="sk h-7 w-40 rounded"></div>
-        <div class="flex gap-3">
-          <div class="sk h-3 w-10 rounded"></div>
-          <div class="sk h-3 w-12 rounded"></div>
+      {% endfor %}
+    </div>
+    <div class="col-span-2 space-y-4">
+      <div class="bg-surface border border-line rounded-lg p-4">
+        <div class="sk h-3 w-20 rounded mb-3"></div>
+        <div class="grid grid-cols-2 gap-3">
+          {% for i in "ab" %}<div class="bg-bg rounded-lg p-3"><div class="sk h-6 w-8 rounded mb-1"></div><div class="sk h-3 w-16 rounded"></div></div>{% endfor %}
         </div>
       </div>
+      <div class="bg-surface border border-line rounded-lg p-4">
+        <div class="sk h-3 w-24 rounded mb-3"></div>
+        {% for i in "abc" %}<div class="bg-bg rounded-lg p-3 mb-2"><div class="sk h-3 w-32 rounded mb-2"></div><div class="sk h-3 w-24 rounded"></div></div>{% endfor %}
+      </div>
     </div>
-    {% endfor %}
   </div>
 {% endblock %}
 
@@ -49,148 +50,227 @@
     </a>
   </div>
 
-  {% if metas %}
-    <div class="grid grid-cols-2 gap-4">
-      {% for meta in metas %}
-      {% with pct=meta.progresso_pct atual=meta.valor_atual cor=meta.status_cor dias=meta.dias_restantes %}
+  <div class="grid grid-cols-5 gap-5 items-start">
 
-      <div class="bg-surface border border-line rounded-lg flex flex-col {% if meta.concluida %}opacity-60{% endif %}">
+    <!-- ── Coluna esquerda: cards das metas ── -->
+    <div class="col-span-3">
+      {% if metas %}
+        <div class="space-y-4">
+          {% for meta in metas %}
+          {% with pct=meta.progresso_pct atual=meta.valor_atual cor=meta.status_cor dias=meta.dias_restantes %}
 
-        <!-- Corpo -->
-        <div class="p-5 flex-1">
+          <div class="bg-surface border border-line rounded-lg flex flex-col {% if meta.concluida %}opacity-60{% endif %}">
+            <div class="p-5 flex-1">
 
-          <!-- Badges -->
-          <div class="flex items-center gap-1.5 flex-wrap mb-3">
-            {% if meta.tipo == 'economia' %}
-              <span class="text-[10px] font-medium text-green bg-green/10 border border-green/20 rounded-full px-2 py-0.5">Economia</span>
-            {% elif meta.tipo == 'limite_gasto' %}
-              <span class="text-[10px] font-medium text-red bg-red/10 border border-red/20 rounded-full px-2 py-0.5">Limite de gasto</span>
-            {% else %}
-              <span class="text-[10px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-full px-2 py-0.5">Meta de receita</span>
-            {% endif %}
-            {% if meta.categoria %}
-              <span class="text-[10px] text-dim bg-bg border border-line rounded-full px-2 py-0.5">{{ meta.categoria }}</span>
-            {% endif %}
-            {% if meta.concluida %}
-              <span class="text-[10px] font-medium text-green bg-green/10 border border-green/20 rounded-full px-2 py-0.5">✓ Concluída</span>
-            {% endif %}
-          </div>
-
-          <!-- Nome -->
-          <p class="text-sm font-semibold text-tx mb-4">{{ meta.nome }}</p>
-
-          <!-- Valor atual vs alvo -->
-          <div class="flex items-baseline gap-1.5 mb-1">
-            <span class="text-xl font-semibold
-              {% if cor == 'green' %}text-green{% elif cor == 'amber' %}text-amber-400{% elif cor == 'red' %}text-red{% else %}text-accent{% endif %}">
-              {{ request.user.simbolo_moeda }} {{ atual|floatformat:"2g" }}
-            </span>
-            <span class="text-xs text-dim">de {{ request.user.simbolo_moeda }} {{ meta.valor_alvo|floatformat:"2g" }}</span>
-          </div>
-
-          <!-- Barra de progresso -->
-          <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
-            <div class="h-1.5 rounded-full transition-all
-              {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
-                 style="width: {% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%"></div>
-          </div>
-
-          <!-- % e prazo -->
-          <div class="flex items-center justify-between text-xs text-dim">
-            <span>
-              {% if meta.tipo == 'limite_gasto' %}
-                {% if pct >= 100 %}Limite ultrapassado ({{ pct }}%){% else %}{{ pct }}% do limite{% endif %}
-              {% else %}
-                {{ pct }}% concluído
-              {% endif %}
-            </span>
-            <span>
-              {% if dias is not None %}
-                {% if dias < 0 %}
-                  <span class="text-red">Vencida</span>
-                {% elif dias == 0 %}
-                  <span class="text-amber-400">Vence hoje</span>
-                {% elif dias <= 7 %}
-                  <span class="text-amber-400">{{ dias }} dia{{ dias|pluralize }}</span>
+              <div class="flex items-center gap-1.5 flex-wrap mb-3">
+                {% if meta.tipo == 'economia' %}
+                  <span class="text-[10px] font-medium text-green bg-green/10 border border-green/20 rounded-full px-2 py-0.5">Economia</span>
+                {% elif meta.tipo == 'limite_gasto' %}
+                  <span class="text-[10px] font-medium text-red bg-red/10 border border-red/20 rounded-full px-2 py-0.5">Limite de gasto</span>
                 {% else %}
-                  {{ dias }} dias
+                  <span class="text-[10px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-full px-2 py-0.5">Meta de receita</span>
                 {% endif %}
-              {% else %}
-                Sem prazo
+                {% if meta.categoria %}
+                  <span class="text-[10px] text-dim bg-bg border border-line rounded-full px-2 py-0.5">{{ meta.categoria }}</span>
+                {% endif %}
+                {% if meta.concluida %}
+                  <span class="text-[10px] font-medium text-green bg-green/10 border border-green/20 rounded-full px-2 py-0.5">✓ Concluída</span>
+                {% endif %}
+                {% if dias is not None and not meta.concluida %}
+                  {% if dias < 0 %}
+                    <span class="text-[10px] font-medium text-red bg-red/10 border border-red/20 rounded-full px-2 py-0.5">Vencida</span>
+                  {% elif dias <= 7 %}
+                    <span class="text-[10px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">{{ dias }}d restantes</span>
+                  {% endif %}
+                {% endif %}
+              </div>
+
+              <p class="text-sm font-semibold text-tx mb-4">{{ meta.nome }}</p>
+
+              <div class="flex items-baseline gap-1.5 mb-1">
+                <span class="text-xl font-semibold {% if cor == 'green' %}text-green{% elif cor == 'amber' %}text-amber-400{% elif cor == 'red' %}text-red{% else %}text-accent{% endif %}">
+                  {{ request.user.simbolo_moeda }} {{ atual|floatformat:"2g" }}
+                </span>
+                <span class="text-xs text-dim">de {{ request.user.simbolo_moeda }} {{ meta.valor_alvo|floatformat:"2g" }}</span>
+              </div>
+
+              <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
+                <div class="h-1.5 rounded-full transition-all {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
+                     style="width: {% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%"></div>
+              </div>
+
+              <div class="flex items-center justify-between text-xs text-dim">
+                <span>
+                  {% if meta.tipo == 'limite_gasto' %}
+                    {% if pct >= 100 %}Limite ultrapassado ({{ pct }}%){% else %}{{ pct }}% do limite{% endif %}
+                  {% else %}{{ pct }}% concluído{% endif %}
+                </span>
+                <span>
+                  {% if dias is not None %}
+                    {% if dias < 0 %}<span class="text-red">Vencida</span>
+                    {% elif dias == 0 %}<span class="text-amber-400">Vence hoje</span>
+                    {% elif dias <= 7 %}<span class="text-amber-400">{{ dias }} dia{{ dias|pluralize }}</span>
+                    {% else %}{{ dias }} dias{% endif %}
+                  {% else %}Sem prazo{% endif %}
+                </span>
+              </div>
+
+              {% if meta.observacao %}
+                <p class="mt-3 text-xs text-dim">{{ meta.observacao }}</p>
               {% endif %}
+
+            </div>
+
+            <div class="border-t border-line px-5 py-3 flex items-center gap-3">
+              <form method="post" action="{% url 'ajustar_meta' meta.pk %}" class="flex items-center gap-1.5 flex-1 min-w-0">
+                {% csrf_token %}
+                <span class="text-xs text-dim flex-shrink-0">Ajuste</span>
+                <div class="flex items-center bg-bg border border-line rounded overflow-hidden focus-within:border-accent/50 transition-colors">
+                  <span class="text-xs text-dim px-1.5 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
+                  <input type="number" name="ajuste" value="{{ meta.ajuste }}" step="0.01"
+                         class="w-20 text-xs bg-transparent px-2 py-1 text-tx outline-none text-right" placeholder="0,00">
+                </div>
+                <button type="submit" class="text-xs text-dim hover:text-tx border border-line rounded px-2 py-1 hover:border-muted transition-colors flex-shrink-0">Salvar</button>
+              </form>
+
+              <div class="w-px h-4 bg-line flex-shrink-0"></div>
+
+              <div class="flex items-center gap-3 flex-shrink-0">
+                <a href="{% url 'editar_meta' meta.pk %}" class="text-xs leading-none text-muted hover:text-tx transition-colors">Editar</a>
+                <form method="post" action="{% url 'excluir_meta' meta.pk %}" style="display:contents"
+                      onsubmit="return confirm('Excluir a meta \'{{ meta.nome }}\'?')">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs leading-none text-muted hover:text-red transition-colors">Excluir</button>
+                </form>
+                <form method="post" action="{% url 'toggle_meta' meta.pk %}" style="display:contents">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs leading-none text-muted hover:text-green transition-colors">
+                    {% if meta.concluida %}Reabrir{% else %}Concluir{% endif %}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+          {% endfor %}
+        </div>
+
+      {% else %}
+        <div class="flex flex-col items-center justify-center py-20 text-center bg-surface border border-line rounded-lg">
+          <div class="w-10 h-10 rounded-full bg-bg border border-line flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
+            </svg>
+          </div>
+          <p class="text-sm text-muted mb-1">Nenhuma meta cadastrada</p>
+          <p class="text-xs text-dim mb-5">Crie sua primeira meta usando as sugestões ao lado.</p>
+          <a href="{% url 'nova_meta' %}"
+             class="inline-flex items-center gap-2 text-xs font-medium text-accent border border-accent/30 bg-accent/5 hover:bg-accent/10 px-3 py-1.5 rounded-md transition-colors">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Criar primeira meta
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Coluna direita: insights ── -->
+    <div class="col-span-2 space-y-4">
+
+      <!-- Resumo -->
+      <div class="bg-surface border border-line rounded-lg p-4">
+        <p class="text-xs font-medium text-muted mb-3">Resumo</p>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="bg-bg border border-line rounded-lg px-3 py-2.5 text-center">
+            <p class="text-xl font-semibold text-tx">{{ n_ativas }}</p>
+            <p class="text-[10px] text-dim mt-0.5">Ativa{{ n_ativas|pluralize }}</p>
+          </div>
+          <div class="bg-bg border border-line rounded-lg px-3 py-2.5 text-center">
+            <p class="text-xl font-semibold text-green">{{ n_concluidas }}</p>
+            <p class="text-[10px] text-dim mt-0.5">Concluída{{ n_concluidas|pluralize }}</p>
+          </div>
+        </div>
+        <div class="border-t border-line pt-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-dim">Economia média / mês</span>
+            <span class="text-xs font-semibold {% if economia_media >= 0 %}text-green{% else %}text-red{% endif %}">
+              {% if economia_media >= 0 %}+{% endif %}{{ request.user.simbolo_moeda }} {{ economia_media|floatformat:"2g" }}
             </span>
           </div>
-
-          {% if meta.observacao %}
-            <p class="mt-3 text-xs text-dim">{{ meta.observacao }}</p>
-          {% endif %}
-
+          <p class="text-[10px] text-dim/70 mt-0.5">Média dos últimos 3 meses</p>
         </div>
+      </div>
 
-        <!-- Rodapé: ajuste + ações -->
-        <div class="border-t border-line px-5 py-3 flex items-center gap-3">
-
-          <!-- Ajuste manual -->
-          <form method="post" action="{% url 'ajustar_meta' meta.pk %}" class="flex items-center gap-1.5 flex-1 min-w-0">
-            {% csrf_token %}
-            <span class="text-xs text-dim flex-shrink-0">Ajuste</span>
-            <div class="flex items-center bg-bg border border-line rounded overflow-hidden focus-within:border-accent/50 transition-colors">
-              <span class="text-xs text-dim px-1.5 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
-              <input type="number" name="ajuste" value="{{ meta.ajuste }}" step="0.01"
-                     class="w-20 text-xs bg-transparent px-2 py-1 text-tx outline-none text-right"
-                     placeholder="0,00">
-            </div>
-            <button type="submit"
-                    class="text-xs text-dim hover:text-tx border border-line rounded px-2 py-1 hover:border-muted transition-colors flex-shrink-0">
-              Salvar
-            </button>
-          </form>
-
-          <!-- Separador -->
-          <div class="w-px h-4 bg-line flex-shrink-0"></div>
-
-          <!-- Ações -->
-          <div class="flex items-center gap-3 flex-shrink-0">
-            <a href="{% url 'editar_meta' meta.pk %}"
-               class="text-xs text-muted hover:text-tx transition-colors leading-none">Editar</a>
-            <form method="post" action="{% url 'excluir_meta' meta.pk %}"
-                  onsubmit="return confirm('Excluir a meta \'{{ meta.nome }}\'?')" class="flex items-center">
-              {% csrf_token %}
-              <button type="submit" class="text-xs text-muted hover:text-red transition-colors leading-none">Excluir</button>
-            </form>
-            <form method="post" action="{% url 'toggle_meta' meta.pk %}" class="flex items-center">
-              {% csrf_token %}
-              <button type="submit"
-                      class="text-xs text-muted hover:text-green transition-colors leading-none">
-                {% if meta.concluida %}Reabrir{% else %}Concluir{% endif %}
-              </button>
-            </form>
+      <!-- Próximas a vencer -->
+      {% if proximas %}
+      <div class="bg-surface border border-line rounded-lg p-4">
+        <p class="text-xs font-medium text-muted mb-3">Próximas a vencer</p>
+        <div class="space-y-2">
+          {% for m in proximas %}
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-tx truncate mr-2">{{ m.nome }}</span>
+            <span class="text-[10px] flex-shrink-0 {% if m.dias_restantes == 0 %}text-amber-400{% elif m.dias_restantes <= 3 %}text-red{% else %}text-amber-400{% endif %}">
+              {% if m.dias_restantes == 0 %}hoje{% else %}{{ m.dias_restantes }}d{% endif %}
+            </span>
           </div>
-
+          {% endfor %}
         </div>
-
       </div>
-      {% endwith %}
-      {% endfor %}
-    </div>
+      {% endif %}
 
-  {% else %}
-    <div class="flex flex-col items-center justify-center py-20 text-center bg-surface border border-line rounded-lg">
-      <div class="w-10 h-10 rounded-full bg-bg border border-line flex items-center justify-center mb-4">
-        <svg class="w-5 h-5 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
-        </svg>
+      <!-- Sugestões -->
+      {% if sugestoes %}
+      <div class="bg-surface border border-line rounded-lg p-4">
+        <div class="flex items-center gap-1.5 mb-3">
+          <p class="text-xs font-medium text-muted">Sugestões</p>
+          <span class="text-[10px] text-dim bg-bg border border-line rounded-full px-1.5 py-0.5">baseado nos seus gastos</span>
+        </div>
+        <div class="space-y-2">
+          {% for s in sugestoes %}
+          <div class="bg-bg border border-line rounded-lg p-3">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <p class="text-xs text-tx font-medium leading-tight">Limite em {{ s.categoria_nome }}</p>
+              <span class="text-[10px] text-red bg-red/10 border border-red/20 rounded-full px-1.5 py-0.5 flex-shrink-0">gasto</span>
+            </div>
+            <p class="text-[10px] text-dim mb-2">
+              Média {{ request.user.simbolo_moeda }} {{ s.media_mensal|floatformat:"2g" }}/mês nos últimos 3 meses.
+              Sugestão: {{ request.user.simbolo_moeda }} {{ s.limite_sugerido|floatformat:"2g" }}.
+            </p>
+            <a href="{% url 'nova_meta' %}?tipo=limite_gasto&categoria={{ s.categoria_id }}&valor={{ s.limite_sugerido }}"
+               class="text-[10px] font-medium text-accent hover:underline">
+              + Criar esta meta →
+            </a>
+          </div>
+          {% endfor %}
+        </div>
       </div>
-      <p class="text-sm text-muted mb-1">Nenhuma meta cadastrada</p>
-      <p class="text-xs text-dim mb-5">Defina objetivos financeiros e acompanhe seu progresso.</p>
-      <a href="{% url 'nova_meta' %}"
-         class="inline-flex items-center gap-2 text-xs font-medium text-accent border border-accent/30 bg-accent/5 hover:bg-accent/10 px-3 py-1.5 rounded-md transition-colors">
-        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-        Criar primeira meta
-      </a>
+      {% endif %}
+
+      <!-- Sugestão de economia (se não tem meta de economia) -->
+      {% if economia_media > 0 %}
+        {% with tem_eco=metas|dictsortreversed:"tipo" %}
+        <div class="bg-surface border border-line rounded-lg p-4">
+          <p class="text-xs font-medium text-muted mb-1">Poupar mais?</p>
+          <p class="text-xs text-dim mb-3">
+            Você economiza em média
+            <span class="text-tx font-medium">{{ request.user.simbolo_moeda }} {{ economia_media|floatformat:"2g" }}/mês</span>.
+            Que tal definir uma meta anual de poupança?
+          </p>
+          {% with meta_anual=economia_media|floatformat:"2g" %}
+          <a href="{% url 'nova_meta' %}"
+             class="inline-flex items-center gap-1 text-[10px] font-medium text-green border border-green/30 bg-green/5 hover:bg-green/10 px-2.5 py-1.5 rounded-md transition-colors">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Criar meta de economia
+          </a>
+          {% endwith %}
+        </div>
+        {% endwith %}
+      {% endif %}
+
     </div>
-  {% endif %}
+  </div>
 
 {% endblock %}

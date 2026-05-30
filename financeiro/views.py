@@ -575,8 +575,69 @@ def exportar_dados(request):
 
 @login_required
 def metas(request):
+    import calendar as _cal
+    hoje = date.today()
     qs = Meta.objects.filter(usuario=request.user).select_related('categoria')
-    return render(request, 'financeiro/metas.html', {'metas': qs})
+
+    n_ativas     = qs.filter(concluida=False).count()
+    n_concluidas = qs.filter(concluida=True).count()
+
+    proximas = [
+        m for m in qs.filter(concluida=False, data_fim__isnull=False)
+        if m.dias_restantes() is not None and 0 <= m.dias_restantes() <= 30
+    ]
+    proximas.sort(key=lambda m: m.data_fim)
+
+    mm = hoje.month - 3
+    yy = hoje.year
+    while mm <= 0:
+        mm += 12; yy -= 1
+    inicio_3m = date(yy, mm, 1)
+
+    cats_com_meta = set(
+        qs.filter(concluida=False, tipo='limite_gasto', categoria__isnull=False)
+        .values_list('categoria_id', flat=True)
+    )
+    top_cats = list(
+        Transacao.objects
+        .filter(usuario=request.user, tipo='despesa',
+                data__gte=inicio_3m, categoria__isnull=False)
+        .values('categoria_id', 'categoria__nome')
+        .annotate(total=Sum('valor'))
+        .order_by('-total')[:5]
+    )
+    sugestoes = []
+    for cat in top_cats:
+        if cat['categoria_id'] not in cats_com_meta:
+            media = float(cat['total']) / 3
+            sugestoes.append({
+                'categoria_id':    cat['categoria_id'],
+                'categoria_nome':  cat['categoria__nome'],
+                'media_mensal':    round(media, 2),
+                'limite_sugerido': round(media * 1.1, 2),
+            })
+
+    totais_eco = []
+    for i in range(1, 4):
+        m2 = hoje.month - i; y2 = hoje.year
+        while m2 <= 0:
+            m2 += 12; y2 -= 1
+        ini = date(y2, m2, 1)
+        fim = date(y2, m2, _cal.monthrange(y2, m2)[1])
+        rec  = float(Transacao.objects.filter(usuario=request.user, tipo='receita',  data__gte=ini, data__lte=fim).aggregate(t=Sum('valor'))['t'] or 0)
+        desp = float(Transacao.objects.filter(usuario=request.user, tipo='despesa', data__gte=ini, data__lte=fim).aggregate(t=Sum('valor'))['t'] or 0)
+        totais_eco.append(rec - desp)
+    economia_media = round(sum(totais_eco) / 3, 2)
+
+    return render(request, 'financeiro/metas.html', {
+        'metas': qs,
+        'n_ativas': n_ativas,
+        'n_concluidas': n_concluidas,
+        'proximas': proximas,
+        'sugestoes': sugestoes[:3],
+        'economia_media': economia_media,
+        'hoje': hoje,
+    })
 
 
 @login_required
