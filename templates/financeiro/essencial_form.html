@@ -255,7 +255,7 @@
     </div>
   </div>
 
-  {% if cat.slug == 'salario' %}
+  <!-- setDiaUtil: disponível para todos os essenciais -->
   <script>
   function setDiaUtil(which, isUtil) {
     var hidden   = document.getElementById(which + '_util_hidden');
@@ -279,7 +279,10 @@
     applyBtn(fixoBtn, !isUtil);
     applyBtn(utilBtn,  isUtil);
   }
+  </script>
 
+  {% if cat.slug == 'salario' %}
+  <script>
   (function () {
 
     /* Aplica estado ativo/inativo num card de opção */
