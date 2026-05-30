@@ -119,6 +119,14 @@ class Essencial(models.Model):
             return 'Variável'
         return self.valor
 
+    @property
+    def total_mensal(self):
+        if self.freq_pagamento != 'quinzenal':
+            return self.valor or Decimal('0')
+        v1 = self.valor or Decimal('0')
+        v2 = self.valor_2 or v1
+        return v1 + v2
+
     def salario_pendente_hoje(self):
         """True se hoje é dia de recebimento e a comissão ainda não foi registrada."""
         if self.categoria.slug != 'salario' or self.tipo_salario == 'fixo':
