@@ -148,14 +148,6 @@
         {% endif %}
         {% endif %}
 
-        <!-- Data de início -->
-        <div>
-          <label class="block text-xs font-medium text-muted mb-1">Data de início</label>
-          <input type="date" name="data_inicio"
-                 value="{% if ess %}{{ ess.data_inicio|date:'Y-m-d' }}{% else %}{{ hoje|date:'Y-m-d' }}{% endif %}"
-                 class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
-        </div>
-
         <!-- Campo(s) de dia com toggle fixo/útil por recebimento -->
         <div id="dias-wrapper" class="space-y-3">
 
