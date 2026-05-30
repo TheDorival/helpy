@@ -84,9 +84,16 @@
 
         <!-- Valor fixo (oculto para comissao pura) -->
         <div id="fixo-row" class="{% if ess and ess.tipo_salario == 'comissao' %}hidden{% endif %}">
-          <label class="block text-xs font-medium text-muted mb-1">
-            <span id="fixo-label">Salário fixo</span>
-          </label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-medium text-muted">
+              <span id="fixo-label">Salário fixo</span>
+            </label>
+            <button type="button"
+                    onclick="document.getElementById('valor_fixo').value='1518.00'"
+                    class="text-[10px] text-dim hover:text-accent border border-line hover:border-accent/30 rounded px-2 py-0.5 transition-colors">
+              Salário mínimo · R$ 1.518,00
+            </button>
+          </div>
           <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden focus-within:border-accent/50 transition-colors">
             <span class="text-sm text-dim px-3 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
             <input type="number" name="valor_fixo" id="valor_fixo" step="0.01" min="0"
