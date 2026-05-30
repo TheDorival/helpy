@@ -120,14 +120,14 @@
                         data-obs="{{ t.observacao }}"
                         data-criado="{{ t.criado_em|date:'d/m/Y H:i' }}"
                         data-edit="{% url 'editar_transacao' t.pk %}"
-                        class="text-xs text-muted hover:text-tx transition-colors">Ver</button>
+                        class="text-xs leading-none text-muted hover:text-tx transition-colors">Ver</button>
                 <a href="{% url 'editar_transacao' t.pk %}"
-                   class="text-xs text-muted hover:text-tx transition-colors">Editar</a>
+                   class="text-xs leading-none text-muted hover:text-tx transition-colors">Editar</a>
                 <form method="post" action="{% url 'excluir_transacao' t.pk %}"
-                      class="flex items-center"
+                      style="display:contents"
                       onsubmit="return confirm('Remover esta receita?')">
                   {% csrf_token %}
-                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+                  <button type="submit" class="text-xs leading-none text-muted hover:text-red transition-colors">Excluir</button>
                 </form>
               </div>
             </td>
