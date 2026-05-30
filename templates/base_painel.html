@@ -292,6 +292,38 @@
   </div>
 
   <script>
+  /* ── Formata inputs de dinheiro com 2 casas decimais ── */
+  (function () {
+    function formatarMoney(input) {
+      var v = parseFloat(input.value);
+      if (!isNaN(v)) input.value = v.toFixed(2);
+    }
+
+    function aplicar() {
+      document.querySelectorAll('input[type="number"][step="0.01"]').forEach(function (inp) {
+        formatarMoney(inp);
+        inp.addEventListener('blur', function () { formatarMoney(this); });
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', aplicar);
+    } else {
+      aplicar();
+    }
+
+    /* Reaplicar quando o DOM muda (modais, tabelas dinâmicas) */
+    if (window.MutationObserver) {
+      new MutationObserver(function () {
+        document.querySelectorAll('input[type="number"][step="0.01"]:not([data-money])').forEach(function (inp) {
+          inp.setAttribute('data-money', '1');
+          formatarMoney(inp);
+          inp.addEventListener('blur', function () { formatarMoney(this); });
+        });
+      }).observe(document.body, { childList: true, subtree: true });
+    }
+  })();
+
   (function () {
     var sk = document.getElementById('sk');
 
