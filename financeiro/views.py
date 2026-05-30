@@ -8,7 +8,8 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CategoriaForm, EmprestimoForm, EntidadeForm, MetaForm, TransacaoFixaForm, TransacaoForm
-from .models import Categoria, Emprestimo, Entidade, Meta, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa, _avancar_data
+from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial,
+                     Meta, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa, _avancar_data)
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -692,6 +693,125 @@ def ajustar_meta(request, pk):
         meta.ajuste = Decimal(val)
         meta.save(update_fields=['ajuste'])
     return redirect('metas')
+
+
+def _ensure_catalogo():
+    if not CategoriaEssencial.objects.exists():
+        CategoriaEssencial.sincronizar_catalogo()
+
+
+def _get_or_create_categoria_financeiro(usuario, nome, tipo):
+    cat, _ = Categoria.objects.get_or_create(
+        usuario=usuario, nome=nome, tipo=tipo,
+    )
+    return cat
+
+
+@login_required
+def essenciais(request):
+    _ensure_catalogo()
+    catalogo = list(CategoriaEssencial.objects.all())
+    ativas = {e.categoria_id: e for e in Essencial.objects.filter(usuario=request.user).select_related('categoria', 'transacao_fixa')}
+
+    grupos = {}
+    for cat in catalogo:
+        key = (cat.tipo, cat.prioridade)
+        grupos.setdefault(key, []).append({'cat': cat, 'essencial': ativas.get(cat.pk)})
+
+    ORDEM_PRIORIDADE = {'fundamental': 0, 'importante': 1, 'opcional': 2}
+    grupos_ordenados = sorted(grupos.items(), key=lambda x: (x[0][0] != 'receita', ORDEM_PRIORIDADE.get(x[0][1], 9)))
+
+    return render(request, 'financeiro/essenciais.html', {
+        'grupos': grupos_ordenados,
+        'n_ativos': len(ativas),
+        'hoje': date.today(),
+    })
+
+
+@login_required
+def ativar_essencial(request, slug):
+    _ensure_catalogo()
+    cat = get_object_or_404(CategoriaEssencial, slug=slug)
+    if Essencial.objects.filter(usuario=request.user, categoria=cat).exists():
+        return redirect('essenciais')
+
+    if request.method == 'POST':
+        from decimal import Decimal as D
+        valor_str = request.POST.get('valor', '').replace(',', '.').strip()
+        valor = D(valor_str) if valor_str else None
+        dia = request.POST.get('dia_vencimento', '').strip()
+        dia_int = int(dia) if dia.isdigit() and 1 <= int(dia) <= 31 else None
+        data_inicio = request.POST.get('data_inicio') or str(date.today())
+        obs = request.POST.get('observacao', '').strip()
+
+        # Criar TransacaoFixa
+        cat_fin = _get_or_create_categoria_financeiro(request.user, cat.nome, cat.tipo)
+        tf = TransacaoFixa.objects.create(
+            usuario=request.user,
+            tipo=cat.tipo,
+            descricao=cat.nome,
+            valor=valor or D('0'),
+            frequencia=cat.frequencia,
+            data_inicio=data_inicio,
+            categoria=cat_fin,
+            observacao=obs,
+            ativa=True,
+        )
+
+        Essencial.objects.create(
+            usuario=request.user,
+            categoria=cat,
+            valor=valor,
+            dia_vencimento=dia_int,
+            data_inicio=data_inicio,
+            observacao=obs,
+            transacao_fixa=tf,
+        )
+        return redirect('essenciais')
+
+    return render(request, 'financeiro/essencial_form.html', {
+        'cat': cat, 'acao': 'ativar', 'hoje': date.today(),
+    })
+
+
+@login_required
+def editar_essencial(request, slug):
+    cat = get_object_or_404(CategoriaEssencial, slug=slug)
+    ess = get_object_or_404(Essencial, usuario=request.user, categoria=cat)
+
+    if request.method == 'POST':
+        from decimal import Decimal as D
+        valor_str = request.POST.get('valor', '').replace(',', '.').strip()
+        valor = D(valor_str) if valor_str else None
+        dia = request.POST.get('dia_vencimento', '').strip()
+        dia_int = int(dia) if dia.isdigit() and 1 <= int(dia) <= 31 else None
+        obs = request.POST.get('observacao', '').strip()
+
+        ess.valor = valor
+        ess.dia_vencimento = dia_int
+        ess.observacao = obs
+        ess.save(update_fields=['valor', 'dia_vencimento', 'observacao'])
+
+        if ess.transacao_fixa_id:
+            TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(
+                valor=valor or D('0'), observacao=obs,
+            )
+        return redirect('essenciais')
+
+    return render(request, 'financeiro/essencial_form.html', {
+        'cat': cat, 'ess': ess, 'acao': 'editar', 'hoje': date.today(),
+    })
+
+
+@login_required
+def desativar_essencial(request, slug):
+    cat = get_object_or_404(CategoriaEssencial, slug=slug)
+    ess = get_object_or_404(Essencial, usuario=request.user, categoria=cat)
+    if request.method == 'POST':
+        if ess.transacao_fixa_id:
+            TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(ativa=False)
+        ess.delete()
+    return redirect('essenciais')
 
 
 @login_required

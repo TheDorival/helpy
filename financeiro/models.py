@@ -5,6 +5,97 @@ from django.conf import settings
 from django.db import models
 
 
+CATALOGO_ESSENCIAIS = [
+    # slug, nome, tipo, ícone, prioridade, variavel, frequencia, ordem, descricao
+    ('salario',          'Salário',               'receita',  '💰', 'fundamental', False, 'mensal',  1,  'Principal fonte de renda mensal.'),
+    ('freelance',        'Freelance / Renda extra','receita',  '🎯', 'opcional',    True,  'mensal',  2,  'Renda variável de projetos ou bicos.'),
+    ('aluguel_recebido', 'Aluguel recebido',       'receita',  '🏘️', 'opcional',    False, 'mensal',  3,  'Renda de imóvel alugado.'),
+    ('bolsa',            'Bolsa / Auxílio',        'receita',  '📚', 'opcional',    False, 'mensal',  4,  'Bolsa de estudos, auxílio ou benefício.'),
+    ('aluguel',          'Aluguel / Prestação',    'despesa',  '🏠', 'fundamental', False, 'mensal',  1,  'Moradia — aluguel ou parcela de financiamento.'),
+    ('energia',          'Energia elétrica',       'despesa',  '⚡', 'fundamental', True,  'mensal',  2,  'Conta de luz mensal.'),
+    ('agua',             'Água / Saneamento',      'despesa',  '💧', 'fundamental', True,  'mensal',  3,  'Conta de água e saneamento.'),
+    ('alimentacao',      'Alimentação / Mercado',  'despesa',  '🛒', 'fundamental', True,  'mensal',  4,  'Gastos com supermercado e refeições.'),
+    ('transporte',       'Transporte',             'despesa',  '🚌', 'fundamental', True,  'mensal',  5,  'Transporte público, combustível ou aplicativo.'),
+    ('internet',         'Internet',               'despesa',  '🌐', 'importante',  False, 'mensal',  6,  'Plano de internet residencial.'),
+    ('telefone',         'Telefone / Celular',     'despesa',  '📱', 'importante',  False, 'mensal',  7,  'Plano de celular ou telefone fixo.'),
+    ('saude',            'Plano de saúde',         'despesa',  '🏥', 'importante',  False, 'mensal',  8,  'Convênio médico ou odontológico.'),
+    ('educacao',         'Faculdade / Escola',     'despesa',  '🎓', 'importante',  False, 'mensal',  9,  'Mensalidade de ensino.'),
+    ('academia',         'Academia',               'despesa',  '🏋️', 'opcional',    False, 'mensal', 10,  'Mensalidade de academia ou esporte.'),
+    ('streaming',        'Streaming',              'despesa',  '📺', 'opcional',    False, 'mensal', 11,  'Netflix, Disney+, HBO e outros.'),
+    ('assinaturas',      'Assinaturas',            'despesa',  '🔔', 'opcional',    False, 'mensal', 12,  'Softwares, apps e serviços mensais.'),
+]
+
+
+class CategoriaEssencial(models.Model):
+    TIPO_CHOICES = [('receita', 'Receita'), ('despesa', 'Despesa')]
+    PRIORIDADE_CHOICES = [
+        ('fundamental', 'Fundamental'),
+        ('importante',  'Importante'),
+        ('opcional',    'Opcional'),
+    ]
+
+    slug        = models.SlugField(unique=True)
+    nome        = models.CharField(max_length=100)
+    tipo        = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    icone       = models.CharField(max_length=10)
+    prioridade  = models.CharField(max_length=12, choices=PRIORIDADE_CHOICES, default='importante')
+    variavel    = models.BooleanField(default=False)
+    frequencia  = models.CharField(max_length=20, default='mensal')
+    ordem       = models.PositiveSmallIntegerField(default=0)
+    descricao   = models.TextField(blank=True, default='')
+
+    class Meta:
+        verbose_name = 'Categoria essencial'
+        verbose_name_plural = 'Categorias essenciais'
+        ordering = ['tipo', 'prioridade', 'ordem']
+
+    def __str__(self):
+        return self.nome
+
+    @classmethod
+    def sincronizar_catalogo(cls):
+        for slug, nome, tipo, icone, prioridade, variavel, frequencia, ordem, descricao in CATALOGO_ESSENCIAIS:
+            cls.objects.update_or_create(
+                slug=slug,
+                defaults=dict(nome=nome, tipo=tipo, icone=icone, prioridade=prioridade,
+                              variavel=variavel, frequencia=frequencia, ordem=ordem, descricao=descricao),
+            )
+
+
+class Essencial(models.Model):
+    usuario         = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='essenciais')
+    categoria       = models.ForeignKey(CategoriaEssencial, on_delete=models.PROTECT, related_name='instancias')
+    valor           = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    dia_vencimento  = models.PositiveSmallIntegerField(null=True, blank=True, help_text='Dia do mês (1–31)')
+    data_inicio     = models.DateField()
+    observacao      = models.TextField(blank=True, default='')
+    ativa           = models.BooleanField(default=True)
+    transacao_fixa  = models.OneToOneField(
+        'TransacaoFixa', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='essencial',
+    )
+    criado_em       = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Essencial'
+        verbose_name_plural = 'Essenciais'
+        unique_together = ('usuario', 'categoria')
+        ordering = ['categoria__tipo', 'categoria__prioridade', 'categoria__ordem']
+
+    def __str__(self):
+        return f'{self.categoria.nome} — {self.usuario}'
+
+    @property
+    def nome_display(self):
+        return self.categoria.nome
+
+    @property
+    def valor_display(self):
+        if self.categoria.variavel:
+            return 'Variável'
+        return self.valor
+
+
 class Categoria(models.Model):
     TIPO_CHOICES = [('receita', 'Receita'), ('despesa', 'Despesa')]
 

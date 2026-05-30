@@ -106,6 +106,15 @@
 
       <p class="px-2 pt-2.5 pb-1 text-[10px] font-medium text-dim uppercase tracking-widest">Registros</p>
 
+      <a href="{% url 'essenciais' %}"
+         class="flex items-center gap-2.5 px-2 py-1 rounded-md text-sm transition-colors
+                {% if url == 'essenciais' or url == 'ativar_essencial' or url == 'editar_essencial' %}text-tx bg-surfacehi{% else %}text-muted hover:text-tx hover:bg-surfacehi{% endif %}">
+        <svg class="w-4 h-4 flex-shrink-0 {% if url == 'essenciais' or url == 'ativar_essencial' or url == 'editar_essencial' %}text-accent{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Essenciais
+      </a>
+
       <div class="flex items-center rounded-md {% if url == 'receitas' or url == 'nova_receita' %}bg-surfacehi{% else %}hover:bg-surfacehi{% endif %} transition-colors">
         <a href="{% url 'nova_receita' %}"
            title="Nova receita"
