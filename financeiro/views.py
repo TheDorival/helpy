@@ -820,26 +820,39 @@ def ativar_essencial(request, slug):
             data_inicio=data_inicio, observacao=obs,
         )
 
-        tf = None
-        if cat.slug == 'salario':
-            _salvar_essencial_salario(request, ess)
-            # Só cria recorrente automática para salário fixo
-            if ess.tipo_salario == 'fixo':
-                cat_fin = _get_or_create_categoria_financeiro(request.user, cat.nome, cat.tipo)
-                tf = TransacaoFixa.objects.create(
-                    usuario=request.user, tipo=cat.tipo, descricao=cat.nome,
-                    valor=ess.valor or D('0'), frequencia=cat.frequencia,
-                    data_inicio=data_inicio, categoria=cat_fin, observacao=obs, ativa=True,
-                )
-        else:
+        # Lê valor_2 para quinzenal
+        valor2_str = request.POST.get('valor_2', '').replace(',', '.').strip()
+        valor_2 = D(valor2_str) if valor2_str else None
+        ess.valor_2 = valor_2
+
+        def _criar_tf(val, di, du, descricao_extra=''):
             cat_fin = _get_or_create_categoria_financeiro(request.user, cat.nome, cat.tipo)
-            tf = TransacaoFixa.objects.create(
-                usuario=request.user, tipo=cat.tipo, descricao=cat.nome,
-                valor=valor or D('0'), frequencia=cat.frequencia,
-                data_inicio=data_inicio, categoria=cat_fin, observacao=obs, ativa=True,
+            return TransacaoFixa.objects.create(
+                usuario=request.user, tipo=cat.tipo,
+                descricao=cat.nome + descricao_extra,
+                valor=val or D('0'), frequencia='mensal',
+                data_inicio=_proxima_data_pagamento(di, du),
+                categoria=cat_fin, observacao=obs, ativa=True,
             )
 
+        tf = tf2 = None
+        is_quinzenal = ess.freq_pagamento == 'quinzenal'
+
+        if cat.slug == 'salario':
+            _salvar_essencial_salario(request, ess)
+            if ess.tipo_salario == 'fixo':
+                tf = _criar_tf(ess.valor, dia_int, dia_util,
+                               ' (1ª parcela)' if is_quinzenal else '')
+                if is_quinzenal and dia2_int:
+                    tf2 = _criar_tf(valor_2 or ess.valor, dia2_int, dia_util_2, ' (2ª parcela)')
+        else:
+            tf = _criar_tf(valor, dia_int, False,
+                           ' (1ª parcela)' if is_quinzenal else '')
+            if is_quinzenal and dia2_int:
+                tf2 = _criar_tf(valor_2 or valor, dia2_int, False, ' (2ª parcela)')
+
         ess.transacao_fixa = tf
+        ess.transacao_fixa_2 = tf2
         ess.save()
         return redirect('essenciais')
 
@@ -865,14 +878,19 @@ def editar_essencial(request, slug):
         ess.dia_util_2       = request.POST.get('dia_util_2') == '1'
         ess.observacao       = obs
 
+        valor2_str = request.POST.get('valor_2', '').replace(',', '.').strip()
+        ess.valor_2 = D(valor2_str) if valor2_str else None
+
         if cat.slug == 'salario':
             _salvar_essencial_salario(request, ess)
+            is_fixo = ess.tipo_salario == 'fixo'
             if ess.transacao_fixa_id:
-                # Só mantém recorrente ativa se for fixo
                 TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(
-                    valor=ess.valor or D('0'),
-                    ativa=(ess.tipo_salario == 'fixo'),
-                    observacao=obs,
+                    valor=ess.valor or D('0'), ativa=is_fixo, observacao=obs,
+                )
+            if ess.transacao_fixa_2_id:
+                TransacaoFixa.objects.filter(pk=ess.transacao_fixa_2_id).update(
+                    valor=ess.valor_2 or ess.valor or D('0'), ativa=is_fixo, observacao=obs,
                 )
         else:
             valor_str = request.POST.get('valor', '').replace(',', '.').strip()
@@ -880,6 +898,10 @@ def editar_essencial(request, slug):
             if ess.transacao_fixa_id:
                 TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(
                     valor=ess.valor or D('0'), observacao=obs,
+                )
+            if ess.transacao_fixa_2_id:
+                TransacaoFixa.objects.filter(pk=ess.transacao_fixa_2_id).update(
+                    valor=ess.valor_2 or ess.valor or D('0'), observacao=obs,
                 )
 
         ess.save()
@@ -927,8 +949,9 @@ def desativar_essencial(request, slug):
     cat = get_object_or_404(CategoriaEssencial, slug=slug)
     ess = get_object_or_404(Essencial, usuario=request.user, categoria=cat)
     if request.method == 'POST':
-        if ess.transacao_fixa_id:
-            TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(ativa=False)
+        ids = [i for i in [ess.transacao_fixa_id, ess.transacao_fixa_2_id] if i]
+        if ids:
+            TransacaoFixa.objects.filter(pk__in=ids).update(ativa=False)
         ess.delete()
     return redirect('essenciais')
 

@@ -77,6 +77,7 @@ class Essencial(models.Model):
     usuario            = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='essenciais')
     categoria          = models.ForeignKey(CategoriaEssencial, on_delete=models.PROTECT, related_name='instancias')
     valor              = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_2            = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     dia_vencimento     = models.PositiveSmallIntegerField(null=True, blank=True, help_text='Dia do mês (1–31)')
     data_inicio        = models.DateField()
     observacao         = models.TextField(blank=True, default='')
@@ -84,6 +85,10 @@ class Essencial(models.Model):
     transacao_fixa     = models.OneToOneField(
         'TransacaoFixa', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='essencial',
+    )
+    transacao_fixa_2   = models.OneToOneField(
+        'TransacaoFixa', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='essencial_2',
     )
     # Campos exclusivos do salário
     tipo_salario       = models.CharField(max_length=15, choices=TIPO_SALARIO_CHOICES, blank=True, default='')
