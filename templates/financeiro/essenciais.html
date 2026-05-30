@@ -86,16 +86,41 @@
           <!-- Valor -->
           {% if cat.variavel %}
             <p class="text-xs text-dim mb-auto">Variável</p>
+
+          {% elif ess.freq_pagamento == 'quinzenal' and ess.dia_vencimento and ess.dia_vencimento_2 %}
+            {% with cor=tipo|yesno:"text-green,text-tx" %}
+            <div class="space-y-1 mb-auto">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] text-dim">{{ ess.dia_vencimento }}{% if ess.dia_util %}º útil{% else %}º dia{% endif %}</span>
+                <span class="text-xs font-medium {{ cor }}">
+                  {{ request.user.simbolo_moeda }} {{ ess.valor|floatformat:"2g" }}
+                </span>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] text-dim">{{ ess.dia_vencimento_2 }}{% if ess.dia_util_2 %}º útil{% else %}º dia{% endif %}</span>
+                <span class="text-xs font-medium {{ cor }}">
+                  {{ request.user.simbolo_moeda }} {% if ess.valor_2 %}{{ ess.valor_2|floatformat:"2g" }}{% else %}{{ ess.valor|floatformat:"2g" }}{% endif %}
+                </span>
+              </div>
+              <div class="border-t border-line pt-1 flex items-center justify-between gap-2">
+                <span class="text-[10px] text-dim">Total/mês</span>
+                <span class="text-xs font-semibold {{ cor }}">
+                  {{ request.user.simbolo_moeda }} {{ ess.total_mensal|floatformat:"2g" }}
+                </span>
+              </div>
+            </div>
+            {% endwith %}
+
           {% elif ess.valor %}
             <p class="text-xs font-medium {% if tipo == 'receita' %}text-green{% else %}text-tx{% endif %} mb-auto">
               {{ request.user.simbolo_moeda }} {{ ess.valor|floatformat:"2g" }}
+              {% if ess.dia_vencimento %}
+                <span class="text-[10px] text-dim font-normal">· {% if ess.dia_util %}{{ ess.dia_vencimento }}º útil{% else %}dia {{ ess.dia_vencimento }}{% endif %}</span>
+              {% endif %}
             </p>
+
           {% else %}
             <p class="text-xs text-dim mb-auto">Não informado</p>
-          {% endif %}
-
-          {% if ess.dia_vencimento %}
-            <p class="text-[10px] text-dim mt-1">Dia {{ ess.dia_vencimento }}</p>
           {% endif %}
 
           <!-- Ações (hover) -->
