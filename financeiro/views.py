@@ -695,6 +695,35 @@ def ajustar_meta(request, pk):
     return redirect('metas')
 
 
+def _proxima_data_pagamento(dia, dia_util=False):
+    """Retorna a próxima data de pagamento a partir de hoje."""
+    import calendar as _cal
+    hoje = date.today()
+
+    if not dia:
+        return hoje
+
+    if dia_util:
+        from .models import _nth_business_day
+        d = _nth_business_day(hoje.year, hoje.month, dia)
+        if d and d >= hoje:
+            return d
+        m = hoje.month % 12 + 1
+        y = hoje.year + (1 if hoje.month == 12 else 0)
+        return _nth_business_day(y, m, dia) or hoje
+    else:
+        try:
+            d = date(hoje.year, hoje.month, dia)
+            if d >= hoje:
+                return d
+        except ValueError:
+            pass
+        m = hoje.month % 12 + 1
+        y = hoje.year + (1 if hoje.month == 12 else 0)
+        ultimo = _cal.monthrange(y, m)[1]
+        return date(y, m, min(dia, ultimo))
+
+
 def _ensure_catalogo():
     if not CategoriaEssencial.objects.exists():
         CategoriaEssencial.sincronizar_catalogo()
@@ -780,8 +809,9 @@ def ativar_essencial(request, slug):
         dia2_int = int(dia2) if dia2.isdigit() and 1 <= int(dia2) <= 31 else None
         dia_util   = request.POST.get('dia_util')   == '1'
         dia_util_2 = request.POST.get('dia_util_2') == '1'
-        data_inicio = request.POST.get('data_inicio') or str(date.today())
         obs = request.POST.get('observacao', '').strip()
+
+        data_inicio = _proxima_data_pagamento(dia_int, dia_util)
 
         ess = Essencial(
             usuario=request.user, categoria=cat,
