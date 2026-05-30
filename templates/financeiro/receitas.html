@@ -96,11 +96,9 @@
           {% for t in transacoes %}
           <tr class="hover:bg-surfacehi transition-colors group">
             <td class="px-4 py-2 text-xs text-muted whitespace-nowrap">{{ t.data|date:"d/m/Y" }}</td>
-            <td class="px-4 py-2 text-tx">
+            <td class="px-4 py-2 text-tx {% if t.observacao %}cursor-help{% endif %}"
+                {% if t.observacao %}title="{{ t.observacao }}"{% endif %}>
               {{ t.nome_display }}
-              {% if t.observacao %}
-                <p class="text-xs text-dim mt-0.5">{{ t.observacao }}</p>
-              {% endif %}
             </td>
             <td class="px-4 py-2">
               {% if t.categoria %}
