@@ -96,10 +96,7 @@
           {% for t in transacoes %}
           <tr class="hover:bg-surfacehi transition-colors group">
             <td class="px-4 py-2 text-xs text-muted whitespace-nowrap">{{ t.data|date:"d/m/Y" }}</td>
-            <td class="px-4 py-2 text-tx {% if t.observacao %}cursor-help{% endif %}"
-                {% if t.observacao %}title="{{ t.observacao }}"{% endif %}>
-              {{ t.nome_display }}
-            </td>
+            <td class="px-4 py-2 text-tx">{{ t.nome_display }}</td>
             <td class="px-4 py-2">
               {% if t.categoria %}
                 <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ t.categoria }}</span>
@@ -112,6 +109,18 @@
             </td>
             <td class="px-4 py-2">
               <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button type="button"
+                        onclick="abrirModal(this)"
+                        data-nome="{{ t.nome_display }}"
+                        data-data="{{ t.data|date:'d/m/Y' }}"
+                        data-valor="{{ request.user.simbolo_moeda }} {{ t.valor|floatformat:'2g' }}"
+                        data-cor="green"
+                        data-categoria="{{ t.categoria|default:'' }}"
+                        data-entidade="{% if t.entidade %}{{ t.entidade.nome }} ({{ t.entidade.get_tipo_display }}){% endif %}"
+                        data-obs="{{ t.observacao }}"
+                        data-criado="{{ t.criado_em|date:'d/m/Y H:i' }}"
+                        data-edit="{% url 'editar_transacao' t.pk %}"
+                        class="text-xs text-muted hover:text-tx transition-colors">Ver</button>
                 <a href="{% url 'editar_transacao' t.pk %}"
                    class="text-xs text-muted hover:text-tx transition-colors">Editar</a>
                 <form method="post" action="{% url 'excluir_transacao' t.pk %}"
@@ -147,5 +156,124 @@
     {% endif %}
 
   </div>
+
+  <!-- Modal de visualização -->
+  <div id="modal-transacao"
+       class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+       onclick="if(event.target===this)fecharModal()">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative bg-surface border border-line rounded-xl w-full max-w-md shadow-2xl">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-line">
+        <span id="m-badge"
+              class="text-[10px] font-medium rounded-full px-2.5 py-0.5 border text-green bg-green/10 border-green/20">
+          Receita
+        </span>
+        <button onclick="fecharModal()"
+                class="w-6 h-6 flex items-center justify-center rounded-md text-dim hover:text-tx hover:bg-surfacehi transition-colors text-lg leading-none">
+          ×
+        </button>
+      </div>
+
+      <!-- Corpo -->
+      <div class="px-5 py-5 space-y-4">
+
+        <!-- Nome + valor -->
+        <div>
+          <p id="m-nome" class="text-base font-semibold text-tx mb-1"></p>
+          <p id="m-valor" class="text-2xl font-semibold text-green"></p>
+        </div>
+
+        <!-- Grid de infos -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <p class="text-[10px] text-dim uppercase tracking-widest mb-0.5">Data</p>
+            <p id="m-data" class="text-sm text-tx"></p>
+          </div>
+          <div>
+            <p class="text-[10px] text-dim uppercase tracking-widest mb-0.5">Categoria</p>
+            <p id="m-categoria" class="text-sm text-tx"></p>
+          </div>
+          <div id="m-entidade-row" class="hidden">
+            <p class="text-[10px] text-dim uppercase tracking-widest mb-0.5">Entidade</p>
+            <p id="m-entidade" class="text-sm text-tx"></p>
+          </div>
+          <div>
+            <p class="text-[10px] text-dim uppercase tracking-widest mb-0.5">Registrado em</p>
+            <p id="m-criado" class="text-sm text-muted"></p>
+          </div>
+        </div>
+
+        <!-- Observação -->
+        <div id="m-obs-row" class="hidden">
+          <p class="text-[10px] text-dim uppercase tracking-widest mb-1">Observação</p>
+          <p id="m-obs" class="text-sm text-tx bg-bg border border-line rounded-lg px-3 py-2"></p>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-line">
+        <a id="m-edit-link" href="#"
+           class="text-xs font-medium text-muted hover:text-tx border border-line rounded-md px-3 py-1.5 transition-colors">
+          Editar
+        </a>
+        <button onclick="fecharModal()"
+                class="text-xs font-medium text-tx bg-surfacehi hover:bg-line border border-line rounded-md px-3 py-1.5 transition-colors">
+          Fechar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  function abrirModal(btn) {
+    var cor      = btn.dataset.cor;
+    var corClass = cor === 'green' ? 'text-green' : 'text-red';
+    var bgClass  = cor === 'green' ? 'bg-green/10 border-green/20 text-green' : 'bg-red/10 border-red/20 text-red';
+    var label    = cor === 'green' ? 'Receita' : 'Despesa';
+
+    document.getElementById('m-badge').className =
+      'text-[10px] font-medium rounded-full px-2.5 py-0.5 border ' + bgClass;
+    document.getElementById('m-badge').textContent = label;
+    document.getElementById('m-nome').textContent  = btn.dataset.nome;
+    document.getElementById('m-valor').className   = 'text-2xl font-semibold ' + corClass;
+    document.getElementById('m-valor').textContent = btn.dataset.valor;
+    document.getElementById('m-data').textContent  = btn.dataset.data;
+    document.getElementById('m-criado').textContent = btn.dataset.criado;
+    document.getElementById('m-categoria').textContent = btn.dataset.categoria || '—';
+    document.getElementById('m-edit-link').href    = btn.dataset.edit;
+
+    var entRow = document.getElementById('m-entidade-row');
+    if (btn.dataset.entidade) {
+      entRow.classList.remove('hidden');
+      document.getElementById('m-entidade').textContent = btn.dataset.entidade;
+    } else {
+      entRow.classList.add('hidden');
+    }
+
+    var obsRow = document.getElementById('m-obs-row');
+    if (btn.dataset.obs) {
+      obsRow.classList.remove('hidden');
+      document.getElementById('m-obs').textContent = btn.dataset.obs;
+    } else {
+      obsRow.classList.add('hidden');
+    }
+
+    document.getElementById('modal-transacao').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModal() {
+    document.getElementById('modal-transacao').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') fecharModal();
+  });
+  </script>
 
 {% endblock %}
