@@ -19,9 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(
     DEBUG=(bool, False)
 )
-environ.Env.read_env(BASE_DIR / '.env')
-
-print("DATABASE_URL:", env('DATABASE_URL', default='NÃO ENCONTRADO'))
+if (BASE_DIR / '.env').exists():
+    environ.Env.read_env(BASE_DIR / '.env')
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
