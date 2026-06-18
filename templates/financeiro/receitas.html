@@ -79,10 +79,10 @@
   </div>
 
   <!-- Tabela -->
-  <div class="bg-surface border border-line rounded-lg overflow-hidden">
+  <div class="bg-surface border border-line rounded-lg overflow-x-auto">
 
     {% if transacoes %}
-      <table class="w-full text-sm">
+      <table class="w-full text-sm min-w-[520px]">
         <thead>
           <tr class="border-b border-line">
             <th class="text-left text-xs font-medium text-dim px-4 py-2">Data</th>
@@ -108,7 +108,7 @@
               {{ request.user.simbolo_moeda }} {{ t.valor|floatformat:"2g" }}
             </td>
             <td class="px-4 py-2">
-              <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button type="button"
                         onclick="abrirModal(this)"
                         data-nome="{{ t.nome_display }}"

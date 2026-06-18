@@ -20,10 +20,12 @@ from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import include, path
 
-from helpy.views import home, painel, resumo
+from helpy.views import home, manifest, painel, resumo, serviceworker
 from usuarios.views import cadastro, configuracoes, perfil
 
 urlpatterns = [
+    path('sw.js', serviceworker, name='serviceworker'),
+    path('manifest.json', manifest, name='manifest'),
     path('', home, name='home'),
     path('entrar/', LoginView.as_view(template_name='login.html'), name='login'),
     path('sair/', LogoutView.as_view(), name='logout'),

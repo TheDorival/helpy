@@ -5,9 +5,19 @@ from datetime import date, timedelta
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import render
+from django.views.decorators.cache import cache_control
 
 from financeiro.models import Essencial, Meta, SaldoExtra, Transacao, TransacaoFixa
 from financeiro.views import _periodo, sincronizar_fixas
+
+
+@cache_control(max_age=0, no_cache=True, must_revalidate=True)
+def serviceworker(request):
+    return render(request, 'pwa/sw.js', content_type='application/javascript')
+
+
+def manifest(request):
+    return render(request, 'pwa/manifest.json', content_type='application/manifest+json')
 
 
 def home(request):
