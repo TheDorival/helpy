@@ -73,9 +73,15 @@
 
   <!-- Card total -->
   <div class="bg-surface border border-line rounded-lg p-4 mb-5">
-    <p class="text-xs text-muted mb-1">Total em {{ mes_nome }}</p>
+    <p class="text-xs text-muted mb-1">Recebido em {{ mes_nome }}</p>
     <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total|floatformat:"2g" }}</p>
     <p class="text-xs text-dim mt-1">{{ transacoes.count }} registro{{ transacoes.count|pluralize }}</p>
+    {% if previstas %}
+      <p class="text-xs text-muted mt-2 pt-2 border-t border-line">
+        A receber: <span class="text-green font-medium">{{ request.user.simbolo_moeda }} {{ total_previsto|floatformat:"2g" }}</span>
+        · Total previsto do período: <span class="text-tx font-medium">{{ request.user.simbolo_moeda }} {{ total_geral|floatformat:"2g" }}</span>
+      </p>
+    {% endif %}
   </div>
 
   <!-- Tabela -->
@@ -143,7 +149,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
           </svg>
         </div>
-        <p class="text-sm text-muted mb-1">Nenhuma receita em {{ mes_nome }}</p>
+        <p class="text-sm text-muted mb-1">Nenhuma receita realizada em {{ mes_nome }}</p>
         <p class="text-xs text-dim mb-5">Registre uma entrada de dinheiro para começar.</p>
         <a href="{% url 'nova_receita' %}"
            class="inline-flex items-center gap-2 text-xs font-medium text-green border border-green/30 bg-green/5 hover:bg-green/10 px-3 py-1.5 rounded-md transition-colors">
@@ -156,6 +162,45 @@
     {% endif %}
 
   </div>
+
+  <!-- Previstas no período (calculadas das recorrentes, não gravadas) -->
+  {% if previstas %}
+    <div class="mt-5 bg-surface border border-dashed border-line rounded-lg overflow-x-auto">
+      <div class="flex items-center justify-between px-4 py-2.5 border-b border-line">
+        <p class="text-xs font-medium text-dim uppercase tracking-widest">Previstas no período</p>
+        <span class="text-xs text-muted">
+          {{ previstas|length }} lançamento{{ previstas|length|pluralize }} ·
+          <span class="text-green font-medium">{{ request.user.simbolo_moeda }} {{ total_previsto|floatformat:"2g" }}</span>
+        </span>
+      </div>
+      <table class="w-full text-sm min-w-[520px]">
+        <tbody class="divide-y divide-line">
+          {% for p in previstas %}
+          <tr class="opacity-70 hover:opacity-100 transition-opacity">
+            <td class="px-4 py-2 text-xs text-muted whitespace-nowrap">{{ p.data|date:"d/m/Y" }}</td>
+            <td class="px-4 py-2 text-tx">{{ p.nome_display }}</td>
+            <td class="px-4 py-2">
+              {% if p.categoria %}
+                <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ p.categoria }}</span>
+              {% else %}
+                <span class="text-xs text-dim">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2 text-right font-semibold text-green whitespace-nowrap">
+              {{ request.user.simbolo_moeda }} {{ p.valor|floatformat:"2g" }}
+            </td>
+            <td class="px-4 py-2 text-right">
+              <span class="text-[10px] text-dim border border-line rounded-full px-2 py-0.5 whitespace-nowrap">prevista</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="px-4 py-2 text-[11px] text-dim border-t border-line">
+        Calculadas das suas recorrentes — viram registros reais automaticamente quando a data chegar.
+      </p>
+    </div>
+  {% endif %}
 
   <!-- Modal de visualização -->
   <div id="modal-transacao"
