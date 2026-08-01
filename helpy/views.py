@@ -148,6 +148,12 @@ def resumo(request):
     total_despesas = qs_desp.aggregate(t=Sum('valor'))['t'] or 0
     saldo = total_receitas - total_despesas
 
+    # Previsto: ocorrências futuras das fixas dentro do período (em memória)
+    previstas = projetar_fixas(request.user, ctx['inicio'], ctx['fim'])
+    rec_previsto = sum(p['valor'] for p in previstas if p['tipo'] == 'receita')
+    desp_previsto = sum(p['valor'] for p in previstas if p['tipo'] == 'despesa')
+    saldo_previsto = (total_receitas + rec_previsto) - (total_despesas + desp_previsto)
+
     transacoes = (
         Transacao.objects
         .filter(usuario=request.user, data__gte=ctx['inicio'], data__lte=ctx['fim'])
@@ -186,6 +192,10 @@ def resumo(request):
         'total_receitas': total_receitas,
         'total_despesas': total_despesas,
         'saldo': saldo,
+        'rec_previsto': rec_previsto,
+        'desp_previsto': desp_previsto,
+        'saldo_previsto': saldo_previsto,
+        'tem_previsto': bool(previstas),
         'transacoes': transacoes,
         'semanas_labels': json.dumps(semanas_labels),
         'semanas_rec': json.dumps(semanas_rec),

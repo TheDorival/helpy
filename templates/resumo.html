@@ -89,6 +89,12 @@
         {{ request.user.simbolo_moeda }} {{ saldo|floatformat:"2g" }}
       </p>
       <p class="mt-1 text-xs text-dim">Receitas − Despesas</p>
+      {% if tem_previsto %}
+        <p class="mt-1 text-xs text-muted">
+          Previsto p/ fim do período:
+          <span class="{% if saldo_previsto >= 0 %}text-tx{% else %}text-red{% endif %} font-medium">{{ request.user.simbolo_moeda }} {{ saldo_previsto|floatformat:"2g" }}</span>
+        </p>
+      {% endif %}
     </div>
 
     <div class="bg-surface border border-line rounded-lg p-5">
@@ -102,7 +108,11 @@
         </a>
       </div>
       <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:"2g" }}</p>
-      <p class="mt-1 text-xs text-dim">Ver no detalhe →</p>
+      {% if rec_previsto %}
+        <p class="mt-1 text-xs text-muted">A receber: <span class="text-green font-medium">{{ request.user.simbolo_moeda }} {{ rec_previsto|floatformat:"2g" }}</span></p>
+      {% else %}
+        <p class="mt-1 text-xs text-dim">Ver no detalhe →</p>
+      {% endif %}
     </div>
 
     <div class="bg-surface border border-line rounded-lg p-5">
@@ -116,7 +126,11 @@
         </a>
       </div>
       <p class="text-2xl font-semibold text-red">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</p>
-      <p class="mt-1 text-xs text-dim">Ver no detalhe →</p>
+      {% if desp_previsto %}
+        <p class="mt-1 text-xs text-muted">A pagar: <span class="text-red font-medium">{{ request.user.simbolo_moeda }} {{ desp_previsto|floatformat:"2g" }}</span></p>
+      {% else %}
+        <p class="mt-1 text-xs text-dim">Ver no detalhe →</p>
+      {% endif %}
     </div>
 
   </div>
