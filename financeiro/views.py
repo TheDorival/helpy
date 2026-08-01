@@ -819,6 +819,19 @@ def _get_or_create_categoria_financeiro(usuario, nome, tipo):
     return cat
 
 
+def _criar_tf_essencial(usuario, cat, valor, dia, dia_util, obs, sufixo=''):
+    """Cria a TransacaoFixa mensal vinculada a um essencial."""
+    from decimal import Decimal as D
+    cat_fin = _get_or_create_categoria_financeiro(usuario, cat.nome, cat.tipo)
+    return TransacaoFixa.objects.create(
+        usuario=usuario, tipo=cat.tipo,
+        descricao=cat.nome + sufixo,
+        valor=valor or D('0'), frequencia='mensal',
+        data_inicio=_proxima_data_pagamento(dia, dia_util),
+        categoria=cat_fin, observacao=obs, ativa=True,
+    )
+
+
 @login_required
 def essenciais(request):
     _ensure_catalogo()
@@ -909,21 +922,15 @@ def ativar_essencial(request, slug):
         ess.valor_2 = valor_2
 
         def _criar_tf(val, di, du, descricao_extra=''):
-            cat_fin = _get_or_create_categoria_financeiro(request.user, cat.nome, cat.tipo)
-            return TransacaoFixa.objects.create(
-                usuario=request.user, tipo=cat.tipo,
-                descricao=cat.nome + descricao_extra,
-                valor=val or D('0'), frequencia='mensal',
-                data_inicio=_proxima_data_pagamento(di, du),
-                categoria=cat_fin, observacao=obs, ativa=True,
-            )
+            return _criar_tf_essencial(request.user, cat, val, di, du, obs, descricao_extra)
 
         tf = tf2 = None
         is_quinzenal = ess.freq_pagamento == 'quinzenal'
 
         if cat.slug == 'salario':
             _salvar_essencial_salario(request, ess)
-            if ess.tipo_salario == 'fixo':
+            # fixo: valor integral; fixo_comissao: só a parte fixa (comissão é manual)
+            if ess.tipo_salario in ('fixo', 'fixo_comissao'):
                 tf = _criar_tf(ess.valor, dia_int, dia_util,
                                ' (1ª parcela)' if is_quinzenal else '')
                 if is_quinzenal and dia2_int:
@@ -966,14 +973,26 @@ def editar_essencial(request, slug):
 
         if cat.slug == 'salario':
             _salvar_essencial_salario(request, ess)
-            is_fixo = ess.tipo_salario == 'fixo'
+            # fixo e fixo_comissao têm parte previsível → recorrente ativa
+            tem_fixa = ess.tipo_salario in ('fixo', 'fixo_comissao')
+            is_quinzenal = ess.freq_pagamento == 'quinzenal'
             if ess.transacao_fixa_id:
                 TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id).update(
-                    valor=ess.valor or D('0'), ativa=is_fixo, observacao=obs,
+                    valor=ess.valor or D('0'), ativa=tem_fixa, observacao=obs,
+                )
+            elif tem_fixa:
+                ess.transacao_fixa = _criar_tf_essencial(
+                    request.user, cat, ess.valor, ess.dia_vencimento, ess.dia_util, obs,
+                    ' (1ª parcela)' if is_quinzenal else '',
                 )
             if ess.transacao_fixa_2_id:
                 TransacaoFixa.objects.filter(pk=ess.transacao_fixa_2_id).update(
-                    valor=ess.valor_2 or ess.valor or D('0'), ativa=is_fixo, observacao=obs,
+                    valor=ess.valor_2 or ess.valor or D('0'), ativa=tem_fixa, observacao=obs,
+                )
+            elif tem_fixa and is_quinzenal and ess.dia_vencimento_2:
+                ess.transacao_fixa_2 = _criar_tf_essencial(
+                    request.user, cat, ess.valor_2 or ess.valor,
+                    ess.dia_vencimento_2, ess.dia_util_2, obs, ' (2ª parcela)',
                 )
         else:
             valor_str = request.POST.get('valor', '').replace(',', '.').strip()
@@ -1010,17 +1029,26 @@ def registrar_salario(request):
         fixo_str     = request.POST.get('valor_fixo', '0').replace(',', '.').strip()
         comissao = D(comissao_str) if comissao_str else D('0')
         fixo     = D(fixo_str)     if fixo_str     else D('0')
+
+        # Se a parte fixa já é gerada pela recorrente, registra só a comissão
+        fixa_automatica = bool(
+            ess.tipo_salario == 'fixo_comissao' and ess.transacao_fixa_id
+            and TransacaoFixa.objects.filter(pk=ess.transacao_fixa_id, ativa=True).exists()
+        )
+        if fixa_automatica:
+            fixo = D('0')
         total = fixo + comissao
 
-        cat_fin = _get_or_create_categoria_financeiro(request.user, 'Salário', 'receita')
-        descricao = 'Salário'
-        if comissao > 0:
-            descricao = 'Salário + Comissão' if fixo > 0 else 'Comissão'
-        Transacao.objects.create(
-            usuario=request.user, tipo='receita',
-            descricao=descricao, valor=total,
-            data=date.today(), categoria=cat_fin,
-        )
+        if total > 0:
+            cat_fin = _get_or_create_categoria_financeiro(request.user, 'Salário', 'receita')
+            descricao = 'Salário'
+            if comissao > 0:
+                descricao = 'Salário + Comissão' if fixo > 0 else 'Comissão'
+            Transacao.objects.create(
+                usuario=request.user, tipo='receita',
+                descricao=descricao, valor=total,
+                data=date.today(), categoria=cat_fin,
+            )
         ess.ultimo_registro = date.today()
         ess.save(update_fields=['ultimo_registro'])
 

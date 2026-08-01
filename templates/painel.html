@@ -291,7 +291,11 @@
         <p class="text-sm font-semibold text-tx">💰 Registrar recebimento</p>
         <p class="text-xs text-dim mt-0.5">
           {% if salario_pendente.tipo_salario == 'fixo_comissao' %}
-            Salário de hoje — informe o valor da comissão além do fixo.
+            {% if salario_pendente.transacao_fixa.ativa %}
+              A parte fixa já é lançada automaticamente — informe só a comissão.
+            {% else %}
+              Salário de hoje — informe o valor da comissão além do fixo.
+            {% endif %}
           {% else %}
             Informe o quanto você recebeu hoje.
           {% endif %}
@@ -301,7 +305,7 @@
       <form method="post" action="{% url 'registrar_salario' %}" class="px-5 py-4 space-y-3">
         {% csrf_token %}
 
-        {% if salario_pendente.tipo_salario == 'fixo_comissao' %}
+        {% if salario_pendente.tipo_salario == 'fixo_comissao' and not salario_pendente.transacao_fixa.ativa %}
         <div>
           <label class="block text-xs font-medium text-muted mb-1">Salário fixo</label>
           <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden">
@@ -322,7 +326,9 @@
         {% else %}
         <input type="hidden" name="valor_fixo" value="0">
         <div>
-          <label class="block text-xs font-medium text-muted mb-1">Valor recebido hoje</label>
+          <label class="block text-xs font-medium text-muted mb-1">
+            {% if salario_pendente.tipo_salario == 'fixo_comissao' %}Comissão recebida{% else %}Valor recebido hoje{% endif %}
+          </label>
           <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden focus-within:border-green/50 transition-colors">
             <span class="text-sm text-dim px-3 border-r border-line">{{ request.user.simbolo_moeda }}</span>
             <input type="number" name="comissao" step="0.01" min="0" placeholder="0,00" autofocus
