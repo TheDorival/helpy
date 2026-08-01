@@ -135,9 +135,12 @@
       </div>
 
       <p class="text-xl font-semibold text-tx mb-0.5">
+        {{ request.user.simbolo_moeda }} {{ desp_prevista|floatformat:"2g" }}
+      </p>
+      <p class="text-xs text-dim mb-3">
+        Previsto para {{ hoje|date:"F" }} · gasto até agora:
         {{ request.user.simbolo_moeda }} {{ desp_mes_atual|floatformat:"2g" }}
       </p>
-      <p class="text-xs text-dim mb-3">Gasto em {{ hoje|date:"F" }}</p>
 
       {% if avg_desp_3m > 0 %}
         {% widthratio desp_mes_atual avg_desp_3m 100 as pct_raw %}
