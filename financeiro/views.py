@@ -264,7 +264,10 @@ def graficos(request):
     tem_dados = tem_realizado or bool(previstos)
 
     if tem_dados:
-        if tem_realizado:
+        if inicio:
+            # período selecionado define o início, mesmo sem dados (meses zerados)
+            mes_ini = date(inicio.year, inicio.month, 1)
+        elif tem_realizado:
             primeira = qs.order_by('data').values_list('data', flat=True).first()
             mes_ini = date(primeira.year, primeira.month, 1)
         else:
