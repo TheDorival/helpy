@@ -4,11 +4,11 @@ from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views.decorators.cache import cache_control
 
-from financeiro.models import Essencial, Meta, SaldoExtra, Transacao, TransacaoFixa
-from financeiro.views import _periodo, sincronizar_fixas
+from financeiro.models import Essencial, Meta, SaldoExtra, Transacao
+from financeiro.views import _periodo, projetar_fixas, sincronizar_fixas
 
 
 @cache_control(max_age=0, no_cache=True, must_revalidate=True)
@@ -21,6 +21,8 @@ def manifest(request):
 
 
 def home(request):
+    if request.user.is_authenticated:
+        return redirect('painel')
     return render(request, 'home.html')
 
 
@@ -52,24 +54,29 @@ def _media_despesas_3m(usuario):
 
 
 def _previsao_mensal_fixas(usuario):
-    """Retorna (receita_mensal_prevista, despesa_mensal_prevista) com base nas fixas ativas."""
-    FREQ_OCC = {
-        'diaria': 30, 'semanal': 4.33, 'quinzenal': 2,
-        'mensal': 1, 'bimestral': 0.5, 'trimestral': 1/3,
-        'semestral': 1/6, 'anual': 1/12,
-    }
-    rec = 0.0
-    desp = 0.0
-    for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True):
-        if tf.frequencia == 'intervalo' and tf.intervalo_dias:
-            occ = 30 / tf.intervalo_dias
+    """Retorna (receita_prevista, despesa_prevista) exatas do mês atual:
+    realizado até hoje + ocorrências futuras das fixas até o fim do mês
+    (calculadas em memória, sem gravar no banco).
+
+    Deve ser chamada após `sincronizar_fixas`."""
+    hoje = date.today()
+    inicio = date(hoje.year, hoje.month, 1)
+    fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+
+    def _realizado(tipo):
+        return float(
+            Transacao.objects
+            .filter(usuario=usuario, tipo=tipo, data__gte=inicio, data__lte=hoje)
+            .aggregate(t=Sum('valor'))['t'] or 0
+        )
+
+    rec = _realizado('receita')
+    desp = _realizado('despesa')
+    for p in projetar_fixas(usuario, hoje + timedelta(days=1), fim):
+        if p['tipo'] == 'receita':
+            rec += float(p['valor'])
         else:
-            occ = FREQ_OCC.get(tf.frequencia, 1)
-        valor = float(tf.valor) * occ
-        if tf.tipo == 'receita':
-            rec += valor
-        else:
-            desp += valor
+            desp += float(p['valor'])
     return rec, desp
 
 
