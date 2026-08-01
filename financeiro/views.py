@@ -225,6 +225,8 @@ PERIODOS = [
     ('1a',        'Último ano'),
     ('ano_atual', 'Ano atual'),
     ('tudo',      'Todo o período'),
+    ('prox_3m',   'Próximos 3 meses'),
+    ('prox_6m',   'Próximos 6 meses'),
 ]
 
 
@@ -232,8 +234,10 @@ PERIODOS = [
 def graficos(request):
     sincronizar_fixas(request.user)
     hoje = date.today()
+    mes_atual = date(hoje.year, hoje.month, 1)
     periodo = request.GET.get('periodo', '6m')
 
+    n_proj = 3  # meses futuros projetados
     if periodo == '3m':
         inicio = _mes_atras(hoje, 2)
     elif periodo == '6m':
@@ -242,6 +246,12 @@ def graficos(request):
         inicio = _mes_atras(hoje, 11)
     elif periodo == 'ano_atual':
         inicio = date(hoje.year, 1, 1)
+    elif periodo == 'prox_3m':
+        inicio = mes_atual
+        n_proj = 3
+    elif periodo == 'prox_6m':
+        inicio = mes_atual
+        n_proj = 6
     else:
         inicio = None
 
@@ -249,9 +259,8 @@ def graficos(request):
     if inicio:
         qs = qs.filter(data__gte=inicio)
 
-    # ── Projeção em memória: restante do mês atual + 3 meses futuros ──
-    mes_atual = date(hoje.year, hoje.month, 1)
-    fim_proj = _data_parcela(mes_atual, 4) - timedelta(days=1)  # último dia do 3º mês futuro
+    # ── Projeção em memória: restante do mês atual + n_proj meses futuros ──
+    fim_proj = _data_parcela(mes_atual, n_proj + 1) - timedelta(days=1)  # último dia do n-ésimo mês futuro
     previstos = projetar_fixas(request.user, hoje + timedelta(days=1), fim_proj)
 
     prev_rec, prev_desp = {}, {}
