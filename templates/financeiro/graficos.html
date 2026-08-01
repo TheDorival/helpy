@@ -97,6 +97,9 @@
       const recData   = {{ rec_data|safe }};
       const despData  = {{ desp_data|safe }};
       const saldoData = {{ saldo_data|safe }};
+      const recPrevData   = {{ rec_prev_data|safe }};
+      const despPrevData  = {{ desp_prev_data|safe }};
+      const saldoPrevData = {{ saldo_prev_data|safe }};
       const catDespLabels = {{ cat_desp_labels|safe }};
       const catDespData   = {{ cat_desp_data|safe }};
       const catRecLabels  = {{ cat_rec_labels|safe }};
@@ -129,6 +132,7 @@
               borderColor: '#3ecf8e',
               borderWidth: 1.5,
               borderRadius: 3,
+              skipNull: true,
             },
             {
               label: 'Despesas',
@@ -137,6 +141,25 @@
               borderColor: '#f16060',
               borderWidth: 1.5,
               borderRadius: 3,
+              skipNull: true,
+            },
+            {
+              label: 'Receitas (prev.)',
+              data: recPrevData,
+              backgroundColor: '#3ecf8e0d',
+              borderColor: '#3ecf8e59',
+              borderWidth: 1.5,
+              borderRadius: 3,
+              skipNull: true,
+            },
+            {
+              label: 'Despesas (prev.)',
+              data: despPrevData,
+              backgroundColor: '#f160600d',
+              borderColor: '#f1606059',
+              borderWidth: 1.5,
+              borderRadius: 3,
+              skipNull: true,
             },
           ],
         },
@@ -159,25 +182,41 @@
         type: 'line',
         data: {
           labels,
-          datasets: [{
-            label: 'Saldo acumulado',
-            data: saldoData,
-            borderColor: '#4c8eff',
-            backgroundColor: '#4c8eff18',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.35,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            pointBackgroundColor: '#4c8eff',
-          }],
+          datasets: [
+            {
+              label: 'Saldo acumulado',
+              data: saldoData,
+              borderColor: '#4c8eff',
+              backgroundColor: '#4c8eff18',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: '#4c8eff',
+            },
+            {
+              label: 'Saldo previsto',
+              data: saldoPrevData,
+              borderColor: '#4c8eff99',
+              borderWidth: 2,
+              borderDash: [6, 4],
+              fill: false,
+              tension: 0.35,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointStyle: 'rectRot',
+              pointBackgroundColor: '#222222',
+              pointBorderColor: '#4c8eff99',
+            },
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: (c) => ` ${fmt(c.parsed.y)}` } },
+            tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } },
           },
           scales: {
             x: { grid: { display: false }, ticks: { maxRotation: 45 } },
