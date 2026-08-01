@@ -71,7 +71,7 @@
             <div class="flex items-center gap-2 flex-shrink-0">
               <form method="post" action="{% url 'atualizar_saldo_extra' se.pk %}" class="flex items-center gap-1">
                 {% csrf_token %}
-                <input type="number" name="valor" value="{{ se.valor }}" step="0.01"
+                <input type="number" name="valor" value="{{ se.valor|floatformat:'2u' }}" step="0.01"
                        class="w-20 text-right text-xs bg-transparent border-b border-transparent focus:border-line outline-none text-tx py-0.5 transition-colors"
                        onchange="this.form.submit()">
               </form>
@@ -314,7 +314,7 @@
           <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden">
             <span class="text-sm text-dim px-3 border-r border-line">{{ request.user.simbolo_moeda }}</span>
             <input type="number" name="valor_fixo" step="0.01" min="0"
-                   value="{{ salario_pendente.valor_fixo|default:'' }}"
+                   value="{{ salario_pendente.valor_fixo|default:''|floatformat:'2u' }}"
                    class="flex-1 text-sm bg-transparent px-3 py-2 text-tx outline-none">
           </div>
         </div>

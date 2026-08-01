@@ -127,7 +127,7 @@
                 <span class="text-xs text-dim flex-shrink-0">Ajuste</span>
                 <div class="flex items-center bg-bg border border-line rounded overflow-hidden focus-within:border-accent/50 transition-colors">
                   <span class="text-xs text-dim px-1.5 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
-                  <input type="number" name="ajuste" value="{{ meta.ajuste }}" step="0.01"
+                  <input type="number" name="ajuste" value="{{ meta.ajuste|floatformat:'2u' }}" step="0.01"
                          class="w-20 text-xs bg-transparent px-2 py-1 text-tx outline-none text-right" placeholder="0,00">
                 </div>
                 <button type="submit" class="text-xs text-dim hover:text-tx border border-line rounded px-2 py-1 hover:border-muted transition-colors flex-shrink-0">Salvar</button>
