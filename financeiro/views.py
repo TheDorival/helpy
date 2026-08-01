@@ -9,7 +9,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CategoriaForm, EmprestimoForm, EntidadeForm, MetaForm, TransacaoFixaForm, TransacaoForm
 from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial,
-                     Meta, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa, _avancar_data)
+                     Meta, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa,
+                     _avancar_data, _data_parcela)
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -55,30 +56,31 @@ def _periodo(request):
     }
 
 
-@login_required
-def receitas(request):
+def _listagem_transacoes(request, tipo, template):
     ctx = _periodo(request)
     sincronizar_fixas(request.user, limite=min(ctx['fim'], date.today()))
     qs = Transacao.objects.filter(
-        usuario=request.user, tipo='receita',
+        usuario=request.user, tipo=tipo,
         data__gte=ctx['inicio'], data__lte=ctx['fim'],
     ).select_related('entidade', 'categoria')
     ctx['transacoes'] = qs
     ctx['total'] = qs.aggregate(t=Sum('valor'))['t'] or 0
-    return render(request, 'financeiro/receitas.html', ctx)
+
+    previstas = projetar_fixas(request.user, ctx['inicio'], ctx['fim'], tipo=tipo)
+    ctx['previstas'] = previstas
+    ctx['total_previsto'] = sum(p['valor'] for p in previstas)
+    ctx['total_geral'] = ctx['total'] + ctx['total_previsto']
+    return render(request, template, ctx)
+
+
+@login_required
+def receitas(request):
+    return _listagem_transacoes(request, 'receita', 'financeiro/receitas.html')
 
 
 @login_required
 def despesas(request):
-    ctx = _periodo(request)
-    sincronizar_fixas(request.user, limite=min(ctx['fim'], date.today()))
-    qs = Transacao.objects.filter(
-        usuario=request.user, tipo='despesa',
-        data__gte=ctx['inicio'], data__lte=ctx['fim'],
-    ).select_related('entidade', 'categoria')
-    ctx['transacoes'] = qs
-    ctx['total'] = qs.aggregate(t=Sum('valor'))['t'] or 0
-    return render(request, 'financeiro/despesas.html', ctx)
+    return _listagem_transacoes(request, 'despesa', 'financeiro/despesas.html')
 
 
 def _entidades_ctx(usuario):
@@ -177,6 +179,40 @@ def sincronizar_fixas(usuario, limite=None):
             TransacaoFixa.objects.filter(pk=tf.pk).update(ultima_geracao=ultima)
 
 
+def projetar_fixas(usuario, inicio, fim, tipo=None):
+    """Retorna ocorrências FUTURAS (ainda não geradas) das fixas ativas entre
+    `inicio` e `fim`, calculadas em memória — nada é gravado no banco.
+
+    Deve ser chamada após `sincronizar_fixas`, para que `ultima_geracao`
+    esteja atualizada e não haja sobreposição com transações já criadas.
+    """
+    itens = []
+    qs = TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade')
+    if tipo:
+        qs = qs.filter(tipo=tipo)
+
+    for tf in qs:
+        d = (_avancar_data(tf.ultima_geracao, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day)
+             if tf.ultima_geracao else tf.data_inicio)
+        lim = min(fim, tf.data_fim) if tf.data_fim else fim
+        guarda = 0
+        while d <= lim and guarda < 500:
+            if d >= inicio:
+                itens.append({
+                    'data': d,
+                    'tipo': tf.tipo,
+                    'nome_display': tf.nome_display,
+                    'valor': tf.valor,
+                    'categoria': tf.categoria,
+                    'fixa': tf,
+                })
+            guarda += 1
+            d = _avancar_data(d, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day)
+
+    itens.sort(key=lambda x: x['data'])
+    return itens
+
+
 def _mes_atras(hoje, n):
     """Primeiro dia do mês N meses antes do mês atual."""
     total = hoje.year * 12 + (hoje.month - 1) - n
@@ -213,18 +249,35 @@ def graficos(request):
     if inicio:
         qs = qs.filter(data__gte=inicio)
 
-    tem_dados = qs.exists()
+    # ── Projeção em memória: restante do mês atual + 3 meses futuros ──
+    mes_atual = date(hoje.year, hoje.month, 1)
+    fim_proj = _data_parcela(mes_atual, 4) - timedelta(days=1)  # último dia do 3º mês futuro
+    previstos = projetar_fixas(request.user, hoje + timedelta(days=1), fim_proj)
+
+    prev_rec, prev_desp = {}, {}
+    for p in previstos:
+        m = date(p['data'].year, p['data'].month, 1)
+        alvo = prev_rec if p['tipo'] == 'receita' else prev_desp
+        alvo[m] = alvo.get(m, 0.0) + float(p['valor'])
+
+    tem_realizado = qs.exists()
+    tem_dados = tem_realizado or bool(previstos)
 
     if tem_dados:
-        primeira = qs.order_by('data').values_list('data', flat=True).first()
-        mes_ini = date(primeira.year, primeira.month, 1)
-        mes_fim = date(hoje.year, hoje.month, 1)
+        if tem_realizado:
+            primeira = qs.order_by('data').values_list('data', flat=True).first()
+            mes_ini = date(primeira.year, primeira.month, 1)
+        else:
+            mes_ini = mes_atual
+        mes_fim = date(fim_proj.year, fim_proj.month, 1)
 
         meses = []
         m = mes_ini
         while m <= mes_fim:
             meses.append(m)
             m = date(m.year + (m.month == 12), m.month % 12 + 1, 1)
+
+        idx_atual = meses.index(mes_atual)
 
         def agg_mensal(tipo):
             result = {}
@@ -239,13 +292,39 @@ def graficos(request):
 
         mostrar_ano = len(meses) > 12
         labels = [MESES[m.month] + (f"/{str(m.year)[-2:]}" if mostrar_ano else '') for m in meses]
-        rec_data  = [rec_mens.get(m, 0)  for m in meses]
-        desp_data = [desp_mens.get(m, 0) for m in meses]
+        rec_data  = [rec_mens.get(m, 0)  if m <= mes_atual else None for m in meses]
+        desp_data = [desp_mens.get(m, 0) if m <= mes_atual else None for m in meses]
 
+        # Previsto por mês: mês atual = realizado + restante; futuros = só projeção
+        rec_prev_data, desp_prev_data = [], []
+        for m in meses:
+            if m < mes_atual:
+                rec_prev_data.append(None)
+                desp_prev_data.append(None)
+            elif m == mes_atual:
+                rec_prev_data.append(round(rec_mens.get(m, 0) + prev_rec.get(m, 0.0), 2))
+                desp_prev_data.append(round(desp_mens.get(m, 0) + prev_desp.get(m, 0.0), 2))
+            else:
+                rec_prev_data.append(round(prev_rec.get(m, 0.0), 2))
+                desp_prev_data.append(round(prev_desp.get(m, 0.0), 2))
+
+        # Saldo realizado (até hoje) + extensão prevista
         saldo_data, saldo = [], 0
-        for r, d in zip(rec_data, desp_data):
-            saldo = round(saldo + r - d, 2)
-            saldo_data.append(saldo)
+        for m in meses:
+            if m <= mes_atual:
+                saldo = round(saldo + rec_mens.get(m, 0) - desp_mens.get(m, 0), 2)
+                saldo_data.append(saldo)
+            else:
+                saldo_data.append(None)
+
+        saldo_prev_data = [None] * len(meses)
+        saldo_p = saldo_data[idx_atual] or 0
+        saldo_prev_data[idx_atual] = saldo_p  # ponto de conexão com a linha realizada
+        saldo_p = round(saldo_p + prev_rec.get(mes_atual, 0.0) - prev_desp.get(mes_atual, 0.0), 2)
+        for i in range(idx_atual + 1, len(meses)):
+            m = meses[i]
+            saldo_p = round(saldo_p + prev_rec.get(m, 0.0) - prev_desp.get(m, 0.0), 2)
+            saldo_prev_data[i] = saldo_p
 
         def agg_cat(tipo):
             rows = list(qs.filter(tipo=tipo)
@@ -261,6 +340,7 @@ def graficos(request):
         cat_rec  = agg_cat('receita')
     else:
         labels = rec_data = desp_data = saldo_data = []
+        rec_prev_data = desp_prev_data = saldo_prev_data = []
         cat_desp = cat_rec = {'labels': [], 'data': []}
 
     return render(request, 'financeiro/graficos.html', {
@@ -270,6 +350,9 @@ def graficos(request):
         'rec_data':          json.dumps(rec_data),
         'desp_data':         json.dumps(desp_data),
         'saldo_data':        json.dumps(saldo_data),
+        'rec_prev_data':     json.dumps(rec_prev_data),
+        'desp_prev_data':    json.dumps(desp_prev_data),
+        'saldo_prev_data':   json.dumps(saldo_prev_data),
         'cat_desp_labels':   json.dumps(cat_desp['labels']),
         'cat_desp_data':     json.dumps(cat_desp['data']),
         'cat_desp_count':    len(cat_desp['data']),
