@@ -202,15 +202,25 @@ def _limpar_descricao(texto):
             continue
         tokens.append(tok)
 
-    # Ruído do OCR sobre a máscara de CPF no fim da linha (ex: "Hk B13.17 Geek", "DBAwKE")
+    # Ruído do OCR sobre a máscara de CPF no fim da linha
+    # (ex: "Hk B13.17 Geek", "DBAwKE", "rik", "*hk", "#*%")
+    PALAVRAS_CURTAS_VALIDAS = {'dos', 'das', 'da', 'do', 'de', 'jr', 'me', 'ltd'}
+
     def _ruido(tok):
+        limpo = tok.strip('*#%.,;:')
+        if not limpo:
+            return True
+        if tok.lower() in PALAVRAS_CURTAS_VALIDAS:
+            return False
         if re.search(r'\d', tok):
             return True
-        if len(tok) <= 2:
+        if len(limpo) <= 2:
+            return True
+        # 3 letras sem cara de nome próprio (não começa com maiúscula seguida de minúsculas)
+        if len(limpo) == 3 and not re.fullmatch(r'[A-ZÀ-Ý][a-zà-ÿ]{2}', limpo):
             return True
         # capitalização errática típica de OCR sobre asteriscos: DBAwKE, aBcD
-        miolo = tok[1:]
-        return bool(re.search(r'[a-z][A-Z]', tok)) or (miolo.isupper() and len(tok) <= 4)
+        return bool(re.search(r'[a-z][A-Z]', limpo)) or (limpo[1:].isupper() and len(limpo) <= 4)
 
     while len(tokens) > 3 and _ruido(tokens[-1]):
         tokens.pop()
