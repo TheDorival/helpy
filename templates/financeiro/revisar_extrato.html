@@ -130,26 +130,16 @@
             <td class="px-3 py-2 align-top">
               <select name="categoria_{{ item.idx }}"
                       aria-label="Categoria"
-                      class="w-full text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
-                <option value="">— sem categoria —</option>
-                <optgroup label="Receitas">
-                  {% for c in cats_receita %}
-                    <option value="{{ c.pk }}" {% if item.categoria_id == c.pk %}selected{% endif %}>{{ c.nome }}</option>
-                  {% endfor %}
-                </optgroup>
-                <optgroup label="Despesas">
-                  {% for c in cats_despesa %}
-                    <option value="{{ c.pk }}" {% if item.categoria_id == c.pk %}selected{% endif %}>{{ c.nome }}</option>
-                  {% endfor %}
-                </optgroup>
+                      data-selecionada="{{ item.categoria_id|default:'' }}"
+                      class="cat-sel w-full text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
               </select>
             </td>
             <td class="px-3 py-2 align-top">
               <select name="tipo_{{ item.idx }}" aria-label="Tipo do lançamento"
-                      onchange="corTipo(this)"
+                      onchange="tipoMudou(this)"
                       class="tipo-sel w-full text-xs bg-bg border border-line rounded px-2 py-1 outline-none focus:border-accent/50 transition-colors appearance-none {% if item.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
-                <option value="receita" {% if item.tipo == 'receita' %}selected{% endif %}>Entrada</option>
-                <option value="despesa" {% if item.tipo == 'despesa' %}selected{% endif %}>Saída</option>
+                <option value="receita" style="color: rgb(var(--c-green))" {% if item.tipo == 'receita' %}selected{% endif %}>Entrada</option>
+                <option value="despesa" style="color: rgb(var(--c-red))" {% if item.tipo == 'despesa' %}selected{% endif %}>Saída</option>
               </select>
             </td>
             <td class="px-3 py-2 align-top">
@@ -180,11 +170,49 @@
   </form>
 
   <script>
-  function corTipo(sel) {
-    const receita = sel.value === 'receita';
-    sel.classList.toggle('text-green', receita);
-    sel.classList.toggle('text-red', !receita);
+  const CATEGORIAS = {
+    receita: [{% for c in cats_receita %}{ id: "{{ c.pk }}", nome: "{{ c.nome|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}],
+    despesa: [{% for c in cats_despesa %}{ id: "{{ c.pk }}", nome: "{{ c.nome|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}],
+  };
+
+  /* Preenche o seletor de categorias apenas com as do tipo do lançamento */
+  function preencherCategorias(selCat, tipo) {
+    const atual = selCat.value || selCat.dataset.selecionada || '';
+    selCat.innerHTML = '';
+
+    const vazia = document.createElement('option');
+    vazia.value = '';
+    vazia.textContent = '— sem categoria —';
+    selCat.appendChild(vazia);
+
+    (CATEGORIAS[tipo] || []).forEach(function (c) {
+      const op = document.createElement('option');
+      op.value = c.id;
+      op.textContent = c.nome;
+      if (c.id === atual) op.selected = true;
+      selCat.appendChild(op);
+    });
+
+    // Se a categoria anterior não existe no novo tipo, volta para "sem categoria"
+    if (selCat.value !== atual) selCat.value = '';
+    selCat.dataset.selecionada = selCat.value;
   }
+
+  function tipoMudou(selTipo) {
+    const receita = selTipo.value === 'receita';
+    selTipo.classList.toggle('text-green', receita);
+    selTipo.classList.toggle('text-red', !receita);
+    const linha = selTipo.closest('tr');
+    const selCat = linha && linha.querySelector('.cat-sel');
+    if (selCat) preencherCategorias(selCat, selTipo.value);
+  }
+
+  document.querySelectorAll('.tipo-sel').forEach(function (selTipo) {
+    const linha = selTipo.closest('tr');
+    const selCat = linha && linha.querySelector('.cat-sel');
+    if (selCat) preencherCategorias(selCat, selTipo.value);
+  });
+
   function itens() { return document.querySelectorAll('.chk-item'); }
   function atualizarContador() {
     var n = 0;
