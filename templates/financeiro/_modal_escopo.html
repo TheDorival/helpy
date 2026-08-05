@@ -24,7 +24,7 @@ chamando abrirEscopo(this) em vez de submeter direto.
       <label class="esc-option flex items-start gap-2.5 p-3 rounded-lg border border-accent/50 bg-accent/5 cursor-pointer transition-all">
         <input type="radio" name="escopo_op" value="futuras" class="mt-0.5 accent-accent" checked>
         <span>
-          <span class="block text-xs font-medium text-tx">Somente as próximas</span>
+          <span class="esc-titulo block text-xs font-medium">Somente as próximas</span>
           <span class="block text-[10px] text-dim leading-tight mt-0.5">
             Nada muda no que já foi lançado; só as ocorrências futuras usam os novos dados.
           </span>
@@ -34,7 +34,7 @@ chamando abrirEscopo(this) em vez de submeter direto.
       <label class="esc-option flex items-start gap-2.5 p-3 rounded-lg border border-line hover:border-muted cursor-pointer transition-all">
         <input type="radio" name="escopo_op" value="atuais" class="mt-0.5 accent-accent">
         <span>
-          <span class="block text-xs font-medium text-muted">Deste período em diante</span>
+          <span class="esc-titulo block text-xs font-medium">Deste período em diante</span>
           <span class="block text-[10px] text-dim leading-tight mt-0.5">
             Atualiza {{ ocorrencias.atuais }} lançamento{{ ocorrencias.atuais|pluralize }} do período atual, além dos futuros.
           </span>
@@ -44,7 +44,7 @@ chamando abrirEscopo(this) em vez de submeter direto.
       <label class="esc-option flex items-start gap-2.5 p-3 rounded-lg border border-line hover:border-muted cursor-pointer transition-all">
         <input type="radio" name="escopo_op" value="todas" class="mt-0.5 accent-accent">
         <span>
-          <span class="block text-xs font-medium text-muted">Todas as instâncias</span>
+          <span class="esc-titulo block text-xs font-medium">Todas as instâncias</span>
           <span class="block text-[10px] text-dim leading-tight mt-0.5">
             Reescreve os {{ ocorrencias.total }} lançamento{{ ocorrencias.total|pluralize }} já registrado{{ ocorrencias.total|pluralize }}, inclusive de meses anteriores.
           </span>
@@ -79,6 +79,7 @@ chamando abrirEscopo(this) em vez de submeter direto.
     if (!formEscopo) return;
     if (!formEscopo.reportValidity()) return;          // respeita campos obrigatórios
     {% if ocorrencias.total %}
+      marcarEscopo('futuras');                          // sempre abre no padrão
       document.getElementById('modal-escopo').classList.remove('hidden');
       document.body.style.overflow = 'hidden';
     {% else %}
@@ -108,10 +109,11 @@ chamando abrirEscopo(this) em vez de submeter direto.
       o.classList.toggle('bg-accent/5', marcado);
       o.classList.toggle('border-line', !marcado);
       o.classList.toggle('hover:border-muted', !marcado);
-      var titulo = o.querySelector('span > span.block');
+      // cor aplicada direto: independe do Tailwind gerar a classe em tempo real
+      var titulo = o.querySelector('.esc-titulo');
       if (titulo) {
-        titulo.classList.toggle('text-tx', marcado);
-        titulo.classList.toggle('text-muted', !marcado);
+        titulo.style.color = marcado ? 'rgb(var(--c-tx))' : 'rgb(var(--c-muted))';
+        titulo.style.fontWeight = marcado ? '600' : '500';
       }
     });
   }
