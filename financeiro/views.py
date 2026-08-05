@@ -1120,8 +1120,11 @@ def _aplicar_regras(usuario, lancamentos):
         l['categoria_id'] = None
         l['categoria_nome'] = ''
         l['entidade_id'] = None
+        # Casa com o texto completo do extrato (operação + favorecido), mesmo que
+        # a descrição exibida mostre apenas o favorecido.
+        texto = l.get('texto_completo') or l['descricao']
         for r in regras:
-            if r.combina(l['descricao'], l['tipo']):
+            if r.combina(texto, l['tipo']):
                 l['categoria_id'] = r.categoria_id
                 l['categoria_nome'] = r.categoria.nome
                 l['entidade_id'] = r.entidade_id
@@ -1331,13 +1334,17 @@ def revisar_extrato(request):
                     pass
 
             cat_id = request.POST.get(f'categoria_{i}') or None
+            observacao = f'Importado de {dados["arquivo_nome"]}'
+            if l.get('operacao'):
+                observacao = f'{l["operacao"]} · {observacao}'
+
             novas.append(Transacao(
                 usuario=request.user, tipo=tipo,
                 descricao=descricao or l['descricao'], valor=valor, data=data_lanc,
                 categoria_id=int(cat_id) if cat_id and cat_id.isdigit() else None,
                 entidade_id=l.get('entidade_id'),
                 fitid=l.get('fitid', ''), importacao=imp,
-                observacao=f'Importado de {dados["arquivo_nome"]}',
+                observacao=observacao,
             ))
 
         if novas:

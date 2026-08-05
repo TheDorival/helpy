@@ -117,6 +117,9 @@
               <input type="text" name="descricao_{{ item.idx }}" value="{{ item.descricao }}" maxlength="200"
                      aria-label="Descrição do lançamento"
                      class="w-full text-sm bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors">
+              {% if item.operacao %}
+                <p class="text-[10px] text-dim mt-1">{{ item.operacao }}</p>
+              {% endif %}
               {% if item.duplicata %}
                 <p class="text-[10px] text-amber-400 mt-1">⚠ {{ item.motivo_duplicata }}</p>
               {% endif %}
