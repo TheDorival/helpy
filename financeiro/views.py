@@ -175,6 +175,7 @@ def sincronizar_fixas(usuario, limite=None):
                 entidade=tf.entidade, descricao=tf.descricao,
                 valor=tf.valor, data=d,
                 categoria=tf.categoria, observacao=tf.observacao,
+                origem_fixa=tf,
             ))
             ultima = d
             d = _avancar_data(d, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day)
@@ -216,6 +217,66 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
 
     itens.sort(key=lambda x: x['data'])
     return itens
+
+
+ESCOPOS = ('futuras', 'atuais', 'todas')
+
+
+def _ocorrencias_da_fixa(tf, desde=None):
+    """Transações já geradas por uma recorrente.
+
+    Inclui as antigas (criadas antes do vínculo existir) casando por tipo,
+    descrição e categoria a partir da data de início da recorrente.
+    """
+    from django.db.models import Q
+
+    qs = Transacao.objects.filter(usuario_id=tf.usuario_id).filter(
+        Q(origem_fixa=tf)
+        | Q(origem_fixa__isnull=True, tipo=tf.tipo, descricao=tf.descricao,
+            categoria_id=tf.categoria_id, data__gte=tf.data_inicio)
+    )
+    if desde:
+        qs = qs.filter(data__gte=desde)
+    return qs
+
+
+def _inicio_periodo_atual(usuario):
+    """Primeiro dia do período financeiro corrente, respeitando o dia de corte."""
+    hoje = date.today()
+    dia_corte = getattr(usuario, 'dia_corte', 1) or 1
+    if hoje.day >= dia_corte:
+        return date(hoje.year, hoje.month, dia_corte)
+    mes = hoje.month - 1 or 12
+    ano = hoje.year if hoje.month > 1 else hoje.year - 1
+    return date(ano, mes, dia_corte)
+
+
+def _aplicar_escopo(tf, escopo, usuario):
+    """Propaga os dados da recorrente às ocorrências já geradas.
+
+    - futuras: nada muda no que já foi lançado
+    - atuais : atualiza o período financeiro corrente em diante
+    - todas  : atualiza todas as ocorrências
+    """
+    if escopo not in ('atuais', 'todas'):
+        return 0
+
+    desde = _inicio_periodo_atual(usuario) if escopo == 'atuais' else None
+    return _ocorrencias_da_fixa(tf, desde).update(
+        valor=tf.valor, descricao=tf.descricao, categoria=tf.categoria,
+        entidade=tf.entidade, tipo=tf.tipo, origem_fixa=tf,
+    )
+
+
+def _resumo_ocorrencias(tf, usuario):
+    """Quantidades usadas no modal de escopo."""
+    if not tf:
+        return {'total': 0, 'atuais': 0}
+    qs = _ocorrencias_da_fixa(tf)
+    return {
+        'total': qs.count(),
+        'atuais': qs.filter(data__gte=_inicio_periodo_atual(usuario)).count(),
+    }
 
 
 def _mes_atras(hoje, n):
@@ -416,10 +477,17 @@ def editar_fixa(request, pk):
         obj = form.save(commit=False)
         obj.ultima_geracao = date.today()   # novas ocorrências usam os valores editados
         obj.save()
+
+        escopo = request.POST.get('escopo', 'futuras')
+        n = _aplicar_escopo(obj, escopo, request.user)
+        if n:
+            messages.success(request, f'{n} lançamento(s) já registrado(s) foram atualizados.')
         return redirect('fixas')
+
     return render(request, 'financeiro/transacao_fixa_form.html', {
         'form': form, 'todas_cat': todas_cat, 'entidades': entidades,
         'titulo': 'Editar recorrente', 'obj': tf,
+        'ocorrencias': _resumo_ocorrencias(tf, request.user),
     })
 
 
@@ -1024,11 +1092,31 @@ def editar_essencial(request, slug):
                 )
 
         ess.save()
+
+        escopo = request.POST.get('escopo', 'futuras')
+        atualizadas = 0
+        for tf_id in (ess.transacao_fixa_id, ess.transacao_fixa_2_id):
+            if tf_id:
+                tf = TransacaoFixa.objects.filter(pk=tf_id).first()
+                if tf:
+                    atualizadas += _aplicar_escopo(tf, escopo, request.user)
+        if atualizadas:
+            messages.success(request, f'{atualizadas} lançamento(s) já registrado(s) foram atualizados.')
         return redirect('essenciais')
+
+    resumo = {'total': 0, 'atuais': 0}
+    for tf_id in (ess.transacao_fixa_id, ess.transacao_fixa_2_id):
+        if tf_id:
+            tf = TransacaoFixa.objects.filter(pk=tf_id).first()
+            if tf:
+                parcial = _resumo_ocorrencias(tf, request.user)
+                resumo['total'] += parcial['total']
+                resumo['atuais'] += parcial['atuais']
 
     return render(request, 'financeiro/essencial_form.html', {
         'cat': cat, 'ess': ess, 'acao': 'editar', 'hoje': date.today(),
         'sal_choices': Essencial.TIPO_SALARIO_CHOICES,
+        'ocorrencias': resumo,
     })
 
 
