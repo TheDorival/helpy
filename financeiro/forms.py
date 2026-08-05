@@ -2,13 +2,28 @@ from datetime import date
 
 from django import forms
 
-from .models import Categoria, Emprestimo, Entidade, Meta, Transacao, TransacaoFixa
+from .models import Categoria, Emprestimo, Entidade, EventoVida, Meta, Transacao, TransacaoFixa
 
 
 class CategoriaForm(forms.ModelForm):
     class Meta:
         model = Categoria
         fields = ['nome', 'tipo']
+
+
+class EventoVidaForm(forms.ModelForm):
+    class Meta:
+        model = EventoVida
+        fields = ['titulo', 'tipo', 'data', 'descricao', 'valor', 'destaque']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['data'].widget = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
+        self.fields['data'].input_formats = ['%Y-%m-%d']
+        self.fields['descricao'].required = False
+        self.fields['valor'].required = False
+        if not self.instance.pk:
+            self.fields['data'].initial = date.today()
 
 
 class EntidadeForm(forms.ModelForm):

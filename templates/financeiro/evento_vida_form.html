@@ -1,0 +1,135 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}Histórico de vida{% endblock %}
+
+{% block skeleton %}
+  <div class="max-w-md mx-auto">
+    <div class="bg-surface border border-line rounded-xl p-6 space-y-4">
+      <div class="sk h-4 w-32 rounded mb-2"></div>
+      {% for i in "abcd" %}
+      <div><div class="sk h-3 w-24 rounded mb-2"></div><div class="sk h-9 w-full rounded-md"></div></div>
+      {% endfor %}
+      <div class="flex gap-3 pt-2"><div class="sk h-9 flex-1 rounded-md"></div><div class="sk h-9 w-20 rounded-md"></div></div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="max-w-md mx-auto">
+    <div class="bg-surface border border-line rounded-xl overflow-hidden">
+
+      <div class="px-6 py-4 border-b border-line">
+        <p class="text-sm font-semibold text-tx">{{ titulo }}</p>
+        <p class="text-xs text-dim mt-0.5">Marcos aparecem na linha do tempo junto com os eventos automáticos.</p>
+      </div>
+
+      <form method="post" class="px-6 py-5 space-y-4" novalidate>
+        {% csrf_token %}
+
+        <!-- Título -->
+        <div>
+          <label for="id_titulo" class="block text-xs font-medium text-muted mb-1">Título</label>
+          <input type="text" name="titulo" id="id_titulo" maxlength="150" required
+                 value="{{ form.titulo.value|default:'' }}"
+                 placeholder="Ex: Comprei meu primeiro carro"
+                 class="w-full text-sm bg-bg border {% if form.titulo.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+          {% if form.titulo.errors %}<p class="mt-1 text-xs text-red">{{ form.titulo.errors.0 }}</p>{% endif %}
+        </div>
+
+        <!-- Tipo -->
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Tipo</label>
+          <div class="grid grid-cols-3 gap-2">
+            {% for value, label in form.fields.tipo.choices %}
+            <label class="tipo-option flex flex-col items-center gap-1 p-2.5 rounded-lg border cursor-pointer transition-all
+                          {% if form.tipo.value|stringformat:'s' == value %}border-accent/50 bg-accent/5 text-tx{% else %}border-line text-muted hover:border-muted{% endif %}">
+              <input type="radio" name="tipo" value="{{ value }}" class="sr-only"
+                     {% if form.tipo.value|stringformat:'s' == value %}checked{% endif %}>
+              <span class="text-base" aria-hidden="true">
+                {% if value == 'carreira' %}💼{% elif value == 'educacao' %}🎓{% elif value == 'moradia' %}🏠{% elif value == 'veiculo' %}🚗{% elif value == 'viagem' %}✈️{% elif value == 'saude' %}🏥{% elif value == 'familia' %}👨‍👩‍👧{% elif value == 'financeiro' %}🏆{% else %}📌{% endif %}
+              </span>
+              <span class="text-[10px] font-medium text-center leading-tight">{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Data -->
+        <div>
+          <label for="id_data" class="block text-xs font-medium text-muted mb-1">Data</label>
+          <input type="date" name="data" id="id_data" required
+                 value="{{ form.data.value|date:'Y-m-d'|default:form.data.value|default:'' }}"
+                 class="w-full text-sm bg-bg border {% if form.data.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
+          {% if form.data.errors %}<p class="mt-1 text-xs text-red">{{ form.data.errors.0 }}</p>{% endif %}
+        </div>
+
+        <!-- Valor -->
+        <div>
+          <label for="id_valor" class="block text-xs font-medium text-muted mb-1">
+            Valor <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden focus-within:border-accent/50 transition-colors">
+            <span class="text-sm text-dim px-3 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
+            <input type="number" name="valor" id="id_valor" step="0.01" min="0"
+                   value="{{ form.valor.value|default:''|floatformat:'2u' }}"
+                   placeholder="0,00"
+                   class="flex-1 text-sm bg-transparent px-3 py-2 text-tx placeholder-dim outline-none">
+          </div>
+        </div>
+
+        <!-- Descrição -->
+        <div>
+          <label for="id_descricao" class="block text-xs font-medium text-muted mb-1">
+            Descrição <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <textarea name="descricao" id="id_descricao" rows="3" placeholder="Conte um pouco sobre esse momento..."
+                    class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors resize-none">{{ form.descricao.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Destaque -->
+        <label class="flex items-center gap-2.5 cursor-pointer">
+          <input type="checkbox" name="destaque" value="True"
+                 {% if form.destaque.value %}checked{% endif %}
+                 class="w-4 h-4 rounded border-line bg-bg accent-accent">
+          <span class="text-sm text-tx">Marcar como destaque</span>
+          <span class="text-xs text-dim">(realça o marco na linha do tempo)</span>
+        </label>
+
+        <div class="flex gap-3 pt-1">
+          <button type="submit"
+                  class="flex-1 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-sm font-medium py-2 rounded-md transition-colors">
+            {% if obj %}Salvar{% else %}Adicionar marco{% endif %}
+          </button>
+          <a href="{% url 'historico_vida' %}"
+             class="px-4 py-2 text-sm text-muted hover:text-tx border border-line rounded-md transition-colors">
+            Cancelar
+          </a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var opts = document.querySelectorAll('.tipo-option');
+    opts.forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var r = this.querySelector('input[type=radio]');
+        if (!r) return;
+        r.checked = true;
+        opts.forEach(function (o) {
+          var ativo = o.querySelector('input[type=radio]').checked;
+          o.classList.toggle('border-accent/50', ativo);
+          o.classList.toggle('bg-accent/5', ativo);
+          o.classList.toggle('text-tx', ativo);
+          o.classList.toggle('border-line', !ativo);
+          o.classList.toggle('text-muted', !ativo);
+        });
+      });
+    });
+  })();
+  </script>
+
+{% endblock %}

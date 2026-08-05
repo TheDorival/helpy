@@ -7,8 +7,9 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import CategoriaForm, EmprestimoForm, EntidadeForm, MetaForm, TransacaoFixaForm, TransacaoForm
-from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial,
+from .forms import (CategoriaForm, EmprestimoForm, EntidadeForm, EventoVidaForm, MetaForm,
+                    TransacaoFixaForm, TransacaoForm)
+from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial, EventoVida,
                      Meta, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa,
                      _avancar_data, _data_parcela)
 
@@ -1077,6 +1078,199 @@ def desativar_essencial(request, slug):
             TransacaoFixa.objects.filter(pk__in=ids).update(ativa=False)
         ess.delete()
     return redirect('essenciais')
+
+
+# ── HISTÓRICO DE VIDA ─────────────────────────────────────────────────────────
+
+def _marcos_automaticos(usuario):
+    """Marcos derivados dos dados financeiros — calculados, nunca gravados."""
+    marcos = []
+
+    primeira = (Transacao.objects.filter(usuario=usuario)
+                .order_by('data', 'criado_em').first())
+    if primeira:
+        marcos.append({
+            'data': primeira.data, 'icone': '🌱', 'tipo_label': 'Início',
+            'titulo': 'Primeiro registro no Helpy',
+            'descricao': f'{primeira.nome_display} — sua jornada financeira começou aqui.',
+            'valor': primeira.valor, 'auto': True,
+        })
+
+    maior_rec = Transacao.objects.filter(usuario=usuario, tipo='receita').order_by('-valor').first()
+    if maior_rec:
+        marcos.append({
+            'data': maior_rec.data, 'icone': '📈', 'tipo_label': 'Recorde',
+            'titulo': 'Maior receita registrada',
+            'descricao': maior_rec.nome_display,
+            'valor': maior_rec.valor, 'auto': True,
+        })
+
+    maior_desp = Transacao.objects.filter(usuario=usuario, tipo='despesa').order_by('-valor').first()
+    if maior_desp:
+        marcos.append({
+            'data': maior_desp.data, 'icone': '💸', 'tipo_label': 'Recorde',
+            'titulo': 'Maior despesa registrada',
+            'descricao': maior_desp.nome_display,
+            'valor': maior_desp.valor, 'auto': True,
+        })
+
+    for meta in Meta.objects.filter(usuario=usuario, concluida=True):
+        marcos.append({
+            'data': meta.data_fim or meta.data_inicio, 'icone': '🎯', 'tipo_label': 'Meta',
+            'titulo': f'Meta concluída: {meta.nome}',
+            'descricao': meta.get_tipo_display(),
+            'valor': meta.valor_alvo, 'auto': True,
+        })
+
+    for emp in Emprestimo.objects.filter(usuario=usuario).prefetch_related('parcelas'):
+        parcelas = list(emp.parcelas.all())
+        if parcelas and all(p.paga for p in parcelas):
+            datas = [p.data_pagamento or p.data_vencimento for p in parcelas]
+            marcos.append({
+                'data': max(datas), 'icone': '🔓', 'tipo_label': 'Empréstimo',
+                'titulo': f'Empréstimo quitado: {emp.nome_display}',
+                'descricao': f'{len(parcelas)} parcela{"s" if len(parcelas) > 1 else ""} — {emp.get_tipo_display().lower()}',
+                'valor': emp.valor_total, 'auto': True,
+            })
+
+    for ess in (Essencial.objects.filter(usuario=usuario)
+                .select_related('categoria').order_by('criado_em')[:1]):
+        marcos.append({
+            'data': ess.data_inicio, 'icone': '⚙️', 'tipo_label': 'Organização',
+            'titulo': 'Primeiro essencial configurado',
+            'descricao': ess.categoria.nome,
+            'valor': ess.valor, 'auto': True,
+        })
+
+    return marcos
+
+
+def _estatisticas_vida(usuario):
+    qs = Transacao.objects.filter(usuario=usuario)
+    total_rec = qs.filter(tipo='receita').aggregate(t=Sum('valor'))['t'] or 0
+    total_desp = qs.filter(tipo='despesa').aggregate(t=Sum('valor'))['t'] or 0
+
+    primeira = qs.order_by('data').values_list('data', flat=True).first()
+    meses = 0
+    if primeira:
+        hoje = date.today()
+        meses = (hoje.year - primeira.year) * 12 + (hoje.month - primeira.month) + 1
+
+    return {
+        'total_receitas': total_rec,
+        'total_despesas': total_desp,
+        'saldo_total': total_rec - total_desp,
+        'n_transacoes': qs.count(),
+        'meses_ativos': meses,
+        'media_receita_mes': (total_rec / meses) if meses else 0,
+        'media_despesa_mes': (total_desp / meses) if meses else 0,
+        'desde': primeira,
+    }
+
+
+def _patrimonio_anual(usuario):
+    """Saldo acumulado ao fim de cada ano com movimento."""
+    rows = (Transacao.objects.filter(usuario=usuario)
+            .values('data__year', 'tipo')
+            .annotate(t=Sum('valor')).order_by('data__year'))
+    por_ano = {}
+    for r in rows:
+        ano = r['data__year']
+        d = por_ano.setdefault(ano, {'receita': 0.0, 'despesa': 0.0})
+        d[r['tipo']] = float(r['t'])
+
+    labels, acumulado, saldo = [], [], 0.0
+    for ano in sorted(por_ano):
+        saldo = round(saldo + por_ano[ano]['receita'] - por_ano[ano]['despesa'], 2)
+        labels.append(str(ano))
+        acumulado.append(saldo)
+    return labels, acumulado
+
+
+@login_required
+def historico_vida(request):
+    sincronizar_fixas(request.user)
+
+    tipo_filtro = request.GET.get('tipo', '')
+    ano_filtro = request.GET.get('ano', '')
+
+    eventos = [{
+        'data': e.data, 'icone': e.icone, 'tipo_label': e.get_tipo_display(),
+        'titulo': e.titulo, 'descricao': e.descricao, 'valor': e.valor,
+        'auto': False, 'destaque': e.destaque, 'pk': e.pk, 'tipo': e.tipo,
+    } for e in EventoVida.objects.filter(usuario=request.user)]
+
+    itens = eventos + _marcos_automaticos(request.user)
+
+    anos = sorted({i['data'].year for i in itens}, reverse=True)
+
+    if tipo_filtro == 'manual':
+        itens = [i for i in itens if not i['auto']]
+    elif tipo_filtro == 'auto':
+        itens = [i for i in itens if i['auto']]
+    elif tipo_filtro:
+        itens = [i for i in itens if i.get('tipo') == tipo_filtro]
+
+    if ano_filtro.isdigit():
+        itens = [i for i in itens if i['data'].year == int(ano_filtro)]
+
+    itens.sort(key=lambda i: i['data'], reverse=True)
+
+    # Agrupa por ano para a linha do tempo
+    grupos = []
+    for item in itens:
+        if not grupos or grupos[-1]['ano'] != item['data'].year:
+            grupos.append({'ano': item['data'].year, 'itens': []})
+        grupos[-1]['itens'].append(item)
+
+    pat_labels, pat_data = _patrimonio_anual(request.user)
+
+    return render(request, 'financeiro/historico_vida.html', {
+        'grupos': grupos,
+        'n_itens': len(itens),
+        'stats': _estatisticas_vida(request.user),
+        'anos': anos,
+        'ano_filtro': ano_filtro,
+        'tipo_filtro': tipo_filtro,
+        'tipos': EventoVida.TIPO_CHOICES,
+        'pat_labels': json.dumps(pat_labels),
+        'pat_data': json.dumps(pat_data),
+        'tem_patrimonio': len(pat_labels) > 0,
+        'simbolo': request.user.simbolo_moeda,
+    })
+
+
+@login_required
+def novo_evento_vida(request):
+    form = EventoVidaForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        ev = form.save(commit=False)
+        ev.usuario = request.user
+        ev.save()
+        return redirect('historico_vida')
+    return render(request, 'financeiro/evento_vida_form.html', {
+        'form': form, 'titulo': 'Novo marco',
+    })
+
+
+@login_required
+def editar_evento_vida(request, pk):
+    ev = get_object_or_404(EventoVida, pk=pk, usuario=request.user)
+    form = EventoVidaForm(request.POST or None, instance=ev)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('historico_vida')
+    return render(request, 'financeiro/evento_vida_form.html', {
+        'form': form, 'titulo': 'Editar marco', 'obj': ev,
+    })
+
+
+@login_required
+def excluir_evento_vida(request, pk):
+    ev = get_object_or_404(EventoVida, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        ev.delete()
+    return redirect('historico_vida')
 
 
 @login_required
