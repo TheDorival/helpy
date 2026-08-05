@@ -160,11 +160,18 @@ def excluir_transacao(request, pk):
     return redirect('receitas' if tipo == 'receita' else 'despesas')
 
 
+def _regra_usuario(usuario):
+    """Regra de contagem de dias úteis escolhida nas preferências."""
+    from .models import REGRA_DIA_UTIL_PADRAO
+    return getattr(usuario, 'regra_dia_util', REGRA_DIA_UTIL_PADRAO) or REGRA_DIA_UTIL_PADRAO
+
+
 def sincronizar_fixas(usuario, limite=None):
     """Gera todas as ocorrências pendentes de transações fixas até `limite` (padrão: hoje)."""
     ate = limite if limite is not None else date.today()
+    regra = _regra_usuario(usuario)
     for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade'):
-        proxima  = tf.avancar(tf.ultima_geracao) if tf.ultima_geracao else tf.data_inicio
+        proxima  = tf.avancar(tf.ultima_geracao, regra) if tf.ultima_geracao else tf.data_inicio
         lim_fixa = min(ate, tf.data_fim) if tf.data_fim else ate
 
         novas, ultima = [], tf.ultima_geracao
@@ -178,7 +185,7 @@ def sincronizar_fixas(usuario, limite=None):
                 origem_fixa=tf,
             ))
             ultima = d
-            d = tf.avancar(d)
+            d = tf.avancar(d, regra)
 
         if novas:
             Transacao.objects.bulk_create(novas)
@@ -193,12 +200,13 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
     esteja atualizada e não haja sobreposição com transações já criadas.
     """
     itens = []
+    regra = _regra_usuario(usuario)
     qs = TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade')
     if tipo:
         qs = qs.filter(tipo=tipo)
 
     for tf in qs:
-        d = tf.avancar(tf.ultima_geracao) if tf.ultima_geracao else tf.data_inicio
+        d = tf.avancar(tf.ultima_geracao, regra) if tf.ultima_geracao else tf.data_inicio
         lim = min(fim, tf.data_fim) if tf.data_fim else fim
         guarda = 0
         while d <= lim and guarda < 500:
@@ -212,7 +220,7 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
                     'fixa': tf,
                 })
             guarda += 1
-            d = tf.avancar(d)
+            d = tf.avancar(d, regra)
 
     itens.sort(key=lambda x: x['data'])
     return itens
@@ -866,7 +874,7 @@ def ajustar_meta(request, pk):
     return redirect('metas')
 
 
-def _proxima_data_pagamento(dia, dia_util=False):
+def _proxima_data_pagamento(dia, dia_util=False, regra=None):
     """Retorna a próxima data de pagamento a partir de hoje."""
     import calendar as _cal
     hoje = date.today()
@@ -875,13 +883,14 @@ def _proxima_data_pagamento(dia, dia_util=False):
         return hoje
 
     if dia_util:
-        from .models import _nth_business_day
-        d = _nth_business_day(hoje.year, hoje.month, dia)
+        from .models import REGRA_DIA_UTIL_PADRAO, _nth_business_day
+        regra = regra or REGRA_DIA_UTIL_PADRAO
+        d = _nth_business_day(hoje.year, hoje.month, dia, regra)
         if d and d >= hoje:
             return d
         m = hoje.month % 12 + 1
         y = hoje.year + (1 if hoje.month == 12 else 0)
-        return _nth_business_day(y, m, dia) or hoje
+        return _nth_business_day(y, m, dia, regra) or hoje
     else:
         try:
             d = date(hoje.year, hoje.month, dia)
@@ -907,7 +916,7 @@ def _get_or_create_categoria_financeiro(usuario, nome, tipo):
     return cat
 
 
-def _reagendar_tf(tf_id, dia, dia_util):
+def _reagendar_tf(tf_id, dia, dia_util, regra=None):
     """Move a recorrente para o novo dia de vencimento.
 
     A próxima data passa a ser calculada a partir do dia informado; as
@@ -915,7 +924,7 @@ def _reagendar_tf(tf_id, dia, dia_util):
     """
     if not tf_id or not dia:
         return
-    nova_data = _proxima_data_pagamento(dia, dia_util)
+    nova_data = _proxima_data_pagamento(dia, dia_util, regra)
     TransacaoFixa.objects.filter(pk=tf_id).update(
         data_inicio=nova_data,
         dia_util_n=dia if dia_util else None,
@@ -931,7 +940,7 @@ def _criar_tf_essencial(usuario, cat, valor, dia, dia_util, obs, sufixo=''):
         usuario=usuario, tipo=cat.tipo,
         descricao=cat.nome + sufixo,
         valor=valor or D('0'), frequencia='mensal',
-        data_inicio=_proxima_data_pagamento(dia, dia_util),
+        data_inicio=_proxima_data_pagamento(dia, dia_util, _regra_usuario(usuario)),
         dia_util_n=dia if dia_util else None,
         categoria=cat_fin, observacao=obs, ativa=True,
     )
@@ -1012,7 +1021,7 @@ def ativar_essencial(request, slug):
         dia_util_2 = request.POST.get('dia_util_2') == '1'
         obs = request.POST.get('observacao', '').strip()
 
-        data_inicio = _proxima_data_pagamento(dia_int, dia_util)
+        data_inicio = _proxima_data_pagamento(dia_int, dia_util, _regra_usuario(request.user))
 
         ess = Essencial(
             usuario=request.user, categoria=cat,
@@ -1118,8 +1127,9 @@ def editar_essencial(request, slug):
         ess.save()
 
         # Dia de vencimento pode ter mudado — reagenda as recorrentes
-        _reagendar_tf(ess.transacao_fixa_id, ess.dia_vencimento, ess.dia_util)
-        _reagendar_tf(ess.transacao_fixa_2_id, ess.dia_vencimento_2, ess.dia_util_2)
+        regra_usr = _regra_usuario(request.user)
+        _reagendar_tf(ess.transacao_fixa_id, ess.dia_vencimento, ess.dia_util, regra_usr)
+        _reagendar_tf(ess.transacao_fixa_2_id, ess.dia_vencimento_2, ess.dia_util_2, regra_usr)
 
         escopo = request.POST.get('escopo', 'futuras')
         atualizadas = 0

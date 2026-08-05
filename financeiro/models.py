@@ -140,9 +140,11 @@ class Essencial(models.Model):
         dias_datas = set()   # date objects (dia_util)
         dias_fixos = set()   # day-of-month ints
 
+        regra = getattr(self.usuario, 'regra_dia_util', REGRA_DIA_UTIL_PADRAO)
+
         def _add_dia(n, util):
             if util:
-                d = _nth_business_day(hoje.year, hoje.month, n)
+                d = _nth_business_day(hoje.year, hoje.month, n, regra)
                 if d:
                     dias_datas.add(d)
             else:
@@ -285,7 +287,7 @@ class TransacaoFixa(models.Model):
         'mensal': 1, 'bimestral': 2, 'trimestral': 3, 'semestral': 6, 'anual': 12,
     }
 
-    def avancar(self, data):
+    def avancar(self, data, regra=None):
         """Próxima ocorrência depois de `data`.
 
         Com `dia_util_n`, cada mês cai no N-ésimo dia útil (que muda de mês para
@@ -295,10 +297,14 @@ class TransacaoFixa(models.Model):
         if self.dia_util_n and meses:
             total = data.year * 12 + (data.month - 1) + meses
             ano, mes = total // 12, total % 12 + 1
-            alvo = _nth_business_day(ano, mes, self.dia_util_n)
+            alvo = _nth_business_day(ano, mes, self.dia_util_n,
+                                     regra or self._regra_dia_util())
             if alvo:
                 return alvo
         return _avancar_data(data, self.frequencia, self.intervalo_dias, self.data_inicio.day)
+
+    def _regra_dia_util(self):
+        return getattr(self.usuario, 'regra_dia_util', REGRA_DIA_UTIL_PADRAO) or REGRA_DIA_UTIL_PADRAO
 
     def proxima_data(self):
         base = self.ultima_geracao
@@ -351,8 +357,19 @@ def feriados_nacionais(ano):
     return dias
 
 
-def _nth_business_day(year, month, n):
-    """Retorna a data do N-ésimo dia útil do mês (ignora fins de semana e feriados)."""
+REGRA_DIA_UTIL_PADRAO = 'com_feriados'
+
+
+def _eh_dia_util(d, regra, feriados):
+    if regra == 'sem_feriados':          # seg–sex, feriados contam como dia útil
+        return d.weekday() < 5
+    if regra == 'clt':                   # exclui domingos e feriados; sábado conta
+        return d.weekday() != 6 and d not in feriados
+    return d.weekday() < 5 and d not in feriados   # com_feriados (padrão)
+
+
+def _nth_business_day(year, month, n, regra=REGRA_DIA_UTIL_PADRAO):
+    """Data do N-ésimo dia útil do mês, conforme a regra escolhida pelo usuário."""
     from datetime import date
     feriados = feriados_nacionais(year)
     day, count = 1, 0
@@ -361,7 +378,7 @@ def _nth_business_day(year, month, n):
             d = date(year, month, day)
         except ValueError:
             return None
-        if d.weekday() < 5 and d not in feriados:
+        if _eh_dia_util(d, regra, feriados):
             count += 1
             if count == n:
                 return d
