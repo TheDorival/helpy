@@ -518,6 +518,46 @@ class Meta(models.Model):
             return 'red'
 
 
+class EventoVida(models.Model):
+    TIPO_CHOICES = [
+        ('carreira',   'Carreira'),
+        ('educacao',   'Educação'),
+        ('moradia',    'Moradia'),
+        ('veiculo',    'Veículo'),
+        ('viagem',     'Viagem'),
+        ('saude',      'Saúde'),
+        ('familia',    'Família'),
+        ('financeiro', 'Conquista financeira'),
+        ('outro',      'Outro'),
+    ]
+
+    ICONES = {
+        'carreira': '💼', 'educacao': '🎓', 'moradia': '🏠', 'veiculo': '🚗',
+        'viagem': '✈️', 'saude': '🏥', 'familia': '👨‍👩‍👧', 'financeiro': '🏆', 'outro': '📌',
+    }
+
+    usuario    = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='eventos_vida')
+    titulo     = models.CharField(max_length=150)
+    tipo       = models.CharField(max_length=12, choices=TIPO_CHOICES, default='outro')
+    data       = models.DateField()
+    descricao  = models.TextField(blank=True, default='')
+    valor      = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    destaque   = models.BooleanField(default=False)
+    criado_em  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Evento de vida'
+        verbose_name_plural = 'Eventos de vida'
+        ordering = ['-data', '-criado_em']
+
+    def __str__(self):
+        return f'{self.titulo} ({self.data:%d/%m/%Y})'
+
+    @property
+    def icone(self):
+        return self.ICONES.get(self.tipo, '📌')
+
+
 class SaldoExtra(models.Model):
     TIPO_CHOICES = [
         ('conta',        'Conta'),
