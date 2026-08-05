@@ -232,9 +232,9 @@
       const validos = itens.filter(function (i) { return i.texto && i.texto.trim(); });
       if (!validos.length) return [];
 
-      // Tolerância = mediana da altura das palavras (metade dela como passo)
+      // Tolerância a partir da altura mediana das palavras
       const alturas = validos.map(function (i) { return i.alt || 10; }).sort(function (a, b) { return a - b; });
-      const tol = Math.max(4, (alturas[Math.floor(alturas.length / 2)] || 10) * 0.6);
+      const tol = Math.max(4, (alturas[Math.floor(alturas.length / 2)] || 10) * 0.7);
 
       // Faixa horizontal da coluna CPF/CNPJ, pelo cabeçalho
       let xCpf = null, xValor = null;
@@ -244,16 +244,19 @@
         if (xValor === null && t === 'VALOR') xValor = i.x;
       });
 
-      const grupos = {};
-      validos.forEach(function (i) {
-        const chave = Math.round(i.y / tol);
-        (grupos[chave] = grupos[chave] || []).push(i);
-      });
+      // Agrupamento por proximidade (encadeamento simples) — bem mais estável
+      // que arredondar a coordenada, que quebra linhas na fronteira.
+      const ordenados = validos.slice().sort(function (a, b) { return a.y - b.y; });
+      const grupos = [[ordenados[0]]];
+      for (let k = 1; k < ordenados.length; k++) {
+        const anterior = grupos[grupos.length - 1];
+        if (ordenados[k].y - anterior[anterior.length - 1].y <= tol) anterior.push(ordenados[k]);
+        else grupos.push([ordenados[k]]);
+      }
 
-      return Object.keys(grupos)
-        .sort(function (a, b) { return a - b; })
-        .map(function (k) {
-          return grupos[k]
+      return grupos
+        .map(function (g) {
+          return g
             .sort(function (a, b) { return a.x - b.x; })
             .filter(function (i) {
               if (xCpf === null || xValor === null) return true;
@@ -280,6 +283,9 @@
       }
 
       const worker = await Tesseract.createWorker('por');
+      // Bloco único: lê a página linha a linha em vez de coluna por coluna,
+      // preservando a estrutura das linhas do extrato.
+      await worker.setParameters({ tessedit_pageseg_mode: '6' });
       let linhas = [];
       try {
         for (let p = 1; p <= pdf.numPages; p++) {
