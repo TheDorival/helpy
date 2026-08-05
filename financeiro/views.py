@@ -475,7 +475,11 @@ def editar_fixa(request, pk):
     form = TransacaoFixaForm(request.POST or None, instance=tf, usuario=request.user)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
-        obj.ultima_geracao = date.today()   # novas ocorrências usam os valores editados
+        if obj.data_inicio > date.today():
+            # início movido para o futuro: geração recomeça a partir dele
+            obj.ultima_geracao = None
+        else:
+            obj.ultima_geracao = date.today()   # novas ocorrências usam os valores editados
         obj.save()
 
         escopo = request.POST.get('escopo', 'futuras')
@@ -904,6 +908,21 @@ def _get_or_create_categoria_financeiro(usuario, nome, tipo):
     return cat
 
 
+def _reagendar_tf(tf_id, dia, dia_util):
+    """Move a recorrente para o novo dia de vencimento.
+
+    A próxima data passa a ser calculada a partir do dia informado; as
+    ocorrências já geradas continuam onde estão.
+    """
+    if not tf_id or not dia:
+        return
+    nova_data = _proxima_data_pagamento(dia, dia_util)
+    TransacaoFixa.objects.filter(pk=tf_id).update(
+        data_inicio=nova_data,
+        ultima_geracao=None,   # nada a gerar até a nova data chegar
+    )
+
+
 def _criar_tf_essencial(usuario, cat, valor, dia, dia_util, obs, sufixo=''):
     """Cria a TransacaoFixa mensal vinculada a um essencial."""
     from decimal import Decimal as D
@@ -1010,10 +1029,14 @@ def ativar_essencial(request, slug):
             return _criar_tf_essencial(request.user, cat, val, di, du, obs, descricao_extra)
 
         tf = tf2 = None
+
+        # A frequência do salário vem do POST — precisa ser lida antes de decidir
+        # se há 2ª parcela.
+        if cat.slug == 'salario':
+            _salvar_essencial_salario(request, ess)
         is_quinzenal = ess.freq_pagamento == 'quinzenal'
 
         if cat.slug == 'salario':
-            _salvar_essencial_salario(request, ess)
             # fixo: valor integral; fixo_comissao: só a parte fixa (comissão é manual)
             if ess.tipo_salario in ('fixo', 'fixo_comissao'):
                 tf = _criar_tf(ess.valor, dia_int, dia_util,
@@ -1092,6 +1115,10 @@ def editar_essencial(request, slug):
                 )
 
         ess.save()
+
+        # Dia de vencimento pode ter mudado — reagenda as recorrentes
+        _reagendar_tf(ess.transacao_fixa_id, ess.dia_vencimento, ess.dia_util)
+        _reagendar_tf(ess.transacao_fixa_2_id, ess.dia_vencimento_2, ess.dia_util_2)
 
         escopo = request.POST.get('escopo', 'futuras')
         atualizadas = 0
