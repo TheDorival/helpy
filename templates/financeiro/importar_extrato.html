@@ -79,7 +79,7 @@
         <ul class="text-xs text-muted space-y-1.5">
           <li><span class="text-tx font-medium">OFX</span> — o mais preciso: valores e IDs vêm prontos do banco.</li>
           <li><span class="text-tx font-medium">CSV</span> — planilhas e outros bancos, com escolha das colunas.</li>
-          <li><span class="text-tx font-medium">PDF</span> — o "Extrato por período" da Caixa. Lido no seu navegador; se as páginas forem imagem, o texto é reconhecido por OCR (leva alguns segundos por página).</li>
+          <li><span class="text-tx font-medium">PDF</span> — o "Extrato por período" da Caixa. Lido no seu navegador; se as páginas forem imagem, o texto é reconhecido por OCR em alta resolução (cerca de 20 segundos por página). Cada lançamento é conferido contra a coluna Saldo do extrato.</li>
         </ul>
       </div>
 
@@ -282,7 +282,9 @@
         });
       }
 
-      const worker = await Tesseract.createWorker('por');
+      // Modelo em inglês: erra muito menos dígitos que o português neste extrato
+      // (o texto do histórico é quase todo em caixa alta e sem acentos).
+      const worker = await Tesseract.createWorker('eng');
       // Bloco único: lê a página linha a linha em vez de coluna por coluna,
       // preservando a estrutura das linhas do extrato.
       await worker.setParameters({ tessedit_pageseg_mode: '6' });
@@ -290,7 +292,8 @@
       try {
         for (let p = 1; p <= pdf.numPages; p++) {
           const pagina = await pdf.getPage(p);
-          const viewport = pagina.getViewport({ scale: 3.2 });
+          // ~500 DPI: nesta densidade o OCR para de confundir dígitos (3/8, 5/6)
+          const viewport = pagina.getViewport({ scale: 500 / 72 });
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
