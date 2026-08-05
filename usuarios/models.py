@@ -35,6 +35,12 @@ ESCALA_FONTE_CHOICES = [
 
 COR_DESTAQUE_PADRAO = '#4c8eff'
 
+REGRA_DIA_UTIL_CHOICES = [
+    ('sem_feriados', 'Segunda a sexta, sem descontar feriados'),
+    ('com_feriados', 'Segunda a sexta, descontando feriados nacionais'),
+    ('clt',          'Sábado conta como dia útil (exclui domingos e feriados)'),
+]
+
 
 class Usuario(AbstractUser):
     bio = models.TextField(blank=True, default='')
@@ -45,6 +51,9 @@ class Usuario(AbstractUser):
     dia_corte = models.PositiveSmallIntegerField(
         default=1,
         validators=[MinValueValidator(1), MaxValueValidator(28)],
+    )
+    regra_dia_util = models.CharField(
+        max_length=12, choices=REGRA_DIA_UTIL_CHOICES, default='com_feriados',
     )
     tema = models.CharField(max_length=10, choices=TEMA_CHOICES, default='escuro')
     cor_destaque = models.CharField(max_length=7, default=COR_DESTAQUE_PADRAO)
