@@ -40,10 +40,25 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
           </svg>
           <span class="text-sm text-tx font-medium">Escolher arquivo</span>
-          <span id="nome-arquivo" class="text-xs text-dim">OFX, OFC ou CSV — até 5 MB</span>
+          <span id="nome-arquivo" class="text-xs text-dim">OFX, CSV ou PDF</span>
         </label>
-        <input type="file" name="arquivo" id="arquivo" accept=".ofx,.ofc,.qfx,.csv,.txt,.tsv" class="sr-only" required
-               onchange="document.getElementById('nome-arquivo').textContent = this.files[0] ? this.files[0].name : 'OFX, OFC ou CSV — até 5 MB'; document.getElementById('btn-enviar').disabled = !this.files[0];">
+        <input type="file" name="arquivo" id="arquivo" accept=".ofx,.ofc,.qfx,.csv,.txt,.tsv,.pdf" class="sr-only" required>
+
+        <!-- Progresso da leitura de PDF -->
+        <div id="pdf-progresso" class="hidden mt-4">
+          <div class="flex items-center justify-between mb-1.5">
+            <span id="pdf-status" class="text-xs text-muted">Preparando…</span>
+            <span id="pdf-pct" class="text-xs text-dim">0%</span>
+          </div>
+          <div class="bg-line rounded-full h-1.5 overflow-hidden">
+            <div id="pdf-barra" class="h-1.5 rounded-full bg-accent transition-all" style="width:0%"></div>
+          </div>
+          <p class="mt-2 text-[11px] text-dim">
+            A leitura acontece no seu navegador — o arquivo não é enviado ao servidor.
+          </p>
+        </div>
+
+        <div id="pdf-erro" class="hidden mt-4 px-3 py-2 rounded-md bg-red/10 border border-red/20 text-xs text-red"></div>
 
         <button type="submit" id="btn-enviar" disabled
                 class="mt-4 w-full bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium py-2 rounded-md transition-colors">
@@ -58,6 +73,15 @@
 
     <!-- Ajuda + histórico -->
     <div class="space-y-5">
+
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <p class="text-xs font-medium text-dim uppercase tracking-widest mb-3">Formatos aceitos</p>
+        <ul class="text-xs text-muted space-y-1.5">
+          <li><span class="text-tx font-medium">OFX</span> — o mais preciso: valores e IDs vêm prontos do banco.</li>
+          <li><span class="text-tx font-medium">CSV</span> — planilhas e outros bancos, com escolha das colunas.</li>
+          <li><span class="text-tx font-medium">PDF</span> — o "Extrato por período" da Caixa. Lido no seu navegador; se as páginas forem imagem, o texto é reconhecido por OCR (leva alguns segundos por página).</li>
+        </ul>
+      </div>
 
       <div class="bg-surface border border-line rounded-lg p-5">
         <p class="text-xs font-medium text-dim uppercase tracking-widest mb-3">Como baixar seu extrato</p>
@@ -110,5 +134,177 @@
 
     </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" type="module"></script>
+  <script type="module">
+    import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs';
+
+    const input     = document.getElementById('arquivo');
+    const nomeSpan  = document.getElementById('nome-arquivo');
+    const btn       = document.getElementById('btn-enviar');
+    const box       = document.getElementById('pdf-progresso');
+    const barra     = document.getElementById('pdf-barra');
+    const status    = document.getElementById('pdf-status');
+    const pct       = document.getElementById('pdf-pct');
+    const erroBox   = document.getElementById('pdf-erro');
+    const form      = document.getElementById('form-upload');
+
+    function progresso(texto, valor) {
+      box.classList.remove('hidden');
+      status.textContent = texto;
+      const p = Math.max(0, Math.min(100, Math.round(valor)));
+      barra.style.width = p + '%';
+      pct.textContent = p + '%';
+    }
+    function falhar(msg) {
+      box.classList.add('hidden');
+      erroBox.textContent = msg;
+      erroBox.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Ler arquivo';
+    }
+
+    input.addEventListener('change', function () {
+      const f = this.files[0];
+      nomeSpan.textContent = f ? f.name : 'OFX, CSV ou PDF';
+      btn.disabled = !f;
+      erroBox.classList.add('hidden');
+      box.classList.add('hidden');
+    });
+
+    form.addEventListener('submit', async function (ev) {
+      const f = input.files[0];
+      if (!f || !f.name.toLowerCase().endsWith('.pdf')) return;   // OFX/CSV seguem pro servidor
+      ev.preventDefault();
+      btn.disabled = true;
+      btn.textContent = 'Lendo…';
+      erroBox.classList.add('hidden');
+
+      try {
+        const buf = await f.arrayBuffer();
+        progresso('Abrindo o PDF…', 4);
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+        // 1ª tentativa: camada de texto (PDF gerado pelo Internet Banking)
+        let linhas = [];
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const pagina = await pdf.getPage(p);
+          const tc = await pagina.getTextContent();
+          linhas = linhas.concat(agruparItens(tc.items.map(function (it) {
+            return { texto: it.str, x: it.transform[4], y: it.transform[5] };
+          }), true));
+          progresso('Lendo texto do PDF…', 4 + (p / pdf.numPages) * 20);
+        }
+
+        const temTexto = linhas.join('').replace(/\s/g, '').length > 80;
+
+        if (!temTexto) {
+          progresso('PDF em imagem — carregando reconhecimento de texto…', 8);
+          linhas = await ocrPdf(pdf);
+        }
+
+        progresso('Interpretando lançamentos…', 96);
+        const resp = await fetch("{% url 'importar_pdf' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+          },
+          body: JSON.stringify({ arquivo_nome: f.name, linhas: linhas }),
+        });
+        const dados = await resp.json();
+        if (!dados.ok) return falhar(dados.erro || 'Não foi possível ler o extrato.');
+        progresso('Pronto — abrindo revisão…', 100);
+        window.location = dados.redirect;
+
+      } catch (e) {
+        console.error(e);
+        falhar('Falha ao ler o PDF: ' + (e && e.message ? e.message : e));
+      }
+    });
+
+    /* Agrupa palavras em linhas pela coordenada Y e descarta a coluna de CPF/CNPJ. */
+    function agruparItens(itens, inverterY) {
+      const validos = itens.filter(function (i) { return i.texto && i.texto.trim(); });
+      if (!validos.length) return [];
+
+      // Localiza a faixa horizontal da coluna CPF/CNPJ pelo cabeçalho
+      let xCpf = null, xValor = null;
+      validos.forEach(function (i) {
+        const t = i.texto.replace(/\s/g, '').toUpperCase();
+        if (xCpf === null && (t.includes('CPF/CNPJ') || t === 'CPF')) xCpf = i.x;
+        if (xValor === null && t === 'VALOR') xValor = i.x;
+      });
+
+      const grupos = {};
+      validos.forEach(function (i) {
+        const chave = Math.round((inverterY ? -i.y : i.y) / 8);
+        (grupos[chave] = grupos[chave] || []).push(i);
+      });
+
+      return Object.keys(grupos)
+        .sort(function (a, b) { return a - b; })
+        .map(function (k) {
+          return grupos[k]
+            .sort(function (a, b) { return a.x - b.x; })
+            .filter(function (i) {
+              if (xCpf === null || xValor === null) return true;
+              const dentroCpf = i.x >= xCpf - 6 && i.x < xValor - 6;
+              return !dentroCpf;
+            })
+            .map(function (i) { return i.texto.trim(); })
+            .join(' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+        })
+        .filter(function (l) { return l.length > 0; });
+    }
+
+    /* OCR página a página com tesseract.js */
+    async function ocrPdf(pdf) {
+      if (!window.Tesseract) {
+        await new Promise(function (ok, falha) {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+          s.onload = ok; s.onerror = function () { falha(new Error('não foi possível carregar o OCR')); };
+          document.head.appendChild(s);
+        });
+      }
+
+      const worker = await Tesseract.createWorker('por');
+      let linhas = [];
+      try {
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const pagina = await pdf.getPage(p);
+          const viewport = pagina.getViewport({ scale: 2.4 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await pagina.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+
+          progresso('Reconhecendo texto — página ' + p + ' de ' + pdf.numPages + '…',
+                    10 + ((p - 0.5) / pdf.numPages) * 84);
+
+          const r = await worker.recognize(canvas, {}, { blocks: true });
+          const palavras = [];
+          (r.data.blocks || []).forEach(function (b) {
+            (b.paragraphs || []).forEach(function (par) {
+              (par.lines || []).forEach(function (ln) {
+                (ln.words || []).forEach(function (w) {
+                  palavras.push({ texto: w.text, x: w.bbox.x0, y: (w.bbox.y0 + w.bbox.y1) / 2 });
+                });
+              });
+            });
+          });
+          linhas = linhas.concat(agruparItens(palavras, false));
+          canvas.width = canvas.height = 0;
+        }
+      } finally {
+        await worker.terminate();
+      }
+      return linhas;
+    }
+  </script>
 
 {% endblock %}
