@@ -164,7 +164,7 @@ def sincronizar_fixas(usuario, limite=None):
     """Gera todas as ocorrências pendentes de transações fixas até `limite` (padrão: hoje)."""
     ate = limite if limite is not None else date.today()
     for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade'):
-        proxima  = _avancar_data(tf.ultima_geracao, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day) if tf.ultima_geracao else tf.data_inicio
+        proxima  = tf.avancar(tf.ultima_geracao) if tf.ultima_geracao else tf.data_inicio
         lim_fixa = min(ate, tf.data_fim) if tf.data_fim else ate
 
         novas, ultima = [], tf.ultima_geracao
@@ -178,7 +178,7 @@ def sincronizar_fixas(usuario, limite=None):
                 origem_fixa=tf,
             ))
             ultima = d
-            d = _avancar_data(d, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day)
+            d = tf.avancar(d)
 
         if novas:
             Transacao.objects.bulk_create(novas)
@@ -198,8 +198,7 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
         qs = qs.filter(tipo=tipo)
 
     for tf in qs:
-        d = (_avancar_data(tf.ultima_geracao, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day)
-             if tf.ultima_geracao else tf.data_inicio)
+        d = tf.avancar(tf.ultima_geracao) if tf.ultima_geracao else tf.data_inicio
         lim = min(fim, tf.data_fim) if tf.data_fim else fim
         guarda = 0
         while d <= lim and guarda < 500:
@@ -213,7 +212,7 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
                     'fixa': tf,
                 })
             guarda += 1
-            d = _avancar_data(d, tf.frequencia, tf.intervalo_dias, tf.data_inicio.day)
+            d = tf.avancar(d)
 
     itens.sort(key=lambda x: x['data'])
     return itens
@@ -919,6 +918,7 @@ def _reagendar_tf(tf_id, dia, dia_util):
     nova_data = _proxima_data_pagamento(dia, dia_util)
     TransacaoFixa.objects.filter(pk=tf_id).update(
         data_inicio=nova_data,
+        dia_util_n=dia if dia_util else None,
         ultima_geracao=None,   # nada a gerar até a nova data chegar
     )
 
@@ -932,6 +932,7 @@ def _criar_tf_essencial(usuario, cat, valor, dia, dia_util, obs, sufixo=''):
         descricao=cat.nome + sufixo,
         valor=valor or D('0'), frequencia='mensal',
         data_inicio=_proxima_data_pagamento(dia, dia_util),
+        dia_util_n=dia if dia_util else None,
         categoria=cat_fin, observacao=obs, ativa=True,
     )
 
