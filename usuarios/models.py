@@ -17,6 +17,22 @@ MOEDA_SIMBOLO = {
 }
 
 
+TEMA_CHOICES = [
+    ('escuro',    'Escuro'),
+    ('claro',     'Claro'),
+    ('contraste', 'Alto contraste'),
+]
+
+ESCALA_FONTE_CHOICES = [
+    (90,  'Pequena (90%)'),
+    (100, 'Normal (100%)'),
+    (110, 'Grande (110%)'),
+    (125, 'Muito grande (125%)'),
+]
+
+COR_DESTAQUE_PADRAO = '#4c8eff'
+
+
 class Usuario(AbstractUser):
     bio = models.TextField(blank=True, default='')
     telefone = models.CharField(max_length=20, blank=True, default='')
@@ -27,6 +43,10 @@ class Usuario(AbstractUser):
         default=1,
         validators=[MinValueValidator(1), MaxValueValidator(28)],
     )
+    tema = models.CharField(max_length=10, choices=TEMA_CHOICES, default='escuro')
+    cor_destaque = models.CharField(max_length=7, default=COR_DESTAQUE_PADRAO)
+    escala_fonte = models.PositiveSmallIntegerField(choices=ESCALA_FONTE_CHOICES, default=100)
+    reduzir_animacoes = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Usuário'
@@ -38,3 +58,16 @@ class Usuario(AbstractUser):
     @property
     def simbolo_moeda(self):
         return MOEDA_SIMBOLO.get(self.moeda, 'R$')
+
+    @property
+    def cor_destaque_personalizada(self):
+        return bool(self.cor_destaque) and self.cor_destaque.lower() != COR_DESTAQUE_PADRAO
+
+    @property
+    def cor_destaque_rgb(self):
+        """Hex '#rrggbb' → 'r g b' para uso em variável CSS com alpha."""
+        h = (self.cor_destaque or COR_DESTAQUE_PADRAO).lstrip('#')
+        try:
+            return f'{int(h[0:2], 16)} {int(h[2:4], 16)} {int(h[4:6], 16)}'
+        except (ValueError, IndexError):
+            return '76 142 255'
