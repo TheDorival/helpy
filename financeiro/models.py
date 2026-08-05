@@ -259,6 +259,10 @@ class TransacaoFixa(models.Model):
     data_fim       = models.DateField(null=True, blank=True)
     observacao     = models.TextField(blank=True, default='')
     ativa          = models.BooleanField(default=True)
+    dia_util_n     = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='Se preenchido, cai sempre no N-ésimo dia útil do mês.',
+    )
     ultima_geracao = models.DateField(null=True, blank=True)
     criado_em      = models.DateTimeField(auto_now_add=True)
 
@@ -277,24 +281,87 @@ class TransacaoFixa(models.Model):
             return self.entidade.nome
         return self.descricao or '—'
 
+    MESES_POR_FREQUENCIA = {
+        'mensal': 1, 'bimestral': 2, 'trimestral': 3, 'semestral': 6, 'anual': 12,
+    }
+
+    def avancar(self, data):
+        """Próxima ocorrência depois de `data`.
+
+        Com `dia_util_n`, cada mês cai no N-ésimo dia útil (que muda de mês para
+        mês); caso contrário mantém o dia do mês da data de início.
+        """
+        meses = self.MESES_POR_FREQUENCIA.get(self.frequencia)
+        if self.dia_util_n and meses:
+            total = data.year * 12 + (data.month - 1) + meses
+            ano, mes = total // 12, total % 12 + 1
+            alvo = _nth_business_day(ano, mes, self.dia_util_n)
+            if alvo:
+                return alvo
+        return _avancar_data(data, self.frequencia, self.intervalo_dias, self.data_inicio.day)
+
     def proxima_data(self):
         base = self.ultima_geracao
-        d = _avancar_data(base, self.frequencia, self.intervalo_dias, self.data_inicio.day) if base else self.data_inicio
+        d = self.avancar(base) if base else self.data_inicio
         if self.data_fim and d > self.data_fim:
             return None
         return d
 
 
-def _nth_business_day(year, month, n):
-    """Retorna a data do N-ésimo dia útil (seg–sex) do mês."""
+FERIADOS_FIXOS = (
+    (1, 1),    # Confraternização Universal
+    (4, 21),   # Tiradentes
+    (5, 1),    # Dia do Trabalho
+    (9, 7),    # Independência
+    (10, 12),  # Nossa Senhora Aparecida
+    (11, 2),   # Finados
+    (11, 15),  # Proclamação da República
+    (11, 20),  # Consciência Negra (nacional desde 2024)
+    (12, 25),  # Natal
+)
+
+
+def _pascoa(ano):
+    """Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher)."""
     from datetime import date
+    a = ano % 19
+    b, c = divmod(ano, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    mes, dia = divmod(h + l - 7 * m + 114, 31)
+    return date(ano, mes, dia + 1)
+
+
+def feriados_nacionais(ano):
+    """Feriados nacionais brasileiros do ano, incluindo os móveis."""
+    from datetime import date, timedelta
+    dias = {date(ano, m, d) for m, d in FERIADOS_FIXOS}
+    pascoa = _pascoa(ano)
+    dias.update({
+        pascoa - timedelta(days=48),  # segunda de carnaval
+        pascoa - timedelta(days=47),  # terça de carnaval
+        pascoa - timedelta(days=2),   # sexta-feira santa
+        pascoa + timedelta(days=60),  # corpus christi
+    })
+    return dias
+
+
+def _nth_business_day(year, month, n):
+    """Retorna a data do N-ésimo dia útil do mês (ignora fins de semana e feriados)."""
+    from datetime import date
+    feriados = feriados_nacionais(year)
     day, count = 1, 0
     while True:
         try:
             d = date(year, month, day)
         except ValueError:
             return None
-        if d.weekday() < 5:
+        if d.weekday() < 5 and d not in feriados:
             count += 1
             if count == n:
                 return d
