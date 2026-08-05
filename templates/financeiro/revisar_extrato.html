@@ -26,10 +26,20 @@
         <span class="text-muted">Saídas: <span class="text-red font-medium">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</span></span>
       </div>
     </div>
-    {% if n_duplicatas %}
-      <p class="mt-3 pt-3 border-t border-line text-[11px] text-muted">
-        Lançamentos que parecem já existir no Helpy vêm desmarcados. Você pode marcá-los se quiser importar mesmo assim.
-      </p>
+    {% if n_duplicatas or formato == 'pdf' %}
+      <div class="mt-3 pt-3 border-t border-line space-y-1">
+        {% if n_duplicatas %}
+          <p class="text-[11px] text-muted">
+            Lançamentos que parecem já existir no Helpy vêm desmarcados. Você pode marcá-los se quiser importar mesmo assim.
+          </p>
+        {% endif %}
+        {% if formato == 'pdf' %}
+          <p class="text-[11px] text-amber-400">
+            ⚠ Leitura por PDF depende de reconhecimento de texto — confira os valores antes de importar.
+            Sempre que possível, prefira o arquivo OFX.
+          </p>
+        {% endif %}
+      </div>
     {% endif %}
   </div>
 

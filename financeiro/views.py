@@ -11,7 +11,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import (CategoriaForm, EmprestimoForm, EntidadeForm, EventoVidaForm, MetaForm,
                     RegraCategoriaForm, TransacaoFixaForm, TransacaoForm)
-from .importacao import ExtratoInvalido, detectar_colunas, ler_csv, parse_csv, parse_ofx
+from .importacao import (ExtratoInvalido, detectar_colunas, ler_csv, meta_do_extrato,
+                         parse_csv, parse_linhas_caixa, parse_ofx)
 from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial, EventoVida,
                      ImportacaoExtrato, Meta, ParcelaEmprestimo, RegraCategoria, SaldoExtra,
                      Transacao, TransacaoFixa, _avancar_data, _data_parcela)
@@ -1180,8 +1181,12 @@ def importar_extrato(request):
                 }
                 return redirect('mapear_csv')
 
+            elif ext == 'pdf':
+                erro = ('PDFs são lidos direto no navegador — ative o JavaScript e '
+                        'selecione o arquivo novamente.')
+
             else:
-                erro = 'Formato não suportado. Envie um arquivo .ofx ou .csv.'
+                erro = 'Formato não suportado. Envie um arquivo .ofx, .csv ou .pdf.'
 
         except ExtratoInvalido as e:
             erro = str(e)
@@ -1192,6 +1197,38 @@ def importar_extrato(request):
         'erro': erro,
         'importacoes': ImportacaoExtrato.objects.filter(usuario=request.user)[:5],
     })
+
+
+@login_required
+def importar_pdf(request):
+    """Recebe as linhas de texto extraídas do PDF pelo navegador (pdf.js/OCR)."""
+    from django.http import JsonResponse
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'erro': 'Método inválido.'}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+        linhas = payload.get('linhas') or []
+        nome = (payload.get('arquivo_nome') or 'extrato.pdf')[:255]
+    except (ValueError, AttributeError):
+        return JsonResponse({'ok': False, 'erro': 'Dados inválidos.'}, status=400)
+
+    if not isinstance(linhas, list) or not linhas:
+        return JsonResponse({'ok': False, 'erro': 'Nenhum texto foi extraído do PDF.'}, status=400)
+
+    try:
+        lancamentos = parse_linhas_caixa([str(l) for l in linhas][:5000])
+    except ExtratoInvalido as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+    lancamentos = _aplicar_regras(request.user, _marcar_duplicatas(request.user, lancamentos))
+    request.session['import_extrato'] = {
+        'arquivo_nome': nome, 'formato': 'pdf',
+        'meta': meta_do_extrato([str(l) for l in linhas]),
+        'lancamentos': _serializar(lancamentos),
+    }
+    return JsonResponse({'ok': True, 'n': len(lancamentos), 'redirect': '/importar/revisar/'})
 
 
 @login_required
@@ -1303,6 +1340,7 @@ def revisar_extrato(request):
     return render(request, 'financeiro/revisar_extrato.html', {
         'itens': itens,
         'arquivo_nome': dados['arquivo_nome'],
+        'formato': dados['formato'],
         'meta': meta,
         'total_receitas': total_rec,
         'total_despesas': total_desp,

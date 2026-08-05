@@ -41,6 +41,7 @@ urlpatterns = [
     path('metas/<int:pk>/toggle/', views.toggle_meta, name='toggle_meta'),
     path('metas/<int:pk>/ajustar/', views.ajustar_meta, name='ajustar_meta'),
     path('importar/', views.importar_extrato, name='importar_extrato'),
+    path('importar/pdf/', views.importar_pdf, name='importar_pdf'),
     path('importar/colunas/', views.mapear_csv, name='mapear_csv'),
     path('importar/revisar/', views.revisar_extrato, name='revisar_extrato'),
     path('importar/cancelar/', views.cancelar_importacao, name='cancelar_importacao'),
