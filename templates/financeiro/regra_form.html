@@ -26,25 +26,10 @@
         </div>
 
         <div>
-          <label for="id_categoria" class="block text-xs font-medium text-muted mb-1">Categoria</label>
-          <select name="categoria" id="id_categoria" required
-                  class="w-full text-sm bg-bg border {% if form.categoria.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
-            <option value="">— selecione —</option>
-            {% for c in categorias %}
-              <option value="{{ c.pk }}" {% if form.categoria.value|stringformat:'s' == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nome }} ({{ c.get_tipo_display }})</option>
-            {% endfor %}
-          </select>
-          {% if form.categoria.errors %}<p class="mt-1 text-xs text-red">{{ form.categoria.errors.0 }}</p>{% endif %}
-          {% if not categorias %}
-            <p class="mt-1 text-xs text-amber-400">Você ainda não tem categorias — <a href="{% url 'nova_categoria' %}" class="underline">crie uma primeiro</a>.</p>
-          {% endif %}
-        </div>
-
-        <div>
           <label class="block text-xs font-medium text-muted mb-2">Aplica a</label>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-3 gap-2" id="aplica-group">
             {% for value, label in form.fields.aplica_a.choices %}
-            <label class="flex items-center justify-center p-2 rounded-md border cursor-pointer text-[11px] text-center transition-all
+            <label class="aplica-option flex items-center justify-center p-2 rounded-md border cursor-pointer text-[11px] text-center transition-all
                           {% if form.aplica_a.value|default:'ambos' == value %}border-accent/50 bg-accent/5 text-tx{% else %}border-line text-muted hover:border-muted{% endif %}">
               <input type="radio" name="aplica_a" value="{{ value }}" class="sr-only"
                      {% if form.aplica_a.value|default:'ambos' == value %}checked{% endif %}>
@@ -52,6 +37,19 @@
             </label>
             {% endfor %}
           </div>
+          <p class="mt-1 text-[10px] text-dim">Define também quais categorias aparecem abaixo.</p>
+        </div>
+
+        <div>
+          <label for="id_categoria" class="block text-xs font-medium text-muted mb-1">Categoria</label>
+          <select name="categoria" id="id_categoria" required
+                  data-selecionada="{{ form.categoria.value|default:'' }}"
+                  class="w-full text-sm bg-bg border {% if form.categoria.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+          </select>
+          {% if form.categoria.errors %}<p class="mt-1 text-xs text-red">{{ form.categoria.errors.0 }}</p>{% endif %}
+          {% if not categorias %}
+            <p class="mt-1 text-xs text-amber-400">Você ainda não tem categorias — <a href="{% url 'nova_categoria' %}" class="underline">crie uma primeiro</a>.</p>
+          {% endif %}
         </div>
 
         <div>
@@ -89,4 +87,71 @@
       </form>
     </div>
   </div>
+
+  <script>
+  (function () {
+    const CATEGORIAS = {
+      receita: [{% for c in categorias %}{% if c.tipo == 'receita' %}{ id: "{{ c.pk }}", nome: "{{ c.nome|escapejs }}" },{% endif %}{% endfor %}],
+      despesa: [{% for c in categorias %}{% if c.tipo == 'despesa' %}{ id: "{{ c.pk }}", nome: "{{ c.nome|escapejs }}" },{% endif %}{% endfor %}],
+    };
+
+    const selCat = document.getElementById('id_categoria');
+    const opcoes = document.querySelectorAll('.aplica-option');
+
+    function preencher(aplicaA) {
+      const atual = selCat.value || selCat.dataset.selecionada || '';
+      selCat.innerHTML = '';
+      const vazia = document.createElement('option');
+      vazia.value = '';
+      vazia.textContent = '— selecione —';
+      selCat.appendChild(vazia);
+
+      function grupo(rotulo, lista) {
+        if (!lista.length) return;
+        const g = document.createElement('optgroup');
+        g.label = rotulo;
+        lista.forEach(function (c) {
+          const op = document.createElement('option');
+          op.value = c.id;
+          op.textContent = c.nome;
+          if (c.id === atual) op.selected = true;
+          g.appendChild(op);
+        });
+        selCat.appendChild(g);
+      }
+
+      if (aplicaA !== 'despesa') grupo('Receitas', CATEGORIAS.receita);
+      if (aplicaA !== 'receita') grupo('Despesas', CATEGORIAS.despesa);
+
+      if (selCat.value !== atual) selCat.value = '';
+      selCat.dataset.selecionada = selCat.value;
+    }
+
+    function marcar(valor) {
+      opcoes.forEach(function (o) {
+        const r = o.querySelector('input[type=radio]');
+        const ativo = r && r.value === valor;
+        o.classList.toggle('border-accent/50', ativo);
+        o.classList.toggle('bg-accent/5', ativo);
+        o.classList.toggle('text-tx', ativo);
+        o.classList.toggle('border-line', !ativo);
+        o.classList.toggle('text-muted', !ativo);
+      });
+    }
+
+    opcoes.forEach(function (o) {
+      o.addEventListener('click', function () {
+        const r = this.querySelector('input[type=radio]');
+        if (!r) return;
+        r.checked = true;
+        marcar(r.value);
+        preencher(r.value);
+      });
+    });
+
+    const inicial = document.querySelector('input[name="aplica_a"]:checked');
+    preencher(inicial ? inicial.value : 'ambos');
+  })();
+  </script>
+
 {% endblock %}
