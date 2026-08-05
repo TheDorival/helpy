@@ -543,6 +543,11 @@ class EventoVida(models.Model):
     descricao  = models.TextField(blank=True, default='')
     valor      = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     destaque   = models.BooleanField(default=False)
+    transacao  = models.ForeignKey(
+        'Transacao', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='eventos_vida',
+        help_text='Transação financeira associada a este marco (opcional).',
+    )
     criado_em  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -556,6 +561,13 @@ class EventoVida(models.Model):
     @property
     def icone(self):
         return self.ICONES.get(self.tipo, '📌')
+
+    @property
+    def valor_efetivo(self):
+        """Valor da transação vinculada, se houver; senão o valor informado."""
+        if self.transacao_id and self.transacao:
+            return self.transacao.valor
+        return self.valor
 
 
 class SaldoExtra(models.Model):
