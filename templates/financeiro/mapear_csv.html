@@ -1,0 +1,111 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Colunas do CSV{% endblock %}
+{% block page_title %}Importar extrato{% endblock %}
+
+{% block content %}
+
+  {% if erro %}
+    <div class="mb-5 px-4 py-3 rounded-md bg-red/10 border border-red/20 text-sm text-red">{{ erro }}</div>
+  {% endif %}
+
+  <div class="max-w-3xl">
+    <div class="bg-surface border border-line rounded-lg p-5 mb-5">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-1">Identificar colunas</p>
+      <p class="text-xs text-muted mb-5">
+        Arquivo <span class="text-tx">{{ arquivo_nome }}</span> — indique o que cada coluna representa.
+      </p>
+
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="grid sm:grid-cols-2 gap-4 mb-5">
+          <div>
+            <label for="col_data" class="block text-xs font-medium text-muted mb-1">Data <span class="text-red">*</span></label>
+            <select name="col_data" id="col_data" required
+                    class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+              <option value="">— selecione —</option>
+              {% for col in cabecalho %}
+                <option value="{{ forloop.counter0 }}" {% if sugestao.data == forloop.counter0 %}selected{% endif %}>{{ forloop.counter }}. {{ col|default:"(sem título)" }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="col_valor" class="block text-xs font-medium text-muted mb-1">Valor <span class="text-red">*</span></label>
+            <select name="col_valor" id="col_valor" required
+                    class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+              <option value="">— selecione —</option>
+              {% for col in cabecalho %}
+                <option value="{{ forloop.counter0 }}" {% if sugestao.valor == forloop.counter0 %}selected{% endif %}>{{ forloop.counter }}. {{ col|default:"(sem título)" }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="col_desc" class="block text-xs font-medium text-muted mb-1">Descrição</label>
+            <select name="col_desc" id="col_desc"
+                    class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+              <option value="">— nenhuma —</option>
+              {% for col in cabecalho %}
+                <option value="{{ forloop.counter0 }}" {% if sugestao.descricao == forloop.counter0 %}selected{% endif %}>{{ forloop.counter }}. {{ col|default:"(sem título)" }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="col_tipo" class="block text-xs font-medium text-muted mb-1">
+              Tipo (D/C) <span class="text-dim font-normal">opcional</span>
+            </label>
+            <select name="col_tipo" id="col_tipo"
+                    class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+              <option value="">— usar sinal do valor —</option>
+              {% for col in cabecalho %}
+                <option value="{{ forloop.counter0 }}" {% if sugestao.tipo == forloop.counter0 %}selected{% endif %}>{{ forloop.counter }}. {{ col|default:"(sem título)" }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <p class="text-[11px] text-dim mb-5">
+          Sem a coluna de tipo, valores negativos viram despesas e positivos viram receitas.
+        </p>
+
+        <div class="flex gap-3">
+          <button type="submit"
+                  class="bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-sm font-medium px-4 py-2 rounded-md transition-colors">
+            Continuar
+          </button>
+          <a href="{% url 'cancelar_importacao' %}"
+             class="px-4 py-2 text-sm text-muted hover:text-tx border border-line rounded-md transition-colors">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Prévia -->
+    <div class="bg-surface border border-line rounded-lg overflow-x-auto">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest px-4 py-3 border-b border-line">Prévia do arquivo</p>
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="border-b border-line">
+            {% for col in cabecalho %}
+              <th class="text-left font-medium text-dim px-3 py-2 whitespace-nowrap">{{ forloop.counter }}. {{ col|default:"—" }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for linha in previa %}
+          <tr>
+            {% for celula in linha %}
+              <td class="px-3 py-2 text-muted whitespace-nowrap">{{ celula|default:"—" }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% endblock %}

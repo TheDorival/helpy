@@ -2,7 +2,21 @@ from datetime import date
 
 from django import forms
 
-from .models import Categoria, Emprestimo, Entidade, EventoVida, Meta, Transacao, TransacaoFixa
+from .models import (Categoria, Emprestimo, Entidade, EventoVida, Meta, RegraCategoria,
+                     Transacao, TransacaoFixa)
+
+
+class RegraCategoriaForm(forms.ModelForm):
+    class Meta:
+        model = RegraCategoria
+        fields = ['termo', 'categoria', 'aplica_a', 'entidade', 'ativa']
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['entidade'].required = False
+        if usuario:
+            self.fields['categoria'].queryset = Categoria.objects.filter(usuario=usuario)
+            self.fields['entidade'].queryset = Entidade.objects.filter(usuario=usuario)
 
 
 class CategoriaForm(forms.ModelForm):

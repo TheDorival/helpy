@@ -1,0 +1,114 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Importar extrato{% endblock %}
+{% block page_title %}Importar extrato{% endblock %}
+
+{% block skeleton %}
+  <div class="max-w-2xl">
+    <div class="bg-surface border border-line rounded-lg p-6 mb-5">
+      <div class="sk h-3 w-40 rounded mb-4"></div>
+      <div class="sk h-32 w-full rounded-lg mb-4"></div>
+      <div class="sk h-8 w-32 rounded-md"></div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="mb-5 px-4 py-3 rounded-md bg-green/10 border border-green/20 text-sm text-green">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if erro %}
+    <div class="mb-5 px-4 py-3 rounded-md bg-red/10 border border-red/20 text-sm text-red">{{ erro }}</div>
+  {% endif %}
+
+  <div class="grid lg:grid-cols-2 gap-5 items-start">
+
+    <!-- Upload -->
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-4">Enviar arquivo</p>
+
+      <form method="post" enctype="multipart/form-data" id="form-upload">
+        {% csrf_token %}
+
+        <label for="arquivo"
+               class="flex flex-col items-center justify-center gap-2 py-10 px-4 border border-dashed border-line rounded-lg cursor-pointer hover:border-accent/40 hover:bg-surfacehi transition-colors text-center">
+          <svg class="w-7 h-7 text-dim" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+          </svg>
+          <span class="text-sm text-tx font-medium">Escolher arquivo</span>
+          <span id="nome-arquivo" class="text-xs text-dim">OFX, OFC ou CSV — até 5 MB</span>
+        </label>
+        <input type="file" name="arquivo" id="arquivo" accept=".ofx,.ofc,.qfx,.csv,.txt,.tsv" class="sr-only" required
+               onchange="document.getElementById('nome-arquivo').textContent = this.files[0] ? this.files[0].name : 'OFX, OFC ou CSV — até 5 MB'; document.getElementById('btn-enviar').disabled = !this.files[0];">
+
+        <button type="submit" id="btn-enviar" disabled
+                class="mt-4 w-full bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium py-2 rounded-md transition-colors">
+          Ler arquivo
+        </button>
+      </form>
+
+      <p class="mt-4 text-xs text-dim">
+        Nada é salvo até você revisar e confirmar os lançamentos na próxima tela.
+      </p>
+    </div>
+
+    <!-- Ajuda + histórico -->
+    <div class="space-y-5">
+
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <p class="text-xs font-medium text-dim uppercase tracking-widest mb-3">Como baixar seu extrato</p>
+        <p class="text-xs font-medium text-tx mb-1.5">Caixa Econômica Federal</p>
+        <ol class="text-xs text-muted space-y-1 list-decimal list-inside">
+          <li>Acesse o Internet Banking e abra o menu ☰</li>
+          <li>Escolha <span class="text-tx">Conta por Período</span></li>
+          <li>Selecione o período desejado</li>
+          <li>Clique em <span class="text-tx">Gerar Arquivo para Gerenciadores Financeiros</span></li>
+          <li>Escolha <span class="text-tx">OFX</span> e continue — o download começa sozinho</li>
+        </ol>
+        <div class="mt-3 px-3 py-2 rounded-md bg-bg border border-line">
+          <p class="text-[11px] text-muted">
+            A Caixa gera uma versão <span class="text-tx">completa</span> e outra resumida — só a completa traz os lançamentos.
+            O banco guarda apenas os <span class="text-tx">últimos 60 dias</span>, então vale importar todo mês.
+          </p>
+        </div>
+      </div>
+
+      {% if importacoes %}
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <p class="text-xs font-medium text-dim uppercase tracking-widest mb-3">Importações recentes</p>
+        <div class="space-y-2">
+          {% for imp in importacoes %}
+          <div class="flex items-center justify-between gap-3 text-xs">
+            <div class="min-w-0">
+              <p class="text-tx truncate">{{ imp.arquivo_nome }}</p>
+              <p class="text-dim">{{ imp.criado_em|date:"d/m/Y H:i" }} · {{ imp.get_formato_display }}</p>
+            </div>
+            <span class="text-muted whitespace-nowrap">
+              <span class="text-green">{{ imp.n_importadas }}</span> importado{{ imp.n_importadas|pluralize }}
+              {% if imp.n_ignoradas %}· {{ imp.n_ignoradas }} ignorado{{ imp.n_ignoradas|pluralize }}{% endif %}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="bg-surface border border-line rounded-lg p-5">
+        <p class="text-xs font-medium text-dim uppercase tracking-widest mb-2">Categorização automática</p>
+        <p class="text-xs text-muted mb-3">
+          Crie regras como “contém IFOOD → Alimentação” e as próximas importações já vêm classificadas.
+        </p>
+        <a href="{% url 'regras' %}"
+           class="inline-flex items-center gap-2 text-xs font-medium text-accent border border-accent/30 bg-accent/5 hover:bg-accent/10 px-3 py-1.5 rounded-md transition-colors">
+          Gerenciar regras
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+{% endblock %}

@@ -1,17 +1,20 @@
 import csv
 import json
 from datetime import date, timedelta
+from decimal import Decimal
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import (CategoriaForm, EmprestimoForm, EntidadeForm, EventoVidaForm, MetaForm,
-                    TransacaoFixaForm, TransacaoForm)
+                    RegraCategoriaForm, TransacaoFixaForm, TransacaoForm)
+from .importacao import ExtratoInvalido, detectar_colunas, ler_csv, parse_csv, parse_ofx
 from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial, EventoVida,
-                     Meta, ParcelaEmprestimo, SaldoExtra, Transacao, TransacaoFixa,
-                     _avancar_data, _data_parcela)
+                     ImportacaoExtrato, Meta, ParcelaEmprestimo, RegraCategoria, SaldoExtra,
+                     Transacao, TransacaoFixa, _avancar_data, _data_parcela)
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -1078,6 +1081,297 @@ def desativar_essencial(request, slug):
             TransacaoFixa.objects.filter(pk__in=ids).update(ativa=False)
         ess.delete()
     return redirect('essenciais')
+
+
+# ── IMPORTAÇÃO DE EXTRATO ─────────────────────────────────────────────────────
+
+def _marcar_duplicatas(usuario, lancamentos):
+    """Anota cada lançamento com 'duplicata' e o motivo, comparando com o já existente."""
+    if not lancamentos:
+        return lancamentos
+
+    datas = [l['data'] for l in lancamentos]
+    existentes = list(
+        Transacao.objects.filter(usuario=usuario, data__gte=min(datas), data__lte=max(datas))
+        .values('fitid', 'tipo', 'valor', 'data', 'descricao')
+    )
+    fitids = {e['fitid'] for e in existentes if e['fitid']}
+    chaves = {(e['tipo'], e['data'], e['valor']) for e in existentes}
+
+    for l in lancamentos:
+        motivo = ''
+        if l['fitid'] and l['fitid'] in fitids:
+            motivo = 'Já importado anteriormente'
+        elif (l['tipo'], l['data'], l['valor']) in chaves:
+            motivo = 'Já existe lançamento igual nesta data'
+        l['duplicata'] = bool(motivo)
+        l['motivo_duplicata'] = motivo
+    return lancamentos
+
+
+def _aplicar_regras(usuario, lancamentos):
+    """Sugere categoria (e entidade) para cada lançamento com base nas regras ativas."""
+    regras = list(
+        RegraCategoria.objects.filter(usuario=usuario, ativa=True)
+        .select_related('categoria', 'entidade')
+    )
+    for l in lancamentos:
+        l['categoria_id'] = None
+        l['categoria_nome'] = ''
+        l['entidade_id'] = None
+        for r in regras:
+            if r.combina(l['descricao'], l['tipo']):
+                l['categoria_id'] = r.categoria_id
+                l['categoria_nome'] = r.categoria.nome
+                l['entidade_id'] = r.entidade_id
+                break
+    return lancamentos
+
+
+def _serializar(lancamentos):
+    return [{
+        **l,
+        'data': l['data'].isoformat(),
+        'valor': str(l['valor']),
+    } for l in lancamentos]
+
+
+def _desserializar(dados):
+    from datetime import datetime as _dt
+    return [{
+        **d,
+        'data': _dt.strptime(d['data'], '%Y-%m-%d').date(),
+        'valor': Decimal(d['valor']),
+    } for d in dados]
+
+
+@login_required
+def importar_extrato(request):
+    """Passo 1: upload do arquivo (OFX ou CSV)."""
+    erro = None
+
+    if request.method == 'POST' and request.FILES.get('arquivo'):
+        arquivo = request.FILES['arquivo']
+        nome = arquivo.name
+        conteudo = arquivo.read()
+        ext = nome.rsplit('.', 1)[-1].lower() if '.' in nome else ''
+
+        try:
+            if ext in ('ofx', 'ofc', 'qfx'):
+                lancamentos, meta = parse_ofx(conteudo)
+                lancamentos = _aplicar_regras(request.user, _marcar_duplicatas(request.user, lancamentos))
+                request.session['import_extrato'] = {
+                    'arquivo_nome': nome, 'formato': 'ofx', 'meta': {
+                        'banco': meta['banco'], 'conta': meta['conta'],
+                        'periodo_inicio': meta['periodo_inicio'].isoformat() if meta['periodo_inicio'] else None,
+                        'periodo_fim': meta['periodo_fim'].isoformat() if meta['periodo_fim'] else None,
+                    },
+                    'lancamentos': _serializar(lancamentos),
+                }
+                return redirect('revisar_extrato')
+
+            elif ext in ('csv', 'txt', 'tsv'):
+                cabecalho, linhas = ler_csv(conteudo)
+                request.session['import_csv'] = {
+                    'arquivo_nome': nome,
+                    'cabecalho': cabecalho,
+                    'linhas': linhas[:2000],
+                    'sugestao': detectar_colunas(cabecalho),
+                }
+                return redirect('mapear_csv')
+
+            else:
+                erro = 'Formato não suportado. Envie um arquivo .ofx ou .csv.'
+
+        except ExtratoInvalido as e:
+            erro = str(e)
+        except Exception:
+            erro = 'Não foi possível ler o arquivo. Verifique se ele não está corrompido.'
+
+    return render(request, 'financeiro/importar_extrato.html', {
+        'erro': erro,
+        'importacoes': ImportacaoExtrato.objects.filter(usuario=request.user)[:5],
+    })
+
+
+@login_required
+def mapear_csv(request):
+    """Passo 1.5 (só CSV): escolher quais colunas são data, valor, descrição e tipo."""
+    dados = request.session.get('import_csv')
+    if not dados:
+        return redirect('importar_extrato')
+
+    erro = None
+    if request.method == 'POST':
+        def _idx(campo, obrigatorio=False):
+            v = request.POST.get(campo, '')
+            if v.isdigit():
+                return int(v)
+            return None
+
+        col_data = _idx('col_data')
+        col_valor = _idx('col_valor')
+        col_desc = _idx('col_desc')
+        col_tipo = _idx('col_tipo')
+
+        if col_data is None or col_valor is None:
+            erro = 'Escolha ao menos as colunas de data e valor.'
+        else:
+            try:
+                lancamentos = parse_csv(dados['linhas'], col_data, col_valor, col_desc, col_tipo)
+                lancamentos = _aplicar_regras(request.user, _marcar_duplicatas(request.user, lancamentos))
+                request.session['import_extrato'] = {
+                    'arquivo_nome': dados['arquivo_nome'], 'formato': 'csv',
+                    'meta': {'banco': '', 'conta': '', 'periodo_inicio': None, 'periodo_fim': None},
+                    'lancamentos': _serializar(lancamentos),
+                }
+                del request.session['import_csv']
+                return redirect('revisar_extrato')
+            except ExtratoInvalido as e:
+                erro = str(e)
+
+    return render(request, 'financeiro/mapear_csv.html', {
+        'cabecalho': dados['cabecalho'],
+        'previa': dados['linhas'][:5],
+        'sugestao': dados['sugestao'],
+        'arquivo_nome': dados['arquivo_nome'],
+        'erro': erro,
+    })
+
+
+@login_required
+def revisar_extrato(request):
+    """Passo 2: revisar, ajustar categorias e confirmar a importação."""
+    dados = request.session.get('import_extrato')
+    if not dados:
+        return redirect('importar_extrato')
+
+    lancamentos = _desserializar(dados['lancamentos'])
+
+    if request.method == 'POST':
+        selecionados = set(request.POST.getlist('incluir'))
+        imp = ImportacaoExtrato.objects.create(
+            usuario=request.user,
+            arquivo_nome=dados['arquivo_nome'],
+            formato=dados['formato'],
+            banco=dados['meta'].get('banco') or '',
+            conta=dados['meta'].get('conta') or '',
+            periodo_inicio=lancamentos[0]['data'] if lancamentos else None,
+            periodo_fim=lancamentos[-1]['data'] if lancamentos else None,
+        )
+
+        novas = []
+        for i, l in enumerate(lancamentos):
+            if str(i) not in selecionados:
+                continue
+            cat_id = request.POST.get(f'categoria_{i}') or None
+            novas.append(Transacao(
+                usuario=request.user, tipo=l['tipo'],
+                descricao=l['descricao'], valor=l['valor'], data=l['data'],
+                categoria_id=int(cat_id) if cat_id and cat_id.isdigit() else None,
+                entidade_id=l.get('entidade_id'),
+                fitid=l.get('fitid', ''), importacao=imp,
+                observacao=f'Importado de {dados["arquivo_nome"]}',
+            ))
+
+        if novas:
+            Transacao.objects.bulk_create(novas)
+        imp.n_importadas = len(novas)
+        imp.n_ignoradas = len(lancamentos) - len(novas)
+        imp.save(update_fields=['n_importadas', 'n_ignoradas'])
+
+        del request.session['import_extrato']
+        messages.success(
+            request,
+            f'{len(novas)} lançamento(s) importado(s) de {dados["arquivo_nome"]}.'
+            + (f' {imp.n_ignoradas} ignorado(s).' if imp.n_ignoradas else '')
+        )
+        return redirect('importar_extrato')
+
+    itens = []
+    for i, l in enumerate(lancamentos):
+        itens.append({**l, 'idx': i})
+
+    total_rec = sum(l['valor'] for l in lancamentos if l['tipo'] == 'receita')
+    total_desp = sum(l['valor'] for l in lancamentos if l['tipo'] == 'despesa')
+    n_dup = sum(1 for l in lancamentos if l['duplicata'])
+
+    meta = dict(dados['meta'])
+    meta['periodo_inicio'] = lancamentos[0]['data'] if lancamentos else None
+    meta['periodo_fim'] = lancamentos[-1]['data'] if lancamentos else None
+
+    return render(request, 'financeiro/revisar_extrato.html', {
+        'itens': itens,
+        'arquivo_nome': dados['arquivo_nome'],
+        'meta': meta,
+        'total_receitas': total_rec,
+        'total_despesas': total_desp,
+        'n_total': len(lancamentos),
+        'n_duplicatas': n_dup,
+        'n_novos': len(lancamentos) - n_dup,
+        'cats_receita': Categoria.objects.filter(usuario=request.user, tipo='receita'),
+        'cats_despesa': Categoria.objects.filter(usuario=request.user, tipo='despesa'),
+    })
+
+
+@login_required
+def cancelar_importacao(request):
+    request.session.pop('import_extrato', None)
+    request.session.pop('import_csv', None)
+    return redirect('importar_extrato')
+
+
+# ── REGRAS DE CATEGORIZAÇÃO ───────────────────────────────────────────────────
+
+@login_required
+def regras(request):
+    return render(request, 'financeiro/regras.html', {
+        'regras': RegraCategoria.objects.filter(usuario=request.user).select_related('categoria', 'entidade'),
+    })
+
+
+@login_required
+def nova_regra(request):
+    form = RegraCategoriaForm(request.POST or None, usuario=request.user)
+    if request.method == 'POST' and form.is_valid():
+        r = form.save(commit=False)
+        r.usuario = request.user
+        r.save()
+        return redirect('regras')
+    return render(request, 'financeiro/regra_form.html', {
+        'form': form, 'titulo': 'Nova regra',
+        'categorias': Categoria.objects.filter(usuario=request.user),
+    })
+
+
+@login_required
+def editar_regra(request, pk):
+    regra = get_object_or_404(RegraCategoria, pk=pk, usuario=request.user)
+    form = RegraCategoriaForm(request.POST or None, instance=regra, usuario=request.user)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('regras')
+    return render(request, 'financeiro/regra_form.html', {
+        'form': form, 'titulo': 'Editar regra', 'obj': regra,
+        'categorias': Categoria.objects.filter(usuario=request.user),
+    })
+
+
+@login_required
+def excluir_regra(request, pk):
+    regra = get_object_or_404(RegraCategoria, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        regra.delete()
+    return redirect('regras')
+
+
+@login_required
+def toggle_regra(request, pk):
+    regra = get_object_or_404(RegraCategoria, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        regra.ativa = not regra.ativa
+        regra.save(update_fields=['ativa'])
+    return redirect('regras')
 
 
 # ── HISTÓRICO DE VIDA ─────────────────────────────────────────────────────────
