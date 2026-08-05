@@ -17,6 +17,8 @@ class ExtratoInvalido(Exception):
     """Arquivo não pôde ser interpretado como extrato."""
 
 
+
+
 # ── OFX ───────────────────────────────────────────────────────────────────────
 
 def _decodificar(conteudo):
@@ -112,6 +114,171 @@ def parse_ofx(conteudo):
     if not meta['periodo_fim']:
         meta['periodo_fim'] = lancamentos[-1]['data']
     return lancamentos, meta
+
+
+# ── EXTRATO EM TEXTO / PDF (layout Caixa) ─────────────────────────────────────
+
+# 02/02/2026 - 17:25:50 021725 COMPRA CARTAO DEBITO Favorecido 41,90 D 193,91 C
+RE_LINHA_CAIXA = re.compile(
+    r'^(?P<data>\d{2}/\d{2}/\d{4})'              # data
+    r'(?:[\s\-–—]*\d{1,2}:\d{2}(?::\d{2})?)?'    # hora (traço e segundos opcionais)
+    r'[\s\-–—]*(?P<doc>\d{4,8})?'                # nr. documento (opcional)
+    r'\s*(?P<resto>\S.*)$'
+)
+
+# valor monetário com indicador D/C opcional (o OCR às vezes perde a letra)
+RE_VALOR_DC = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})\s*([DC])?(?![\d,.])')
+
+IGNORAR_HISTORICO = ('saldo dia', 'saldo anterior', 'saldo do dia', 'saldo bloqueado')
+
+# Direção inferida pelo histórico quando o indicador D/C não é legível
+PALAVRAS_DESPESA = ('enviado', 'compra', 'debito', 'débito', 'pagamento', 'saque',
+                    'tarifa', 'saida', 'saída', 'transferencia enviada', 'boleto')
+PALAVRAS_RECEITA = ('recebido', 'recebimento', 'deposito', 'depósito', 'credito',
+                    'crédito', 'salario', 'salário', 'estorno', 'rendimento', 'entrada')
+
+
+def _limpar_ocr(texto):
+    """Corrige confusões comuns do OCR em textos do extrato."""
+    t = texto.replace('R$', ' ').replace('RS ', ' ')
+    t = re.sub(r'[|¦]', ' ', t)
+    return re.sub(r'\s{2,}', ' ', t).strip()
+
+
+def _direcao_pelo_historico(texto):
+    """Devolve 'D', 'C' ou '' inferindo pelo histórico do lançamento."""
+    t = texto.lower()
+    for p in PALAVRAS_RECEITA:
+        if p in t:
+            return 'C'
+    for p in PALAVRAS_DESPESA:
+        if p in t:
+            return 'D'
+    return ''
+
+
+def _limpar_descricao(texto):
+    """Remove CPF/CNPJ mascarados e ruído de OCR do fim da descrição."""
+    # Tokens com asterisco e dígitos: ***.833.854***, **449.880/0"**, ***,105.468***
+    tokens = []
+    for tok in texto.split():
+        if '*' in tok and any(c.isdigit() for c in tok):
+            continue
+        if re.fullmatch(r'[#"\'`~^|.,;:*\-–—]+', tok):
+            continue
+        tokens.append(tok)
+
+    # Ruído do OCR sobre a máscara de CPF no fim da linha (ex: "Hk B13.17 Geek", "DBAwKE")
+    def _ruido(tok):
+        if re.search(r'\d', tok):
+            return True
+        if len(tok) <= 2:
+            return True
+        # capitalização errática típica de OCR sobre asteriscos: DBAwKE, aBcD
+        miolo = tok[1:]
+        return bool(re.search(r'[a-z][A-Z]', tok)) or (miolo.isupper() and len(tok) <= 4)
+
+    while len(tokens) > 3 and _ruido(tokens[-1]):
+        tokens.pop()
+
+    return re.sub(r'\s{2,}', ' ', ' '.join(tokens)).strip()
+
+
+def _juntar_quebradas(linhas):
+    """O OCR às vezes joga os valores de uma linha para a linha seguinte.
+
+    Quando uma linha começa com data mas não tem valor, e a próxima só tem
+    valores/sobras, as duas são unidas.
+    """
+    saida = []
+    i = 0
+    limpas = [_limpar_ocr(l or '') for l in linhas]
+    while i < len(limpas):
+        atual = limpas[i]
+        if (atual and RE_LINHA_CAIXA.match(atual) and not RE_VALOR_DC.search(atual)
+                and i + 1 < len(limpas)):
+            prox = limpas[i + 1]
+            if prox and RE_VALOR_DC.search(prox) and not RE_LINHA_CAIXA.match(prox):
+                saida.append(f'{atual} {prox}')
+                i += 2
+                continue
+        saida.append(atual)
+        i += 1
+    return saida
+
+
+def parse_linhas_caixa(linhas):
+    """Converte linhas de texto do 'Extrato por período' da Caixa em lançamentos.
+
+    Aceita linhas vindas do PDF com texto ou do OCR feito no navegador.
+    """
+    lancamentos = []
+    for linha in _juntar_quebradas(linhas):
+        if not linha:
+            continue
+
+        m = RE_LINHA_CAIXA.match(linha)
+        if not m:
+            continue
+
+        data = _data_csv(m.group('data'))
+        if data is None:
+            continue
+
+        resto = m.group('resto')
+        valores = RE_VALOR_DC.findall(resto)
+        if not valores:
+            continue
+
+        # A última ocorrência é o saldo; a anterior é o valor do lançamento.
+        # Quando só há uma, ela é o próprio valor.
+        valor_txt, indicador = valores[-2] if len(valores) >= 2 else valores[0]
+        valor = _valor_csv(valor_txt)
+        if valor is None or valor == 0:
+            continue
+
+        if not indicador:
+            indicador = _direcao_pelo_historico(resto)
+            if not indicador:
+                continue  # sem como saber entrada ou saída — melhor não adivinhar
+
+        # Descrição = tudo antes do primeiro valor monetário
+        corte = RE_VALOR_DC.search(resto)
+        descricao = resto[:corte.start()].strip(' -—') if corte else resto.strip()
+        descricao = _limpar_descricao(descricao)
+
+        if any(p in descricao.lower() for p in IGNORAR_HISTORICO):
+            continue
+
+        lancamentos.append({
+            'data': data,
+            'valor': abs(valor),
+            'tipo': 'receita' if indicador.upper() == 'C' else 'despesa',
+            'descricao': (descricao or 'Lançamento')[:200],
+            'fitid': '',
+        })
+
+    if not lancamentos:
+        raise ExtratoInvalido(
+            'Nenhum lançamento reconhecido. Confira se o arquivo é o "Extrato por período" da Caixa.'
+        )
+
+    lancamentos.sort(key=lambda x: x['data'])
+    return lancamentos
+
+
+def meta_do_extrato(linhas):
+    """Extrai banco e conta do cabeçalho do extrato."""
+    cabecalho = [_limpar_ocr(l or '') for l in linhas[:30]]
+    conta = ''
+    for l in cabecalho:
+        if 'conta' in l.lower():
+            m = re.search(r'(\d{3,4}\s*/\s*[\d.]+-?\d?)', l)
+            if m:
+                conta = m.group(1).replace(' ', '')
+                break
+    banco = 'Caixa Econômica Federal' if any('CAIXA' in l.upper() for l in cabecalho) else ''
+    return {'banco': banco, 'conta': conta, 'periodo_inicio': None, 'periodo_fim': None}
 
 
 # ── CSV ───────────────────────────────────────────────────────────────────────
