@@ -121,7 +121,7 @@ def parse_ofx(conteudo):
 # 02/02/2026 - 17:25:50 021725 COMPRA CARTAO DEBITO Favorecido 41,90 D 193,91 C
 RE_LINHA_CAIXA = re.compile(
     r'^(?P<data>\d{2}/\d{2}/\d{4})'              # data
-    r'(?:[\s\-–—]*\d{1,2}:\d{2}(?::\d{2})?)?'    # hora (traço e segundos opcionais)
+    r'(?:[\s\-–—]*\d{1,2}[:.]\d{2}(?:[:.]\d{2})?)?'  # hora (traço, segundos e ':' vs '.' opcionais)
     r'[\s\-–—]*(?P<doc>\d{4,8})?'                # nr. documento (opcional)
     r'\s*(?P<resto>\S.*)$'
 )
@@ -130,6 +130,19 @@ RE_LINHA_CAIXA = re.compile(
 RE_VALOR_DC = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})\s*([DC])?(?![\d,.])')
 
 IGNORAR_HISTORICO = ('saldo dia', 'saldo anterior', 'saldo do dia', 'saldo bloqueado')
+
+# Tipos de operação da Caixa — separados do favorecido para a descrição não repetir
+# "COMPRA CARTAO DEBITO" em toda linha. Ordem importa: os mais longos primeiro.
+OPERACOES = (
+    'PIX RECEBIDO DADOS CONTA', 'PIX ENVIADO DADOS CONTA',
+    'COMPRA CARTAO DEBITO', 'COMPRA CARTAO CREDITO', 'DEPOSITO DINH LOTERICO',
+    'PAGAMENTO DE BOLETO', 'RECEBIMENTO TED SALARIO', 'TRANSFERENCIA ENVIADA',
+    'TRANSFERENCIA RECEBIDA', 'RECEBIMENTO TED', 'DEB PIX CHAVE', 'CRED PIX CHAVE',
+    'PIX RECEBIDO', 'PIX ENVIADO', 'CREDITO FGTS', 'DEPOSITO DINHEIRO',
+    'SAQUE LOTERICO', 'ENVIO PIX', 'DEBITO AUTOMATICO', 'TARIFA BANCARIA',
+    'CREDITO SALARIO', 'CORRECAO MONETARIA', 'CREDITO JUROS', 'CREDITO RENDIMENTO',
+    'ESTORNO', 'SAQUE', 'TARIFA',
+)
 
 # Direção inferida pelo histórico quando o indicador D/C não é legível
 PALAVRAS_DESPESA = ('enviado', 'compra', 'debito', 'débito', 'pagamento', 'saque',
@@ -177,6 +190,20 @@ def _limpar_ocr(texto):
     t = re.sub(r'[|¦]', ' ', t)
     t = _reparar_numeros(t)
     return re.sub(r'\s{2,}', ' ', t).strip()
+
+
+def _separar_operacao(texto):
+    """'COMPRA CARTAO DEBITO Maceio Drive' → ('COMPRA CARTAO DEBITO', 'Maceio Drive').
+
+    Sem favorecido no extrato, a operação vira a própria descrição.
+    """
+    limpo = texto.strip()
+    alvo = limpo.upper()
+    for op in OPERACOES:
+        if alvo.startswith(op):
+            favorecido = limpo[len(op):].strip(' -–—:')
+            return op, (favorecido or limpo)
+    return '', limpo
 
 
 def _direcao_pelo_historico(texto):
@@ -334,11 +361,15 @@ def parse_linhas_caixa(linhas):
         if any(p in descricao.lower() for p in IGNORAR_HISTORICO):
             continue
 
+        operacao, favorecido = _separar_operacao(descricao)
+
         item = {
             'data': data,
             'valor': abs(valor),
             'tipo': 'receita' if indicador.upper() == 'C' else 'despesa',
-            'descricao': (descricao or 'Lançamento')[:200],
+            'descricao': (favorecido or descricao or 'Lançamento')[:200],
+            'operacao': operacao,
+            'texto_completo': descricao[:200],
             'fitid': '',
             'suspeito': False,
             'validado': False,
