@@ -152,6 +152,76 @@
       </form>
     </div>
 
+    <!-- ── APARÊNCIA E ACESSIBILIDADE ── -->
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-4">Aparência e acessibilidade</p>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="aparencia" />
+
+        <!-- Tema -->
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-muted mb-2">Tema</label>
+          <div class="grid grid-cols-3 gap-2">
+            {% for value, label in aparencia_form.fields.tema.choices %}
+            <label class="flex flex-col items-center gap-1.5 p-3 rounded-lg border cursor-pointer transition-all
+                          {% if aparencia_form.instance.tema == value %}border-accent/50 bg-accent/5 text-tx{% else %}border-line text-muted hover:border-muted{% endif %}">
+              <input type="radio" name="tema" value="{{ value }}" class="sr-only"
+                     {% if aparencia_form.instance.tema == value %}checked{% endif %}>
+              <span aria-hidden="true" class="w-6 h-6 rounded-full border border-line
+                {% if value == 'escuro' %}bg-[#191919]{% elif value == 'claro' %}bg-[#f3f3f1]{% else %}bg-black ring-1 ring-white{% endif %}"></span>
+              <span class="text-[10px] font-medium text-center leading-tight">{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Cor de destaque -->
+        <div class="mb-4">
+          <label for="id_cor_destaque" class="block text-xs font-medium text-muted mb-2">Cor de destaque</label>
+          <div class="flex items-center gap-2">
+            <input type="color" name="cor_destaque" id="id_cor_destaque"
+                   value="{{ aparencia_form.instance.cor_destaque|default:'#4c8eff' }}"
+                   class="w-9 h-9 p-0.5 bg-bg border border-line rounded-md cursor-pointer">
+            <button type="button"
+                    onclick="document.getElementById('id_cor_destaque').value='#4c8eff'"
+                    class="text-[10px] text-dim hover:text-accent border border-line hover:border-accent/30 rounded px-2 py-1 transition-colors">
+              Restaurar padrão
+            </button>
+          </div>
+          {% if aparencia_form.cor_destaque.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ aparencia_form.cor_destaque.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Tamanho da fonte -->
+        <div class="mb-4">
+          <label for="id_escala_fonte" class="block text-xs font-medium text-muted mb-2">Tamanho do texto</label>
+          <select name="escala_fonte" id="id_escala_fonte"
+                  class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+            {% for value, label in aparencia_form.fields.escala_fonte.choices %}
+              <option value="{{ value }}" {% if aparencia_form.instance.escala_fonte == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Reduzir animações -->
+        <label class="flex items-center gap-2.5 mb-4 cursor-pointer">
+          <input type="checkbox" name="reduzir_animacoes" value="1"
+                 {% if aparencia_form.instance.reduzir_animacoes %}checked{% endif %}
+                 class="w-4 h-4 rounded border-line bg-bg accent-accent">
+          <span class="text-sm text-tx">Reduzir animações</span>
+          <span class="text-xs text-dim">(desativa transições e efeitos de movimento)</span>
+        </label>
+
+        <button type="submit"
+                class="bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
+          Salvar aparência
+        </button>
+      </form>
+    </div>
+
     <!-- ── EXPORTAR DADOS ── -->
     <div class="bg-surface border border-line rounded-lg p-5">
       <p class="text-xs font-medium text-dim uppercase tracking-widest mb-1">Exportar dados</p>

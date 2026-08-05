@@ -3,7 +3,8 @@ from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from .forms import AlterarSenhaForm, CadastroForm, ExcluirContaForm, PerfilForm, PreferenciasForm
+from .forms import (AlterarSenhaForm, AparenciaForm, CadastroForm, ExcluirContaForm,
+                    PerfilForm, PreferenciasForm)
 
 
 def cadastro(request):
@@ -38,6 +39,7 @@ def perfil(request):
 def configuracoes(request):
     senha_form = AlterarSenhaForm(user=request.user)
     preferencias_form = PreferenciasForm(instance=request.user)
+    aparencia_form = AparenciaForm(instance=request.user)
     excluir_form = ExcluirContaForm(user=request.user)
 
     if request.method == 'POST':
@@ -58,6 +60,13 @@ def configuracoes(request):
                 messages.success(request, 'Preferências salvas.')
                 return redirect('configuracoes')
 
+        elif action == 'aparencia':
+            aparencia_form = AparenciaForm(request.POST, instance=request.user)
+            if aparencia_form.is_valid():
+                aparencia_form.save()
+                messages.success(request, 'Aparência atualizada.')
+                return redirect('configuracoes')
+
         elif action == 'excluir_conta':
             excluir_form = ExcluirContaForm(user=request.user, data=request.POST)
             if excluir_form.is_valid():
@@ -68,5 +77,6 @@ def configuracoes(request):
     return render(request, 'usuarios/configuracoes.html', {
         'senha_form': senha_form,
         'preferencias_form': preferencias_form,
+        'aparencia_form': aparencia_form,
         'excluir_form': excluir_form,
     })

@@ -16,6 +16,19 @@ class PreferenciasForm(forms.ModelForm):
         self.fields['dia_corte'].widget = forms.NumberInput(attrs={'min': 1, 'max': 28})
 
 
+class AparenciaForm(forms.ModelForm):
+    class Meta:
+        model = Usuario
+        fields = ('tema', 'cor_destaque', 'escala_fonte', 'reduzir_animacoes')
+
+    def clean_cor_destaque(self):
+        import re
+        cor = (self.cleaned_data.get('cor_destaque') or '').strip().lower()
+        if not re.fullmatch(r'#[0-9a-f]{6}', cor):
+            raise forms.ValidationError('Cor inválida — use o formato #rrggbb.')
+        return cor
+
+
 class AlterarSenhaForm(PasswordChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
