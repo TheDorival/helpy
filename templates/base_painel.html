@@ -269,6 +269,15 @@
         </a>
       </div>
 
+      <a href="{% url 'importar_extrato' %}"
+         class="flex items-center gap-2.5 px-2 py-1 rounded-md text-sm transition-colors
+                {% if url == 'importar_extrato' or url == 'mapear_csv' or url == 'revisar_extrato' %}text-tx bg-surfacehi{% else %}text-muted hover:text-tx hover:bg-surfacehi{% endif %}">
+        <svg class="w-4 h-4 flex-shrink-0 {% if url == 'importar_extrato' or url == 'mapear_csv' or url == 'revisar_extrato' %}text-accent{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75v6.75m0 0l-3-3m3 3l3-3m-8.25 6a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+        </svg>
+        Importar extrato
+      </a>
+
       <p class="px-2 pt-2.5 pb-1 text-[10px] font-medium text-dim uppercase tracking-widest">Cadastros</p>
 
       <a href="{% url 'entidades' %}"
@@ -288,6 +297,15 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
         </svg>
         Categorias
+      </a>
+
+      <a href="{% url 'regras' %}"
+         class="flex items-center gap-2.5 px-2 py-1 rounded-md text-sm transition-colors
+                {% if url == 'regras' or url == 'nova_regra' or url == 'editar_regra' %}text-tx bg-surfacehi{% else %}text-muted hover:text-tx hover:bg-surfacehi{% endif %}">
+        <svg class="w-4 h-4 flex-shrink-0 {% if url == 'regras' or url == 'nova_regra' or url == 'editar_regra' %}text-accent{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+        Regras
       </a>
 
       <p class="px-2 pt-2.5 pb-1 text-[10px] font-medium text-dim uppercase tracking-widest">Análise</p>
