@@ -213,6 +213,9 @@ class Transacao(models.Model):
                                   help_text='ID único do lançamento no extrato importado (OFX).')
     importacao = models.ForeignKey('ImportacaoExtrato', null=True, blank=True,
                                    on_delete=models.SET_NULL, related_name='transacoes')
+    origem_fixa = models.ForeignKey('TransacaoFixa', null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name='ocorrencias',
+                                    help_text='Recorrente que gerou esta transação.')
     criado_em  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
