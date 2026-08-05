@@ -159,7 +159,15 @@
                 {% if item.descricao %}
                   <p class="text-xs text-muted mt-1">{{ item.descricao }}</p>
                 {% endif %}
-                <p class="text-[11px] text-dim mt-1">{{ item.data|date:"d \d\e F \d\e Y" }}</p>
+                <p class="text-[11px] text-dim mt-1">
+                  {{ item.data|date:"d \d\e F \d\e Y" }}
+                  {% if item.transacao %}
+                    · <a href="{% url 'editar_transacao' item.transacao.pk %}"
+                         class="text-{% if item.transacao.tipo == 'receita' %}green{% else %}red{% endif %} hover:underline">
+                        lançado como {{ item.transacao.get_tipo_display|lower }}
+                      </a>
+                  {% endif %}
+                </p>
               </div>
 
               <div class="flex flex-col items-end gap-1 flex-shrink-0">

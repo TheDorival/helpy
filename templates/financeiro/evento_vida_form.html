@@ -69,13 +69,84 @@
           <label for="id_valor" class="block text-xs font-medium text-muted mb-1">
             Valor <span class="text-dim font-normal">(opcional)</span>
           </label>
-          <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden focus-within:border-accent/50 transition-colors">
+          <div class="flex items-center bg-bg border {% if form.valor.errors %}border-red{% else %}border-line{% endif %} rounded-md overflow-hidden focus-within:border-accent/50 transition-colors">
             <span class="text-sm text-dim px-3 border-r border-line flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
             <input type="number" name="valor" id="id_valor" step="0.01" min="0"
                    value="{{ form.valor.value|default:''|floatformat:'2u' }}"
                    placeholder="0,00"
                    class="flex-1 text-sm bg-transparent px-3 py-2 text-tx placeholder-dim outline-none">
           </div>
+          {% if form.valor.errors %}<p class="mt-1 text-xs text-red">{{ form.valor.errors.0 }}</p>{% endif %}
+        </div>
+
+        <!-- Vínculo financeiro -->
+        <div class="border-t border-line pt-4">
+          <label class="block text-xs font-medium text-muted mb-2">Vínculo financeiro</label>
+          {% with vinc=form.vinculo.value|default:'nenhum' %}
+          <div class="space-y-1.5" id="vinculo-group">
+            {% for value, label in form.fields.vinculo.choices %}
+            <label class="vinc-option flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all
+                          {% if vinc == value %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
+              <input type="radio" name="vinculo" value="{{ value }}" class="mt-0.5 accent-accent"
+                     {% if vinc == value %}checked{% endif %}>
+              <span>
+                <span class="block text-xs font-medium {% if vinc == value %}text-tx{% else %}text-muted{% endif %}">{{ label }}</span>
+                <span class="block text-[10px] text-dim leading-tight mt-0.5">
+                  {% if value == 'nenhum' %}O marco fica só no histórico, sem afetar saldo nem gráficos.
+                  {% elif value == 'existente' %}Aponta para uma transação que você já registrou — sem duplicar valores.
+                  {% else %}Cria a transação agora com o valor e a data do marco.{% endif %}
+                </span>
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+
+          <!-- Transação existente -->
+          <div id="bloco-existente" class="mt-3 {% if vinc != 'existente' %}hidden{% endif %}">
+            <label for="id_transacao" class="block text-xs font-medium text-muted mb-1">Transação</label>
+            <select name="transacao" id="id_transacao"
+                    class="w-full text-sm bg-bg border {% if form.transacao.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+              <option value="">— selecione —</option>
+              {% for t in form.fields.transacao.queryset %}
+                <option value="{{ t.pk }}" {% if form.transacao.value|stringformat:'s' == t.pk|stringformat:'s' %}selected{% endif %}>
+                  {{ t.data|date:"d/m/Y" }} · {{ t.get_tipo_display }} · {{ t.nome_display }} · {{ request.user.simbolo_moeda }} {{ t.valor|floatformat:"2g" }}
+                </option>
+              {% endfor %}
+            </select>
+            {% if form.transacao.errors %}<p class="mt-1 text-xs text-red">{{ form.transacao.errors.0 }}</p>{% endif %}
+            <p class="mt-1 text-[10px] text-dim">O valor exibido no marco passa a ser o da transação vinculada.</p>
+          </div>
+
+          <!-- Nova transação -->
+          <div id="bloco-nova" class="mt-3 space-y-3 {% if vinc != 'nova' %}hidden{% endif %}">
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1">Tipo da transação</label>
+              <div class="grid grid-cols-2 gap-2">
+                {% for value, label in form.fields.nova_tipo.choices %}
+                <label class="flex items-center justify-center gap-2 p-2 rounded-md border cursor-pointer text-xs transition-all
+                              {% if form.nova_tipo.value|default:'despesa' == value %}border-accent/50 bg-accent/5 text-tx{% else %}border-line text-muted hover:border-muted{% endif %}">
+                  <input type="radio" name="nova_tipo" value="{{ value }}" class="accent-accent"
+                         {% if form.nova_tipo.value|default:'despesa' == value %}checked{% endif %}>
+                  {{ label }}
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            <div>
+              <label for="id_nova_categoria" class="block text-xs font-medium text-muted mb-1">
+                Categoria <span class="text-dim font-normal">(opcional)</span>
+              </label>
+              <select name="nova_categoria" id="id_nova_categoria"
+                      class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+                <option value="">— sem categoria —</option>
+                {% for c in categorias %}
+                  <option value="{{ c.pk }}" {% if form.nova_categoria.value|stringformat:'s' == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nome }} ({{ c.get_tipo_display }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <p class="text-[10px] text-dim">A transação usará o título, a data e o valor informados acima.</p>
+          </div>
+          {% endwith %}
         </div>
 
         <!-- Descrição -->
@@ -113,6 +184,7 @@
 
   <script>
   (function () {
+    // Cartões de tipo de evento
     var opts = document.querySelectorAll('.tipo-option');
     opts.forEach(function (opt) {
       opt.addEventListener('click', function () {
@@ -127,6 +199,34 @@
           o.classList.toggle('border-line', !ativo);
           o.classList.toggle('text-muted', !ativo);
         });
+      });
+    });
+
+    // Modo de vínculo financeiro
+    var vopts = document.querySelectorAll('.vinc-option');
+    var blocoExistente = document.getElementById('bloco-existente');
+    var blocoNova = document.getElementById('bloco-nova');
+
+    function aplicarVinculo(valor) {
+      if (blocoExistente) blocoExistente.classList.toggle('hidden', valor !== 'existente');
+      if (blocoNova) blocoNova.classList.toggle('hidden', valor !== 'nova');
+      vopts.forEach(function (o) {
+        var r = o.querySelector('input[type=radio]');
+        var ativo = r && r.value === valor;
+        o.classList.toggle('border-accent/50', ativo);
+        o.classList.toggle('bg-accent/5', ativo);
+        o.classList.toggle('border-line', !ativo);
+        var txt = o.querySelector('span > span.block');
+        if (txt) { txt.classList.toggle('text-tx', ativo); txt.classList.toggle('text-muted', !ativo); }
+      });
+    }
+
+    vopts.forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var r = this.querySelector('input[type=radio]');
+        if (!r) return;
+        r.checked = true;
+        aplicarVinculo(r.value);
       });
     });
   })();

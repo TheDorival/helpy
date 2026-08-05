@@ -12,18 +12,57 @@ class CategoriaForm(forms.ModelForm):
 
 
 class EventoVidaForm(forms.ModelForm):
+    VINCULO_CHOICES = [
+        ('nenhum',   'Não vincular'),
+        ('existente','Vincular a uma transação existente'),
+        ('nova',     'Criar transação junto'),
+    ]
+
+    vinculo = forms.ChoiceField(choices=VINCULO_CHOICES, initial='nenhum', required=False)
+    nova_tipo = forms.ChoiceField(
+        choices=[('despesa', 'Despesa'), ('receita', 'Receita')],
+        initial='despesa', required=False,
+    )
+    nova_categoria = forms.ModelChoiceField(queryset=Categoria.objects.none(), required=False)
+
     class Meta:
         model = EventoVida
-        fields = ['titulo', 'tipo', 'data', 'descricao', 'valor', 'destaque']
+        fields = ['titulo', 'tipo', 'data', 'descricao', 'valor', 'destaque', 'transacao']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.usuario = usuario
         self.fields['data'].widget = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
         self.fields['data'].input_formats = ['%Y-%m-%d']
         self.fields['descricao'].required = False
         self.fields['valor'].required = False
+        self.fields['transacao'].required = False
+        if usuario:
+            self.fields['transacao'].queryset = (
+                Transacao.objects.filter(usuario=usuario)
+                .select_related('categoria', 'entidade').order_by('-data')
+            )
+            self.fields['nova_categoria'].queryset = Categoria.objects.filter(usuario=usuario)
         if not self.instance.pk:
             self.fields['data'].initial = date.today()
+        elif self.instance.transacao_id:
+            self.fields['vinculo'].initial = 'existente'
+
+    def clean(self):
+        cleaned = super().clean()
+        vinculo = cleaned.get('vinculo') or 'nenhum'
+
+        if vinculo == 'existente':
+            if not cleaned.get('transacao'):
+                self.add_error('transacao', 'Escolha a transação a vincular.')
+        elif vinculo == 'nova':
+            cleaned['transacao'] = None
+            if not cleaned.get('valor'):
+                self.add_error('valor', 'Informe o valor para criar a transação.')
+        else:
+            cleaned['transacao'] = None
+
+        return cleaned
 
 
 class EntidadeForm(forms.ModelForm):

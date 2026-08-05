@@ -1196,9 +1196,10 @@ def historico_vida(request):
 
     eventos = [{
         'data': e.data, 'icone': e.icone, 'tipo_label': e.get_tipo_display(),
-        'titulo': e.titulo, 'descricao': e.descricao, 'valor': e.valor,
+        'titulo': e.titulo, 'descricao': e.descricao, 'valor': e.valor_efetivo,
         'auto': False, 'destaque': e.destaque, 'pk': e.pk, 'tipo': e.tipo,
-    } for e in EventoVida.objects.filter(usuario=request.user)]
+        'transacao': e.transacao,
+    } for e in EventoVida.objects.filter(usuario=request.user).select_related('transacao')]
 
     itens = eventos + _marcos_automaticos(request.user)
 
@@ -1240,28 +1241,49 @@ def historico_vida(request):
     })
 
 
+def _salvar_evento_vida(request, form):
+    """Salva o marco e resolve o vínculo com transação (nenhum/existente/nova)."""
+    ev = form.save(commit=False)
+    ev.usuario = request.user
+
+    if form.cleaned_data.get('vinculo') == 'nova':
+        t = Transacao.objects.create(
+            usuario=request.user,
+            tipo=form.cleaned_data.get('nova_tipo') or 'despesa',
+            descricao=ev.titulo,
+            valor=ev.valor,
+            data=ev.data,
+            categoria=form.cleaned_data.get('nova_categoria'),
+            observacao=ev.descricao,
+        )
+        ev.transacao = t
+
+    ev.save()
+    return ev
+
+
 @login_required
 def novo_evento_vida(request):
-    form = EventoVidaForm(request.POST or None)
+    form = EventoVidaForm(request.POST or None, usuario=request.user)
     if request.method == 'POST' and form.is_valid():
-        ev = form.save(commit=False)
-        ev.usuario = request.user
-        ev.save()
+        _salvar_evento_vida(request, form)
         return redirect('historico_vida')
     return render(request, 'financeiro/evento_vida_form.html', {
         'form': form, 'titulo': 'Novo marco',
+        'categorias': Categoria.objects.filter(usuario=request.user),
     })
 
 
 @login_required
 def editar_evento_vida(request, pk):
     ev = get_object_or_404(EventoVida, pk=pk, usuario=request.user)
-    form = EventoVidaForm(request.POST or None, instance=ev)
+    form = EventoVidaForm(request.POST or None, instance=ev, usuario=request.user)
     if request.method == 'POST' and form.is_valid():
-        form.save()
+        _salvar_evento_vida(request, form)
         return redirect('historico_vida')
     return render(request, 'financeiro/evento_vida_form.html', {
         'form': form, 'titulo': 'Editar marco', 'obj': ev,
+        'categorias': Categoria.objects.filter(usuario=request.user),
     })
 
 
