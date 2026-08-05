@@ -258,7 +258,8 @@
   <!-- setDiaUtil: disponível para todos os essenciais -->
   <script>
   function setDiaUtil(which, isUtil) {
-    var hidden   = document.getElementById(which + '_util_hidden');
+    // ids reais: dia_util_hidden (1º pagamento) e dia_util_2_hidden (2º)
+    var hidden   = document.getElementById(which === 'dia2' ? 'dia_util_2_hidden' : 'dia_util_hidden');
     var fixoBtn  = document.getElementById(which + '-fixo-btn');
     var utilBtn  = document.getElementById(which + '-util-btn');
     var hint     = document.getElementById(which + '-hint');
