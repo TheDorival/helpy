@@ -99,19 +99,33 @@ chamando abrirEscopo(this) em vez de submeter direto.
     formEscopo.submit();
   };
 
+  function marcarEscopo(valor) {
+    document.querySelectorAll('.esc-option').forEach(function (o) {
+      var radio = o.querySelector('input[type=radio]');
+      var marcado = radio && radio.value === valor;
+      if (radio) radio.checked = marcado;
+      o.classList.toggle('border-accent/50', marcado);
+      o.classList.toggle('bg-accent/5', marcado);
+      o.classList.toggle('border-line', !marcado);
+      o.classList.toggle('hover:border-muted', !marcado);
+      var titulo = o.querySelector('span > span.block');
+      if (titulo) {
+        titulo.classList.toggle('text-tx', marcado);
+        titulo.classList.toggle('text-muted', !marcado);
+      }
+    });
+  }
+
   document.querySelectorAll('.esc-option').forEach(function (opt) {
+    // 'change' garante que o radio já está atualizado (o clique no rótulo
+    // só marca o input depois que o handler de click roda)
+    opt.addEventListener('change', function () {
+      var radio = this.querySelector('input[type=radio]');
+      if (radio) marcarEscopo(radio.value);
+    });
     opt.addEventListener('click', function () {
-      document.querySelectorAll('.esc-option').forEach(function (o) {
-        var marcado = o.querySelector('input[type=radio]').checked;
-        o.classList.toggle('border-accent/50', marcado);
-        o.classList.toggle('bg-accent/5', marcado);
-        o.classList.toggle('border-line', !marcado);
-        var titulo = o.querySelector('span > span.block');
-        if (titulo) {
-          titulo.classList.toggle('text-tx', marcado);
-          titulo.classList.toggle('text-muted', !marcado);
-        }
-      });
+      var radio = this.querySelector('input[type=radio]');
+      if (radio) marcarEscopo(radio.value);
     });
   });
 
