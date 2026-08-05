@@ -209,6 +209,10 @@ class Transacao(models.Model):
     data      = models.DateField()
     categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes')
     observacao = models.TextField(blank=True, default='')
+    fitid      = models.CharField(max_length=120, blank=True, default='', db_index=True,
+                                  help_text='ID único do lançamento no extrato importado (OFX).')
+    importacao = models.ForeignKey('ImportacaoExtrato', null=True, blank=True,
+                                   on_delete=models.SET_NULL, related_name='transacoes')
     criado_em  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -516,6 +520,60 @@ class Meta(models.Model):
             if pct >= 50:
                 return 'accent'
             return 'red'
+
+
+class ImportacaoExtrato(models.Model):
+    FORMATO_CHOICES = [('ofx', 'OFX'), ('csv', 'CSV')]
+
+    usuario      = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='importacoes')
+    arquivo_nome = models.CharField(max_length=255)
+    formato      = models.CharField(max_length=4, choices=FORMATO_CHOICES, default='ofx')
+    banco        = models.CharField(max_length=100, blank=True, default='')
+    conta        = models.CharField(max_length=60, blank=True, default='')
+    periodo_inicio = models.DateField(null=True, blank=True)
+    periodo_fim    = models.DateField(null=True, blank=True)
+    n_importadas = models.PositiveIntegerField(default=0)
+    n_ignoradas  = models.PositiveIntegerField(default=0)
+    criado_em    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Importação de extrato'
+        verbose_name_plural = 'Importações de extrato'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.arquivo_nome} — {self.n_importadas} lançamento(s)'
+
+
+class RegraCategoria(models.Model):
+    TIPO_CHOICES = [
+        ('ambos',   'Receitas e despesas'),
+        ('receita', 'Só receitas'),
+        ('despesa', 'Só despesas'),
+    ]
+
+    usuario   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='regras_categoria')
+    termo     = models.CharField(max_length=120, help_text='Se a descrição contiver este texto…')
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='regras')
+    aplica_a  = models.CharField(max_length=8, choices=TIPO_CHOICES, default='ambos')
+    entidade  = models.ForeignKey(Entidade, null=True, blank=True, on_delete=models.SET_NULL, related_name='regras')
+    ativa     = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Regra de categorização'
+        verbose_name_plural = 'Regras de categorização'
+        ordering = ['termo']
+
+    def __str__(self):
+        return f'{self.termo} → {self.categoria}'
+
+    def combina(self, descricao, tipo):
+        if not self.ativa:
+            return False
+        if self.aplica_a != 'ambos' and self.aplica_a != tipo:
+            return False
+        return self.termo.strip().lower() in (descricao or '').lower()
 
 
 class EventoVida(models.Model):

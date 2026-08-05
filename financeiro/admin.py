@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Categoria, EventoVida, Transacao
+from .models import Categoria, EventoVida, ImportacaoExtrato, RegraCategoria, Transacao
 
 
 @admin.register(Categoria)
@@ -16,6 +16,19 @@ class TransacaoAdmin(admin.ModelAdmin):
     list_filter = ('tipo', 'data')
     search_fields = ('descricao',)
     date_hierarchy = 'data'
+
+
+@admin.register(ImportacaoExtrato)
+class ImportacaoExtratoAdmin(admin.ModelAdmin):
+    list_display = ('arquivo_nome', 'formato', 'banco', 'n_importadas', 'n_ignoradas', 'criado_em', 'usuario')
+    list_filter = ('formato',)
+
+
+@admin.register(RegraCategoria)
+class RegraCategoriaAdmin(admin.ModelAdmin):
+    list_display = ('termo', 'categoria', 'aplica_a', 'ativa', 'usuario')
+    list_filter = ('aplica_a', 'ativa')
+    search_fields = ('termo',)
 
 
 @admin.register(EventoVida)
