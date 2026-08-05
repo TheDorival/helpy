@@ -138,10 +138,44 @@ PALAVRAS_RECEITA = ('recebido', 'recebimento', 'deposito', 'depósito', 'credito
                     'crédito', 'salario', 'salário', 'estorno', 'rendimento', 'entrada')
 
 
+# Número colado ao indicador D/C sem a vírgula decimal: "81211C", "749 D", "1.01411C"
+RE_SEM_VIRGULA = re.compile(
+    r'(?<![\d,.])((?:\d{1,3}\.)*\d{3,})\s*([DC])(?![A-Za-zÀ-ÿ0-9])'
+)
+
+
+def _formatar_moeda(digitos):
+    """'81211' → '812,11'; '223411' → '2.234,11'."""
+    inteiro, centavos = digitos[:-2].lstrip('0') or '0', digitos[-2:]
+    partes = []
+    while len(inteiro) > 3:
+        partes.insert(0, inteiro[-3:])
+        inteiro = inteiro[:-3]
+    partes.insert(0, inteiro)
+    return '.'.join(partes) + ',' + centavos
+
+
+def _reparar_numeros(texto):
+    """Recupera valores em que o OCR perdeu a vírgula decimal.
+
+    O reconhecimento no navegador às vezes lê "812,11 C" como "81211C". Como o
+    indicador D/C marca o fim do número, dá para reinserir a vírgula com
+    segurança nos dois últimos dígitos.
+    """
+    # vírgula seguida de barra: "2.259,/10" → "2.259,10"
+    texto = re.sub(r',\s*/\s*(\d{2})(?!\d)', r',\1', texto)
+
+    def _sub(m):
+        return f'{_formatar_moeda(m.group(1).replace(".", ""))} {m.group(2)}'
+
+    return RE_SEM_VIRGULA.sub(_sub, texto)
+
+
 def _limpar_ocr(texto):
     """Corrige confusões comuns do OCR em textos do extrato."""
     t = texto.replace('R$', ' ').replace('RS ', ' ')
     t = re.sub(r'[|¦]', ' ', t)
+    t = _reparar_numeros(t)
     return re.sub(r'\s{2,}', ' ', t).strip()
 
 
