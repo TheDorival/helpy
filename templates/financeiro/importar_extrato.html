@@ -228,6 +228,10 @@
        real do texto) e descarta a coluna de CPF/CNPJ — nunca valores monetários. */
     const RE_DINHEIRO = /\d,\d\d/;
 
+    // O cabeçalho com "CPF/CNPJ" e "Valor" só aparece na primeira página;
+    // as posições valem para todas, então ficam guardadas aqui.
+    let colunas = { cpf: null, valor: null };
+
     function agruparItens(itens) {
       const validos = itens.filter(function (i) { return i.texto && i.texto.trim(); });
       if (!validos.length) return [];
@@ -243,6 +247,8 @@
         if (xCpf === null && (t.indexOf('CPF') === 0 || t.indexOf('CNPJ') === 0)) xCpf = i.x;
         if (xValor === null && t === 'VALOR') xValor = i.x;
       });
+      if (xCpf !== null && xValor !== null) colunas = { cpf: xCpf, valor: xValor };
+      else { xCpf = colunas.cpf; xValor = colunas.valor; }   // páginas sem cabeçalho
 
       // Agrupamento por proximidade (encadeamento simples) — bem mais estável
       // que arredondar a coordenada, que quebra linhas na fronteira.
