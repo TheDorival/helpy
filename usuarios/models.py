@@ -18,9 +18,12 @@ MOEDA_SIMBOLO = {
 
 
 TEMA_CHOICES = [
-    ('escuro',    'Escuro'),
-    ('claro',     'Claro'),
-    ('contraste', 'Alto contraste'),
+    ('escuro',    'Black'),
+    ('midnight',  'Midnight'),
+    ('mint',      'Mint'),
+    ('golden',    'Golden'),
+    ('claro',     'Snowy'),
+    ('contraste', 'Vault'),
 ]
 
 ESCALA_FONTE_CHOICES = [
