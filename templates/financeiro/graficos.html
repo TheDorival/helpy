@@ -111,8 +111,11 @@
         '#38bdf8','#f87171',
       ];
 
-      Chart.defaults.color       = '#8b8b8b';
-      Chart.defaults.borderColor = '#2e2e2e';
+      const cssVars = getComputedStyle(document.documentElement);
+      const themeRgb = (v) => `rgb(${cssVars.getPropertyValue(v).trim().split(/\s+/).join(' ')})`;
+
+      Chart.defaults.color       = themeRgb('--c-muted');
+      Chart.defaults.borderColor = themeRgb('--c-line');
       Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
       Chart.defaults.font.size   = 11;
 
@@ -206,7 +209,7 @@
               pointRadius: 3,
               pointHoverRadius: 5,
               pointStyle: 'rectRot',
-              pointBackgroundColor: '#222222',
+              pointBackgroundColor: themeRgb('--c-surface'),
               pointBorderColor: '#4c8eff99',
             },
           ],
@@ -237,7 +240,7 @@
             datasets: [{
               data,
               backgroundColor: PALETTE.slice(0, data.length),
-              borderColor: '#222222',
+              borderColor: themeRgb('--c-surface'),
               borderWidth: 2,
               hoverOffset: 6,
             }],

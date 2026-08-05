@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR" class="dark"
+      data-theme="{{ request.user.tema|default:'escuro' }}"
+      {% if request.user.reduzir_animacoes %}data-reduzir-animacoes="1"{% endif %}
+      style="font-size: calc(15px * {{ request.user.escala_fonte|default:100 }} / 100);{% if request.user.cor_destaque_personalizada %} --c-accent: {{ request.user.cor_destaque_rgb }};{% endif %}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,16 +21,16 @@
       theme: {
         extend: {
           colors: {
-            bg:        '#191919',
-            surface:   '#222222',
-            surfacehi: '#282828',
-            line:      '#2e2e2e',
-            accent:    '#4c8eff',
-            green:     '#3ecf8e',
-            red:       '#f16060',
-            tx:        '#e8e8e6',
-            muted:     '#8b8b8b',
-            dim:       '#555555',
+            bg:        'rgb(var(--c-bg) / <alpha-value>)',
+            surface:   'rgb(var(--c-surface) / <alpha-value>)',
+            surfacehi: 'rgb(var(--c-surfacehi) / <alpha-value>)',
+            line:      'rgb(var(--c-line) / <alpha-value>)',
+            accent:    'rgb(var(--c-accent) / <alpha-value>)',
+            green:     'rgb(var(--c-green) / <alpha-value>)',
+            red:       'rgb(var(--c-red) / <alpha-value>)',
+            tx:        'rgb(var(--c-tx) / <alpha-value>)',
+            muted:     'rgb(var(--c-muted) / <alpha-value>)',
+            dim:       'rgb(var(--c-dim) / <alpha-value>)',
           },
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
         }
@@ -37,17 +40,42 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    html { font-size: 15px; }
+    /* ── Temas: paletas em variáveis CSS (r g b) ── */
+    :root, html[data-theme="escuro"] {
+      --c-bg: 25 25 25;       --c-surface: 34 34 34;   --c-surfacehi: 40 40 40;
+      --c-line: 46 46 46;     --c-accent: 76 142 255;  --c-green: 62 207 142;
+      --c-red: 241 96 96;     --c-tx: 232 232 230;     --c-muted: 139 139 139;
+      --c-dim: 85 85 85;
+      --sk-a: #242424;        --sk-b: #2a2a2a;
+      color-scheme: dark;
+    }
+    html[data-theme="claro"] {
+      --c-bg: 243 243 241;    --c-surface: 255 255 255; --c-surfacehi: 245 245 243;
+      --c-line: 222 222 218;  --c-accent: 37 99 235;    --c-green: 21 128 84;
+      --c-red: 199 55 55;     --c-tx: 28 28 30;         --c-muted: 92 92 98;
+      --c-dim: 148 148 152;
+      --sk-a: #e9e9e7;        --sk-b: #f1f1ef;
+      color-scheme: light;
+    }
+    html[data-theme="contraste"] {
+      --c-bg: 0 0 0;          --c-surface: 10 10 10;    --c-surfacehi: 26 26 26;
+      --c-line: 110 110 110;  --c-accent: 130 175 255;  --c-green: 80 240 160;
+      --c-red: 255 120 120;   --c-tx: 255 255 255;      --c-muted: 210 210 210;
+      --c-dim: 170 170 170;
+      --sk-a: #1a1a1a;        --sk-b: #262626;
+      color-scheme: dark;
+    }
+
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: rgb(var(--c-line)); border-radius: 3px; }
 
     @keyframes sk-shimmer {
       0%   { background-position: -1200px 0; }
       100% { background-position:  1200px 0; }
     }
     .sk {
-      background: linear-gradient(90deg, #242424 25%, #2a2a2a 50%, #242424 75%);
+      background: linear-gradient(90deg, var(--sk-a) 25%, var(--sk-b) 50%, var(--sk-a) 75%);
       background-size: 2400px 100%;
       animation: sk-shimmer 1.4s ease-in-out infinite;
       border-radius: 4px;
@@ -67,9 +95,29 @@
     select:-webkit-autofill,
     select:-webkit-autofill:hover,
     select:-webkit-autofill:focus {
-      -webkit-text-fill-color: #e8e8e6;
-      -webkit-box-shadow: 0 0 0px 1000px #191919 inset;
+      -webkit-text-fill-color: rgb(var(--c-tx));
+      -webkit-box-shadow: 0 0 0px 1000px rgb(var(--c-bg)) inset;
       transition: background-color 5000s ease-in-out 0s;
+    }
+
+    /* ── Acessibilidade ── */
+    :focus-visible {
+      outline: 2px solid rgb(var(--c-accent));
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+    html[data-reduzir-animacoes="1"] *,
+    html[data-reduzir-animacoes="1"] *::before,
+    html[data-reduzir-animacoes="1"] *::after {
+      animation: none !important;
+      transition: none !important;
     }
   </style>
   {% block head %}{% endblock %}
@@ -89,7 +137,7 @@
 
     <div class="h-11 flex items-center px-4 border-b border-line flex-shrink-0">
       <a href="{% url 'painel' %}" class="text-sm font-semibold tracking-tight text-tx hover:opacity-80 transition-opacity">Helpy</a>
-      <button onclick="fecharSidebar()"
+      <button onclick="fecharSidebar()" aria-label="Fechar menu"
               class="ml-auto md:hidden w-7 h-7 flex items-center justify-center rounded-md text-dim hover:text-tx hover:bg-surfacehi transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -275,7 +323,7 @@
 
     <header class="h-11 flex-shrink-0 border-b border-line flex items-center justify-between px-4 md:px-6">
       <!-- Hamburger (mobile) -->
-      <button onclick="abrirSidebar()"
+      <button onclick="abrirSidebar()" aria-label="Abrir menu"
               class="md:hidden w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-tx hover:bg-surfacehi transition-colors -ml-1 mr-1 flex-shrink-0">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -360,7 +408,7 @@
         <span class="text-[10px] font-medium">Resumo</span>
       </a>
 
-      <button onclick="abrirSidebar()"
+      <button onclick="abrirSidebar()" aria-label="Abrir menu"
               class="flex-1 flex flex-col items-center justify-center gap-1 text-dim active:text-tx transition-colors">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
