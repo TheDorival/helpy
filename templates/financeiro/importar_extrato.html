@@ -192,8 +192,8 @@
           const pagina = await pdf.getPage(p);
           const tc = await pagina.getTextContent();
           linhas = linhas.concat(agruparItens(tc.items.map(function (it) {
-            return { texto: it.str, x: it.transform[4], y: it.transform[5] };
-          }), true));
+            return { texto: it.str, x: it.transform[4], y: -it.transform[5], alt: it.height || 10 };
+          })));
           progresso('Lendo texto do PDF…', 4 + (p / pdf.numPages) * 20);
         }
 
@@ -224,22 +224,29 @@
       }
     });
 
-    /* Agrupa palavras em linhas pela coordenada Y e descarta a coluna de CPF/CNPJ. */
-    function agruparItens(itens, inverterY) {
+    /* Agrupa palavras em linhas pela coordenada Y (tolerância baseada na altura
+       real do texto) e descarta a coluna de CPF/CNPJ — nunca valores monetários. */
+    const RE_DINHEIRO = /\d,\d\d/;
+
+    function agruparItens(itens) {
       const validos = itens.filter(function (i) { return i.texto && i.texto.trim(); });
       if (!validos.length) return [];
 
-      // Localiza a faixa horizontal da coluna CPF/CNPJ pelo cabeçalho
+      // Tolerância = mediana da altura das palavras (metade dela como passo)
+      const alturas = validos.map(function (i) { return i.alt || 10; }).sort(function (a, b) { return a - b; });
+      const tol = Math.max(4, (alturas[Math.floor(alturas.length / 2)] || 10) * 0.6);
+
+      // Faixa horizontal da coluna CPF/CNPJ, pelo cabeçalho
       let xCpf = null, xValor = null;
       validos.forEach(function (i) {
         const t = i.texto.replace(/\s/g, '').toUpperCase();
-        if (xCpf === null && (t.includes('CPF/CNPJ') || t === 'CPF')) xCpf = i.x;
+        if (xCpf === null && (t.indexOf('CPF') === 0 || t.indexOf('CNPJ') === 0)) xCpf = i.x;
         if (xValor === null && t === 'VALOR') xValor = i.x;
       });
 
       const grupos = {};
       validos.forEach(function (i) {
-        const chave = Math.round((inverterY ? -i.y : i.y) / 8);
+        const chave = Math.round(i.y / tol);
         (grupos[chave] = grupos[chave] || []).push(i);
       });
 
@@ -250,8 +257,8 @@
             .sort(function (a, b) { return a.x - b.x; })
             .filter(function (i) {
               if (xCpf === null || xValor === null) return true;
-              const dentroCpf = i.x >= xCpf - 6 && i.x < xValor - 6;
-              return !dentroCpf;
+              if (RE_DINHEIRO.test(i.texto)) return true;          // nunca remove valores
+              return !(i.x >= xCpf - 6 && i.x < xValor - 20);
             })
             .map(function (i) { return i.texto.trim(); })
             .join(' ')
@@ -277,7 +284,7 @@
       try {
         for (let p = 1; p <= pdf.numPages; p++) {
           const pagina = await pdf.getPage(p);
-          const viewport = pagina.getViewport({ scale: 2.4 });
+          const viewport = pagina.getViewport({ scale: 3.2 });
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
@@ -292,12 +299,17 @@
             (b.paragraphs || []).forEach(function (par) {
               (par.lines || []).forEach(function (ln) {
                 (ln.words || []).forEach(function (w) {
-                  palavras.push({ texto: w.text, x: w.bbox.x0, y: (w.bbox.y0 + w.bbox.y1) / 2 });
+                  palavras.push({
+                    texto: w.text,
+                    x: w.bbox.x0,
+                    y: (w.bbox.y0 + w.bbox.y1) / 2,
+                    alt: Math.max(6, w.bbox.y1 - w.bbox.y0),
+                  });
                 });
               });
             });
           });
-          linhas = linhas.concat(agruparItens(palavras, false));
+          linhas = linhas.concat(agruparItens(palavras));
           canvas.width = canvas.height = 0;
         }
       } finally {
