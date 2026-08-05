@@ -37,9 +37,12 @@ def perfil(request):
 
 @login_required
 def configuracoes(request):
+    return redirect('config_conta')
+
+
+@login_required
+def config_conta(request):
     senha_form = AlterarSenhaForm(user=request.user)
-    preferencias_form = PreferenciasForm(instance=request.user)
-    aparencia_form = AparenciaForm(instance=request.user)
     excluir_form = ExcluirContaForm(user=request.user)
 
     if request.method == 'POST':
@@ -51,21 +54,7 @@ def configuracoes(request):
                 senha_form.save()
                 update_session_auth_hash(request, senha_form.user)
                 messages.success(request, 'Senha alterada com sucesso.')
-                return redirect('configuracoes')
-
-        elif action == 'preferencias':
-            preferencias_form = PreferenciasForm(request.POST, instance=request.user)
-            if preferencias_form.is_valid():
-                preferencias_form.save()
-                messages.success(request, 'Preferências salvas.')
-                return redirect('configuracoes')
-
-        elif action == 'aparencia':
-            aparencia_form = AparenciaForm(request.POST, instance=request.user)
-            if aparencia_form.is_valid():
-                aparencia_form.save()
-                messages.success(request, 'Aparência atualizada.')
-                return redirect('configuracoes')
+                return redirect('config_conta')
 
         elif action == 'excluir_conta':
             excluir_form = ExcluirContaForm(user=request.user, data=request.POST)
@@ -74,9 +63,39 @@ def configuracoes(request):
                 logout(request)
                 return redirect('home')
 
-    return render(request, 'usuarios/configuracoes.html', {
+    return render(request, 'usuarios/config_conta.html', {
         'senha_form': senha_form,
-        'preferencias_form': preferencias_form,
-        'aparencia_form': aparencia_form,
         'excluir_form': excluir_form,
+    })
+
+
+@login_required
+def config_preferencias(request):
+    preferencias_form = PreferenciasForm(instance=request.user)
+
+    if request.method == 'POST':
+        preferencias_form = PreferenciasForm(request.POST, instance=request.user)
+        if preferencias_form.is_valid():
+            preferencias_form.save()
+            messages.success(request, 'Preferências salvas.')
+            return redirect('config_preferencias')
+
+    return render(request, 'usuarios/config_preferencias.html', {
+        'preferencias_form': preferencias_form,
+    })
+
+
+@login_required
+def config_aparencia(request):
+    aparencia_form = AparenciaForm(instance=request.user)
+
+    if request.method == 'POST':
+        aparencia_form = AparenciaForm(request.POST, instance=request.user)
+        if aparencia_form.is_valid():
+            aparencia_form.save()
+            messages.success(request, 'Aparência atualizada.')
+            return redirect('config_aparencia')
+
+    return render(request, 'usuarios/config_aparencia.html', {
+        'aparencia_form': aparencia_form,
     })

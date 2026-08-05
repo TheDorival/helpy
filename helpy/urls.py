@@ -21,7 +21,8 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import include, path
 
 from helpy.views import home, manifest, painel, resumo, serviceworker
-from usuarios.views import cadastro, configuracoes, perfil
+from usuarios.views import (cadastro, config_aparencia, config_conta,
+                            config_preferencias, configuracoes, perfil)
 
 urlpatterns = [
     path('sw.js', serviceworker, name='serviceworker'),
@@ -34,6 +35,9 @@ urlpatterns = [
     path('resumo/', resumo, name='resumo'),
     path('perfil/', perfil, name='perfil'),
     path('configuracoes/', configuracoes, name='configuracoes'),
+    path('configuracoes/conta/', config_conta, name='config_conta'),
+    path('configuracoes/preferencias/', config_preferencias, name='config_preferencias'),
+    path('configuracoes/aparencia/', config_aparencia, name='config_aparencia'),
     path('', include('financeiro.urls')),
     path('admin/', admin.site.urls),
 ]

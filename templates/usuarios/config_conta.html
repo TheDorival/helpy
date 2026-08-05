@@ -1,0 +1,79 @@
+{% extends 'usuarios/configuracoes_base.html' %}
+
+{% block title %}Configurações · Conta{% endblock %}
+
+{% block config_content %}
+
+  <div class="grid lg:grid-cols-2 gap-5 items-start">
+
+    <!-- ── SEGURANÇA ── -->
+    <div class="bg-surface border border-line rounded-lg p-5">
+      <p class="text-xs font-medium text-dim uppercase tracking-widest mb-4">Segurança</p>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="alterar_senha" />
+
+        <div class="mb-3">
+          <label for="id_old_password" class="block text-xs font-medium text-muted mb-2">Senha atual</label>
+          <input type="password" name="old_password" id="id_old_password" autocomplete="off"
+                 class="w-full bg-bg border {% if senha_form.old_password.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if senha_form.old_password.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ senha_form.old_password.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label for="id_new_password1" class="block text-xs font-medium text-muted mb-2">Nova senha</label>
+          <input type="password" name="new_password1" id="id_new_password1" autocomplete="off"
+                 class="w-full bg-bg border {% if senha_form.new_password1.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if senha_form.new_password1.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ senha_form.new_password1.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label for="id_new_password2" class="block text-xs font-medium text-muted mb-2">Confirmar nova senha</label>
+          <input type="password" name="new_password2" id="id_new_password2" autocomplete="off"
+                 class="w-full bg-bg border {% if senha_form.new_password2.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-accent transition-colors" />
+          {% if senha_form.new_password2.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ senha_form.new_password2.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <button type="submit"
+                class="bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
+          Alterar senha
+        </button>
+      </form>
+    </div>
+
+    <!-- ── ZONA DE PERIGO ── -->
+    <div class="bg-surface border border-red/30 rounded-lg p-5">
+      <p class="text-xs font-medium text-red/70 uppercase tracking-widest mb-1">Zona de perigo</p>
+      <p class="text-xs text-muted mb-5">Esta ação é irreversível. Todos os seus dados serão permanentemente excluídos.</p>
+
+      <form method="post" novalidate
+            onsubmit="return confirm('Tem certeza? Esta ação não pode ser desfeita.');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="excluir_conta" />
+
+        <div class="mb-3">
+          <label for="id_senha" class="block text-xs font-medium text-muted mb-2">Confirme sua senha para excluir</label>
+          <input type="password" name="senha" id="id_senha" autocomplete="current-password"
+                 class="w-full bg-bg border {% if excluir_form.senha.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-sm text-tx placeholder-dim focus:outline-none focus:border-red transition-colors" />
+          {% if excluir_form.senha.errors %}
+            <p class="mt-1.5 text-xs text-red">{{ excluir_form.senha.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <button type="submit"
+                class="bg-red/10 hover:bg-red/20 border border-red/30 text-red text-xs font-medium px-3 py-1.5 rounded-md transition-colors">
+          Excluir minha conta
+        </button>
+      </form>
+    </div>
+
+  </div>
+
+{% endblock %}
