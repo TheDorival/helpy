@@ -241,10 +241,18 @@
         </div>
 
         <div class="flex gap-3 pt-1">
-          <button type="submit"
-                  class="flex-1 {% if cat.tipo == 'receita' %}bg-green/10 border-green/20 text-green hover:bg-green/20{% else %}bg-accent/10 border-accent/20 text-accent hover:bg-accent/20{% endif %} border text-sm font-medium py-2 rounded-md transition-colors">
-            {% if acao == 'ativar' %}Ativar{% else %}Salvar{% endif %}
-          </button>
+          {% if acao == 'editar' %}
+            <input type="hidden" name="escopo" value="futuras">
+            <button type="button" onclick="abrirEscopo(this)"
+                    class="flex-1 {% if cat.tipo == 'receita' %}bg-green/10 border-green/20 text-green hover:bg-green/20{% else %}bg-accent/10 border-accent/20 text-accent hover:bg-accent/20{% endif %} border text-sm font-medium py-2 rounded-md transition-colors">
+              Salvar
+            </button>
+          {% else %}
+            <button type="submit"
+                    class="flex-1 {% if cat.tipo == 'receita' %}bg-green/10 border-green/20 text-green hover:bg-green/20{% else %}bg-accent/10 border-accent/20 text-accent hover:bg-accent/20{% endif %} border text-sm font-medium py-2 rounded-md transition-colors">
+              Ativar
+            </button>
+          {% endif %}
           <a href="{% url 'essenciais' %}"
              class="px-4 py-2 text-sm text-muted hover:text-tx border border-line rounded-md transition-colors">
             Cancelar
@@ -254,6 +262,8 @@
       </form>
     </div>
   </div>
+
+  {% if acao == 'editar' %}{% include 'financeiro/_modal_escopo.html' %}{% endif %}
 
   <!-- setDiaUtil: disponível para todos os essenciais -->
   <script>

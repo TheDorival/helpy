@@ -241,16 +241,26 @@
 
         <!-- Ações -->
         <div class="flex items-center gap-3 pt-1">
-          <button type="submit"
-                  class="bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
-            Salvar
-          </button>
+          {% if obj %}
+            <input type="hidden" name="escopo" value="futuras">
+            <button type="button" onclick="abrirEscopo(this)"
+                    class="bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
+              Salvar
+            </button>
+          {% else %}
+            <button type="submit"
+                    class="bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
+              Salvar
+            </button>
+          {% endif %}
           <a href="{% url 'fixas' %}" class="text-xs text-muted hover:text-tx transition-colors">Cancelar</a>
         </div>
 
       </div>
     </form>
   </div>
+
+  {% if obj %}{% include 'financeiro/_modal_escopo.html' %}{% endif %}
 
   <script>
   (function () {

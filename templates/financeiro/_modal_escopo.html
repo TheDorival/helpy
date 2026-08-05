@@ -1,0 +1,122 @@
+{% comment %}
+Modal de escopo da alteração. Requer no contexto:
+  ocorrencias.total  — lançamentos já gerados
+  ocorrencias.atuais — quantos estão no período financeiro corrente em diante
+E, no formulário, um <input type="hidden" name="escopo"> e o botão de envio
+chamando abrirEscopo(this) em vez de submeter direto.
+{% endcomment %}
+
+<div id="modal-escopo"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     onclick="if(event.target===this)fecharEscopo()">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+  <div class="relative bg-surface border border-line rounded-xl w-full max-w-sm shadow-2xl">
+
+    <div class="px-5 py-4 border-b border-line">
+      <p class="text-sm font-semibold text-tx">Aplicar a quais lançamentos?</p>
+      <p class="text-xs text-dim mt-0.5">
+        {{ ocorrencias.total }} lançamento{{ ocorrencias.total|pluralize }} já registrado{{ ocorrencias.total|pluralize }} a partir desta recorrente.
+      </p>
+    </div>
+
+    <div class="px-5 py-4 space-y-2">
+
+      <label class="esc-option flex items-start gap-2.5 p-3 rounded-lg border border-accent/50 bg-accent/5 cursor-pointer transition-all">
+        <input type="radio" name="escopo_op" value="futuras" class="mt-0.5 accent-accent" checked>
+        <span>
+          <span class="block text-xs font-medium text-tx">Somente as próximas</span>
+          <span class="block text-[10px] text-dim leading-tight mt-0.5">
+            Nada muda no que já foi lançado; só as ocorrências futuras usam os novos dados.
+          </span>
+        </span>
+      </label>
+
+      <label class="esc-option flex items-start gap-2.5 p-3 rounded-lg border border-line hover:border-muted cursor-pointer transition-all">
+        <input type="radio" name="escopo_op" value="atuais" class="mt-0.5 accent-accent">
+        <span>
+          <span class="block text-xs font-medium text-muted">Deste período em diante</span>
+          <span class="block text-[10px] text-dim leading-tight mt-0.5">
+            Atualiza {{ ocorrencias.atuais }} lançamento{{ ocorrencias.atuais|pluralize }} do período atual, além dos futuros.
+          </span>
+        </span>
+      </label>
+
+      <label class="esc-option flex items-start gap-2.5 p-3 rounded-lg border border-line hover:border-muted cursor-pointer transition-all">
+        <input type="radio" name="escopo_op" value="todas" class="mt-0.5 accent-accent">
+        <span>
+          <span class="block text-xs font-medium text-muted">Todas as instâncias</span>
+          <span class="block text-[10px] text-dim leading-tight mt-0.5">
+            Reescreve os {{ ocorrencias.total }} lançamento{{ ocorrencias.total|pluralize }} já registrado{{ ocorrencias.total|pluralize }}, inclusive de meses anteriores.
+          </span>
+        </span>
+      </label>
+
+      <p class="text-[10px] text-amber-400 pt-1">
+        Datas dos lançamentos já existentes não são alteradas — apenas valor, descrição, categoria e entidade.
+      </p>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-line">
+      <button type="button" onclick="fecharEscopo()"
+              class="text-xs font-medium text-muted hover:text-tx border border-line rounded-md px-3 py-1.5 transition-colors">
+        Cancelar
+      </button>
+      <button type="button" onclick="confirmarEscopo()"
+              class="text-xs font-medium text-accent bg-accent/10 border border-accent/20 hover:bg-accent/20 rounded-md px-3 py-1.5 transition-colors">
+        Salvar alterações
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var formEscopo = null;
+
+  window.abrirEscopo = function (botao) {
+    formEscopo = botao.closest('form');
+    if (!formEscopo) return;
+    if (!formEscopo.reportValidity()) return;          // respeita campos obrigatórios
+    {% if ocorrencias.total %}
+      document.getElementById('modal-escopo').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    {% else %}
+      formEscopo.submit();                              // nada gerado ainda: salva direto
+    {% endif %}
+  };
+
+  window.fecharEscopo = function () {
+    document.getElementById('modal-escopo').classList.add('hidden');
+    document.body.style.overflow = '';
+  };
+
+  window.confirmarEscopo = function () {
+    if (!formEscopo) return;
+    var escolha = document.querySelector('input[name="escopo_op"]:checked');
+    var campo = formEscopo.querySelector('input[name="escopo"]');
+    if (campo && escolha) campo.value = escolha.value;
+    formEscopo.submit();
+  };
+
+  document.querySelectorAll('.esc-option').forEach(function (opt) {
+    opt.addEventListener('click', function () {
+      document.querySelectorAll('.esc-option').forEach(function (o) {
+        var marcado = o.querySelector('input[type=radio]').checked;
+        o.classList.toggle('border-accent/50', marcado);
+        o.classList.toggle('bg-accent/5', marcado);
+        o.classList.toggle('border-line', !marcado);
+        var titulo = o.querySelector('span > span.block');
+        if (titulo) {
+          titulo.classList.toggle('text-tx', marcado);
+          titulo.classList.toggle('text-muted', !marcado);
+        }
+      });
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') fecharEscopo();
+  });
+})();
+</script>
