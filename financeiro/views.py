@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import (CategoriaForm, EmprestimoForm, EntidadeForm, EventoVidaForm, MetaForm,
                     RegraCategoriaForm, TransacaoFixaForm, TransacaoForm)
-from .importacao import (ExtratoInvalido, conferencia_saldos, detectar_colunas, ler_csv,
+from .importacao import (ExtratoInvalido, conferencia_lancamentos, detectar_colunas, ler_csv,
                          meta_do_extrato, parse_csv, parse_linhas_caixa, parse_ofx)
 from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial, EventoVida,
                      ImportacaoExtrato, Meta, ParcelaEmprestimo, RegraCategoria, SaldoExtra,
@@ -1222,12 +1222,12 @@ def importar_pdf(request):
     except ExtratoInvalido as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
 
+    conf = conferencia_lancamentos(lancamentos)
     lancamentos = _aplicar_regras(request.user, _marcar_duplicatas(request.user, lancamentos))
-    conf = conferencia_saldos([str(l) for l in linhas])
     request.session['import_extrato'] = {
         'arquivo_nome': nome, 'formato': 'pdf',
         'meta': meta_do_extrato([str(l) for l in linhas]),
-        'conferencia': {k: str(v) for k, v in conf.items()} if conf else None,
+        'conferencia': conf,
         'lancamentos': _serializar(lancamentos),
     }
     return JsonResponse({'ok': True, 'n': len(lancamentos), 'redirect': '/importar/revisar/'})
@@ -1336,19 +1336,7 @@ def revisar_extrato(request):
     n_dup = sum(1 for l in lancamentos if l['duplicata'])
     n_susp = sum(1 for l in lancamentos if l.get('suspeito'))
 
-    # Conferência: variação de saldo do extrato x soma dos lançamentos lidos
     conf = dados.get('conferencia')
-    if conf:
-        variacao = Decimal(conf['variacao'])
-        diferenca = (total_rec - total_desp) - variacao
-        conf = {
-            'saldo_inicial': Decimal(conf['saldo_inicial']),
-            'saldo_final': Decimal(conf['saldo_final']),
-            'variacao': variacao,
-            'liquido': total_rec - total_desp,
-            'diferenca': diferenca,
-            'ok': abs(diferenca) <= Decimal('0.05'),
-        }
 
     meta = dict(dados['meta'])
     meta['periodo_inicio'] = lancamentos[0]['data'] if lancamentos else None

@@ -223,6 +223,7 @@ def _validar_contra_saldos(registros):
             continue
         esperado = r['saldo'] - prox['saldo']
         assinado = item['valor'] if item['tipo'] == 'receita' else -item['valor']
+        item['validado'] = True
         if abs(esperado - assinado) > Decimal('0.02'):
             item['suspeito'] = True
             item['motivo_suspeita'] = f'Saldo do extrato indica {esperado:.2f}'
@@ -296,6 +297,7 @@ def parse_linhas_caixa(linhas):
             'descricao': (descricao or 'Lançamento')[:200],
             'fitid': '',
             'suspeito': False,
+            'validado': False,
             'motivo_suspeita': '',
         }
         registro['item'] = item
@@ -311,30 +313,22 @@ def parse_linhas_caixa(linhas):
     return lancamentos
 
 
-def conferencia_saldos(linhas):
-    """Compara a variação da coluna Saldo do extrato com a soma dos lançamentos.
+def conferencia_lancamentos(lancamentos):
+    """Resumo da checagem de cada lançamento contra a coluna Saldo do extrato.
 
-    Devolve dict com saldo inicial, final e a variação esperada — ou None se a
-    coluna de saldo não for legível o bastante.
+    Conferir linha a linha é bem mais confiável que somar tudo, porque um único
+    saldo mal lido não contamina o resultado inteiro.
     """
-    saldos = []
-    for linha in _juntar_quebradas(linhas):
-        m = RE_LINHA_CAIXA.match(linha or '')
-        if not m:
-            continue
-        valores = RE_VALOR_DC.findall(m.group('resto'))
-        if len(valores) >= 2 and valores[-1][1]:
-            saldo = _valor_csv(valores[-1][0])
-            if saldo is not None:
-                sinal = 1 if valores[-1][1].upper() == 'C' else -1
-                saldos.append(saldo * sinal)
-
-    if len(saldos) < 2:
-        return None
-
-    # O extrato lista do mais recente para o mais antigo
-    final, inicial = saldos[0], saldos[-1]
-    return {'saldo_inicial': inicial, 'saldo_final': final, 'variacao': final - inicial}
+    total = len(lancamentos)
+    divergem = sum(1 for l in lancamentos if l.get('suspeito'))
+    conferem = sum(1 for l in lancamentos if l.get('validado') and not l.get('suspeito'))
+    return {
+        'total': total,
+        'conferem': conferem,
+        'divergem': divergem,
+        'sem_conferencia': total - conferem - divergem,
+        'ok': divergem == 0,
+    }
 
 
 def meta_do_extrato(linhas):

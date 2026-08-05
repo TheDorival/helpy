@@ -49,20 +49,20 @@
       <div class="mt-3 pt-3 border-t border-line">
         <div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px]">
           <span class="{% if conferencia.ok %}text-green{% else %}text-red{% endif %} font-medium">
-            {% if conferencia.ok %}✓ Conferência bate com o extrato{% else %}✗ Conferência não bate com o extrato{% endif %}
+            {% if conferencia.ok %}✓ Todos os lançamentos conferem com a coluna Saldo{% else %}✗ {{ conferencia.divergem }} lançamento{{ conferencia.divergem|pluralize }} não confere{{ conferencia.divergem|pluralize:",m" }} com a coluna Saldo{% endif %}
           </span>
-          <span class="text-muted">Saldo do extrato: {{ request.user.simbolo_moeda }} {{ conferencia.saldo_inicial|floatformat:"2g" }} → {{ request.user.simbolo_moeda }} {{ conferencia.saldo_final|floatformat:"2g" }}</span>
-          <span class="text-muted">Variação esperada: <span class="text-tx">{{ request.user.simbolo_moeda }} {{ conferencia.variacao|floatformat:"2g" }}</span></span>
-          <span class="text-muted">Soma dos lançamentos lidos: <span class="text-tx">{{ request.user.simbolo_moeda }} {{ conferencia.liquido|floatformat:"2g" }}</span></span>
-          {% if not conferencia.ok %}
-            <span class="text-red">Diferença: {{ request.user.simbolo_moeda }} {{ conferencia.diferenca|floatformat:"2g" }}</span>
+          <span class="text-muted">Conferidos: <span class="text-green">{{ conferencia.conferem }}</span></span>
+          {% if conferencia.divergem %}
+            <span class="text-muted">Divergentes: <span class="text-red">{{ conferencia.divergem }}</span></span>
+          {% endif %}
+          {% if conferencia.sem_conferencia %}
+            <span class="text-muted">Sem conferência: <span class="text-dim">{{ conferencia.sem_conferencia }}</span></span>
           {% endif %}
         </div>
-        {% if not conferencia.ok %}
-          <p class="mt-1.5 text-[11px] text-muted">
-            Algum lançamento pode ter sido lido errado ou não reconhecido. Revise a lista abaixo antes de importar.
-          </p>
-        {% endif %}
+        <p class="mt-1.5 text-[11px] text-muted">
+          Cada linha é comparada com a variação da coluna Saldo do próprio extrato.
+          {% if not conferencia.ok %}As divergentes estão destacadas em vermelho na lista abaixo.{% endif %}
+        </p>
       </div>
     {% endif %}
   </div>
