@@ -207,11 +207,33 @@ def _juntar_quebradas(linhas):
     return saida
 
 
+def _validar_contra_saldos(registros):
+    """Marca lançamentos cujo valor não bate com a variação da coluna Saldo.
+
+    `registros` inclui também as linhas ignoradas (SALDO DIA), necessárias para
+    a sequência de saldos ficar correta. O extrato lista do mais recente para o
+    mais antigo, então: valor da linha = saldo dela − saldo da linha seguinte.
+    """
+    for i, r in enumerate(registros):
+        item = r.get('item')
+        if item is None or r['saldo'] is None:
+            continue
+        prox = registros[i + 1] if i + 1 < len(registros) else None
+        if not prox or prox['saldo'] is None:
+            continue
+        esperado = r['saldo'] - prox['saldo']
+        assinado = item['valor'] if item['tipo'] == 'receita' else -item['valor']
+        if abs(esperado - assinado) > Decimal('0.02'):
+            item['suspeito'] = True
+            item['motivo_suspeita'] = f'Saldo do extrato indica {esperado:.2f}'
+
+
 def parse_linhas_caixa(linhas):
     """Converte linhas de texto do 'Extrato por período' da Caixa em lançamentos.
 
     Aceita linhas vindas do PDF com texto ou do OCR feito no navegador.
     """
+    registros = []
     lancamentos = []
     for linha in _juntar_quebradas(linhas):
         if not linha:
@@ -230,6 +252,15 @@ def parse_linhas_caixa(linhas):
         if not valores:
             continue
 
+        # Saldo da linha (última coluna) — usado para conferência
+        saldo = None
+        if len(valores) >= 2 and valores[-1][1]:
+            s = _valor_csv(valores[-1][0])
+            if s is not None:
+                saldo = s if valores[-1][1].upper() == 'C' else -s
+        registro = {'saldo': saldo, 'item': None}
+        registros.append(registro)
+
         # A última ocorrência é o saldo; a anterior é o valor do lançamento.
         # Quando só há uma, ela é o próprio valor.
         valor_txt, indicador = valores[-2] if len(valores) >= 2 else valores[0]
@@ -237,10 +268,18 @@ def parse_linhas_caixa(linhas):
         if valor is None or valor == 0:
             continue
 
+        direcao_hist = _direcao_pelo_historico(resto)
+
         if not indicador:
-            indicador = _direcao_pelo_historico(resto)
+            indicador = direcao_hist
             if not indicador:
                 continue  # sem como saber entrada ou saída — melhor não adivinhar
+
+        # Linha com um único valor legível: pode ser o valor (saldo ilegível) ou o
+        # próprio saldo (valor ilegível). Se o indicador contradiz o histórico,
+        # provavelmente é o saldo — descartar em vez de inventar um lançamento.
+        if len(valores) == 1 and direcao_hist and indicador != direcao_hist:
+            continue
 
         # Descrição = tudo antes do primeiro valor monetário
         corte = RE_VALOR_DC.search(resto)
@@ -250,21 +289,52 @@ def parse_linhas_caixa(linhas):
         if any(p in descricao.lower() for p in IGNORAR_HISTORICO):
             continue
 
-        lancamentos.append({
+        item = {
             'data': data,
             'valor': abs(valor),
             'tipo': 'receita' if indicador.upper() == 'C' else 'despesa',
             'descricao': (descricao or 'Lançamento')[:200],
             'fitid': '',
-        })
+            'suspeito': False,
+            'motivo_suspeita': '',
+        }
+        registro['item'] = item
+        lancamentos.append(item)
 
     if not lancamentos:
         raise ExtratoInvalido(
             'Nenhum lançamento reconhecido. Confira se o arquivo é o "Extrato por período" da Caixa.'
         )
 
+    _validar_contra_saldos(registros)
     lancamentos.sort(key=lambda x: x['data'])
     return lancamentos
+
+
+def conferencia_saldos(linhas):
+    """Compara a variação da coluna Saldo do extrato com a soma dos lançamentos.
+
+    Devolve dict com saldo inicial, final e a variação esperada — ou None se a
+    coluna de saldo não for legível o bastante.
+    """
+    saldos = []
+    for linha in _juntar_quebradas(linhas):
+        m = RE_LINHA_CAIXA.match(linha or '')
+        if not m:
+            continue
+        valores = RE_VALOR_DC.findall(m.group('resto'))
+        if len(valores) >= 2 and valores[-1][1]:
+            saldo = _valor_csv(valores[-1][0])
+            if saldo is not None:
+                sinal = 1 if valores[-1][1].upper() == 'C' else -1
+                saldos.append(saldo * sinal)
+
+    if len(saldos) < 2:
+        return None
+
+    # O extrato lista do mais recente para o mais antigo
+    final, inicial = saldos[0], saldos[-1]
+    return {'saldo_inicial': inicial, 'saldo_final': final, 'variacao': final - inicial}
 
 
 def meta_do_extrato(linhas):
