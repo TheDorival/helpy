@@ -163,9 +163,9 @@
         <!-- Tema -->
         <div class="mb-4">
           <label class="block text-xs font-medium text-muted mb-2">Tema</label>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-3 gap-2" id="tema-group">
             {% for value, label in aparencia_form.fields.tema.choices %}
-            <label class="flex flex-col items-center gap-1.5 p-3 rounded-lg border cursor-pointer transition-all
+            <label class="tema-option flex flex-col items-center gap-1.5 p-3 rounded-lg border cursor-pointer transition-all
                           {% if aparencia_form.instance.tema == value %}border-accent/50 bg-accent/5 text-tx{% else %}border-line text-muted hover:border-muted{% endif %}">
               <input type="radio" name="tema" value="{{ value }}" class="sr-only"
                      {% if aparencia_form.instance.tema == value %}checked{% endif %}>
@@ -262,5 +262,28 @@
     </div>
 
   </div>
+
+  <script>
+  (function () {
+    var opts = document.querySelectorAll('.tema-option');
+    opts.forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var r = this.querySelector('input[type=radio]');
+        if (!r) return;
+        r.checked = true;
+        opts.forEach(function (o) {
+          var ativo = o.querySelector('input[type=radio]').checked;
+          o.classList.toggle('border-accent/50', ativo);
+          o.classList.toggle('bg-accent/5', ativo);
+          o.classList.toggle('text-tx', ativo);
+          o.classList.toggle('border-line', !ativo);
+          o.classList.toggle('text-muted', !ativo);
+        });
+        // Pré-visualização imediata do tema
+        document.documentElement.setAttribute('data-theme', r.value);
+      });
+    });
+  })();
+  </script>
 
 {% endblock %}
