@@ -38,6 +38,32 @@
           {% endif %}
         </div>
 
+        <!-- Regra de dia útil -->
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-muted mb-2">Contagem de dias úteis</label>
+          <div class="space-y-1.5" id="regra-group">
+            {% for value, label in preferencias_form.fields.regra_dia_util.choices %}
+            <label class="regra-option flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all
+                          {% if preferencias_form.instance.regra_dia_util == value %}border-accent/50 bg-accent/5{% else %}border-line hover:border-muted{% endif %}">
+              <input type="radio" name="regra_dia_util" value="{{ value }}" class="mt-0.5 accent-accent"
+                     {% if preferencias_form.instance.regra_dia_util == value %}checked{% endif %}>
+              <span>
+                <span class="regra-titulo block text-xs font-medium">{{ label }}</span>
+                <span class="block text-[10px] text-dim leading-tight mt-0.5">
+                  {% if value == 'sem_feriados' %}Ex.: 5º dia útil de novembro/2026 → 06/11
+                  {% elif value == 'com_feriados' %}Ex.: 5º dia útil de novembro/2026 → 09/11 (02/11 é Finados)
+                  {% else %}Ex.: 5º dia útil de novembro/2026 → 07/11 (sábado conta){% endif %}
+                </span>
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+          <p class="mt-1.5 text-xs text-dim">
+            Usada nos vencimentos marcados como "dia útil". Vale a convenção de quem paga —
+            confira no seu contracheque.
+          </p>
+        </div>
+
         <button type="submit"
                 class="bg-accent hover:opacity-90 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-opacity">
           Salvar preferências
@@ -59,5 +85,31 @@
     </div>
 
   </div>
+
+  <script>
+  (function () {
+    var opcoes = document.querySelectorAll('.regra-option');
+    function marcar(valor) {
+      opcoes.forEach(function (o) {
+        var radio = o.querySelector('input[type=radio]');
+        var ativo = radio && radio.value === valor;
+        if (radio) radio.checked = ativo;
+        o.classList.toggle('border-accent/50', ativo);
+        o.classList.toggle('bg-accent/5', ativo);
+        o.classList.toggle('border-line', !ativo);
+        var titulo = o.querySelector('.regra-titulo');
+        if (titulo) titulo.style.color = ativo ? 'rgb(var(--c-tx))' : 'rgb(var(--c-muted))';
+      });
+    }
+    opcoes.forEach(function (o) {
+      o.addEventListener('click', function () {
+        var radio = this.querySelector('input[type=radio]');
+        if (radio) marcar(radio.value);
+      });
+    });
+    var inicial = document.querySelector('input[name="regra_dia_util"]:checked');
+    marcar(inicial ? inicial.value : 'com_feriados');
+  })();
+  </script>
 
 {% endblock %}
