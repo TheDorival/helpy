@@ -1,0 +1,107 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Regras de categorização{% endblock %}
+{% block page_title %}Regras de categorização{% endblock %}
+
+{% block skeleton %}
+  <div class="flex items-center justify-between mb-5">
+    <div class="sk h-4 w-56 rounded"></div>
+    <div class="sk h-7 w-24 rounded-md"></div>
+  </div>
+  <div class="bg-surface border border-line rounded-lg overflow-hidden">
+    {% for i in "abcd" %}
+    <div class="flex items-center gap-4 px-4 py-3 border-b border-line last:border-0">
+      <div class="sk h-3 w-40 rounded"></div>
+      <div class="sk h-3 w-32 rounded"></div>
+      <div class="sk h-3 w-20 rounded ml-auto"></div>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
+{% block content %}
+
+  <div class="flex items-center justify-between gap-3 mb-5">
+    <p class="text-sm text-muted">
+      Classificam automaticamente os lançamentos ao importar um extrato.
+    </p>
+    <a href="{% url 'nova_regra' %}"
+       class="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-xs font-medium px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+      Nova regra
+    </a>
+  </div>
+
+  {% if regras %}
+    <div class="bg-surface border border-line rounded-lg overflow-x-auto">
+      <table class="w-full text-sm min-w-[600px]">
+        <thead>
+          <tr class="border-b border-line">
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Se a descrição contiver</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Categoria</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Aplica a</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Status</th>
+            <th class="px-4 py-2"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for r in regras %}
+          <tr class="hover:bg-surfacehi transition-colors group {% if not r.ativa %}opacity-50{% endif %}">
+            <td class="px-4 py-2.5 text-tx">
+              <span class="font-mono text-xs bg-bg border border-line rounded px-2 py-0.5">{{ r.termo }}</span>
+            </td>
+            <td class="px-4 py-2.5">
+              <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ r.categoria.nome }}</span>
+              {% if r.entidade %}<span class="text-[10px] text-dim ml-1">→ {{ r.entidade.nome }}</span>{% endif %}
+            </td>
+            <td class="px-4 py-2.5 text-xs text-muted">{{ r.get_aplica_a_display }}</td>
+            <td class="px-4 py-2.5">
+              <form method="post" action="{% url 'toggle_regra' r.pk %}" style="display:contents">
+                {% csrf_token %}
+                <button type="submit" class="text-[10px] px-2 py-0.5 rounded-full border transition-colors
+                        {% if r.ativa %}text-green border-green/30 bg-green/5 hover:bg-green/10{% else %}text-dim border-line hover:text-muted{% endif %}">
+                  {% if r.ativa %}Ativa{% else %}Inativa{% endif %}
+                </button>
+              </form>
+            </td>
+            <td class="px-4 py-2.5">
+              <div class="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                <a href="{% url 'editar_regra' r.pk %}" class="text-xs text-muted hover:text-tx transition-colors">Editar</a>
+                <form method="post" action="{% url 'excluir_regra' r.pk %}" style="display:contents"
+                      onsubmit="return confirm('Remover esta regra?')">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs text-muted hover:text-red transition-colors">Excluir</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="mt-3 text-[11px] text-dim">
+      As regras são avaliadas na ordem alfabética do termo — a primeira que combinar define a categoria.
+    </p>
+
+  {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center bg-surface border border-line rounded-lg">
+      <div class="w-10 h-10 rounded-full bg-bg border border-line flex items-center justify-center mb-4 text-lg">🏷️</div>
+      <p class="text-sm text-muted mb-1">Nenhuma regra cadastrada</p>
+      <p class="text-xs text-dim mb-5 max-w-sm">
+        Exemplo: termo “IFOOD” → categoria “Alimentação”. Toda vez que um lançamento importado
+        contiver esse texto, ele já vem classificado.
+      </p>
+      <a href="{% url 'nova_regra' %}"
+         class="inline-flex items-center gap-2 text-xs font-medium text-accent border border-accent/30 bg-accent/5 hover:bg-accent/10 px-3 py-1.5 rounded-md transition-colors">
+        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Nova regra
+      </a>
+    </div>
+  {% endif %}
+
+{% endblock %}

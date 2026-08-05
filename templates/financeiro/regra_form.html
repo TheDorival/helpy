@@ -1,0 +1,92 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}Regras de categorização{% endblock %}
+
+{% block content %}
+  <div class="max-w-md mx-auto">
+    <div class="bg-surface border border-line rounded-xl overflow-hidden">
+
+      <div class="px-6 py-4 border-b border-line">
+        <p class="text-sm font-semibold text-tx">{{ titulo }}</p>
+        <p class="text-xs text-dim mt-0.5">Aplicada automaticamente aos lançamentos importados.</p>
+      </div>
+
+      <form method="post" class="px-6 py-5 space-y-4" novalidate>
+        {% csrf_token %}
+
+        <div>
+          <label for="id_termo" class="block text-xs font-medium text-muted mb-1">Se a descrição contiver</label>
+          <input type="text" name="termo" id="id_termo" maxlength="120" required
+                 value="{{ form.termo.value|default:'' }}"
+                 placeholder="Ex: IFOOD"
+                 class="w-full text-sm bg-bg border {% if form.termo.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+          <p class="mt-1 text-[10px] text-dim">Não diferencia maiúsculas de minúsculas.</p>
+          {% if form.termo.errors %}<p class="mt-1 text-xs text-red">{{ form.termo.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+          <label for="id_categoria" class="block text-xs font-medium text-muted mb-1">Categoria</label>
+          <select name="categoria" id="id_categoria" required
+                  class="w-full text-sm bg-bg border {% if form.categoria.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+            <option value="">— selecione —</option>
+            {% for c in categorias %}
+              <option value="{{ c.pk }}" {% if form.categoria.value|stringformat:'s' == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nome }} ({{ c.get_tipo_display }})</option>
+            {% endfor %}
+          </select>
+          {% if form.categoria.errors %}<p class="mt-1 text-xs text-red">{{ form.categoria.errors.0 }}</p>{% endif %}
+          {% if not categorias %}
+            <p class="mt-1 text-xs text-amber-400">Você ainda não tem categorias — <a href="{% url 'nova_categoria' %}" class="underline">crie uma primeiro</a>.</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Aplica a</label>
+          <div class="grid grid-cols-3 gap-2">
+            {% for value, label in form.fields.aplica_a.choices %}
+            <label class="flex items-center justify-center p-2 rounded-md border cursor-pointer text-[11px] text-center transition-all
+                          {% if form.aplica_a.value|default:'ambos' == value %}border-accent/50 bg-accent/5 text-tx{% else %}border-line text-muted hover:border-muted{% endif %}">
+              <input type="radio" name="aplica_a" value="{{ value }}" class="sr-only"
+                     {% if form.aplica_a.value|default:'ambos' == value %}checked{% endif %}>
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div>
+          <label for="id_entidade" class="block text-xs font-medium text-muted mb-1">
+            Entidade <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <select name="entidade" id="id_entidade"
+                  class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+            <option value="">— nenhuma —</option>
+            {% for e in form.fields.entidade.queryset %}
+              <option value="{{ e.pk }}" {% if form.entidade.value|stringformat:'s' == e.pk|stringformat:'s' %}selected{% endif %}>{{ e.nome }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-[10px] text-dim">Se definida, o lançamento importado também recebe essa entidade.</p>
+        </div>
+
+        <label class="flex items-center gap-2.5 cursor-pointer">
+          <input type="checkbox" name="ativa" value="True"
+                 {% if form.ativa.value|default_if_none:True %}checked{% endif %}
+                 class="w-4 h-4 rounded border-line bg-bg accent-accent">
+          <span class="text-sm text-tx">Regra ativa</span>
+        </label>
+
+        <div class="flex gap-3 pt-1">
+          <button type="submit"
+                  class="flex-1 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-sm font-medium py-2 rounded-md transition-colors">
+            {% if obj %}Salvar{% else %}Criar regra{% endif %}
+          </button>
+          <a href="{% url 'regras' %}"
+             class="px-4 py-2 text-sm text-muted hover:text-tx border border-line rounded-md transition-colors">
+            Cancelar
+          </a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+{% endblock %}
