@@ -81,55 +81,82 @@
       <span class="text-xs text-dim ml-auto"><span id="contador">0</span> selecionado(s)</span>
     </div>
 
+    <p class="text-[11px] text-dim mb-2">
+      Todos os campos são editáveis — corrija qualquer lançamento antes de importar.
+    </p>
+
     <!-- Tabela -->
     <div class="bg-surface border border-line rounded-lg overflow-x-auto mb-5">
-      <table class="w-full text-sm min-w-[720px]">
+      <table class="w-full text-sm min-w-[860px]">
         <thead>
           <tr class="border-b border-line">
             <th class="px-3 py-2 w-10"></th>
-            <th class="text-left text-xs font-medium text-dim px-3 py-2">Data</th>
+            <th class="text-left text-xs font-medium text-dim px-3 py-2 w-32">Data</th>
             <th class="text-left text-xs font-medium text-dim px-3 py-2">Descrição</th>
-            <th class="text-left text-xs font-medium text-dim px-3 py-2 w-52">Categoria</th>
-            <th class="text-right text-xs font-medium text-dim px-3 py-2">Valor</th>
+            <th class="text-left text-xs font-medium text-dim px-3 py-2 w-44">Categoria</th>
+            <th class="text-left text-xs font-medium text-dim px-3 py-2 w-24">Tipo</th>
+            <th class="text-right text-xs font-medium text-dim px-3 py-2 w-32">Valor</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">
           {% for item in itens %}
           <tr class="{% if item.duplicata %}opacity-60{% endif %}{% if item.suspeito %} bg-red/5{% endif %}">
-            <td class="px-3 py-2">
+            <td class="px-3 py-2 align-top">
               <input type="checkbox" name="incluir" value="{{ item.idx }}"
-                     class="chk-item w-4 h-4 rounded border-line bg-bg accent-accent"
+                     class="chk-item mt-1.5 w-4 h-4 rounded border-line bg-bg accent-accent"
                      data-dup="{% if item.duplicata %}1{% else %}0{% endif %}"
                      {% if not item.duplicata %}checked{% endif %}
                      onchange="atualizarContador()">
             </td>
-            <td class="px-3 py-2 text-xs text-muted whitespace-nowrap">{{ item.data|date:"d/m/Y" }}</td>
-            <td class="px-3 py-2">
-              <p class="text-tx text-sm">{{ item.descricao }}</p>
+            <td class="px-3 py-2 align-top">
+              <input type="date" name="data_{{ item.idx }}" value="{{ item.data|date:'Y-m-d' }}"
+                     aria-label="Data do lançamento"
+                     class="w-full text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors">
+            </td>
+            <td class="px-3 py-2 align-top">
+              <input type="text" name="descricao_{{ item.idx }}" value="{{ item.descricao }}" maxlength="200"
+                     aria-label="Descrição do lançamento"
+                     class="w-full text-sm bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors">
               {% if item.duplicata %}
-                <p class="text-[10px] text-amber-400 mt-0.5">⚠ {{ item.motivo_duplicata }}</p>
+                <p class="text-[10px] text-amber-400 mt-1">⚠ {{ item.motivo_duplicata }}</p>
               {% endif %}
               {% if item.suspeito %}
-                <p class="text-[10px] text-red mt-0.5">⚠ Valor não confere com a coluna Saldo — {{ item.motivo_suspeita }}</p>
+                <p class="text-[10px] text-red mt-1">⚠ Não confere com a coluna Saldo — {{ item.motivo_suspeita }}</p>
               {% endif %}
             </td>
-            <td class="px-3 py-2">
+            <td class="px-3 py-2 align-top">
               <select name="categoria_{{ item.idx }}"
+                      aria-label="Categoria"
                       class="w-full text-xs bg-bg border border-line rounded px-2 py-1 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
                 <option value="">— sem categoria —</option>
-                {% if item.tipo == 'receita' %}
+                <optgroup label="Receitas">
                   {% for c in cats_receita %}
                     <option value="{{ c.pk }}" {% if item.categoria_id == c.pk %}selected{% endif %}>{{ c.nome }}</option>
                   {% endfor %}
-                {% else %}
+                </optgroup>
+                <optgroup label="Despesas">
                   {% for c in cats_despesa %}
                     <option value="{{ c.pk }}" {% if item.categoria_id == c.pk %}selected{% endif %}>{{ c.nome }}</option>
                   {% endfor %}
-                {% endif %}
+                </optgroup>
               </select>
             </td>
-            <td class="px-3 py-2 text-right font-semibold whitespace-nowrap {% if item.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
-              {% if item.tipo == 'despesa' %}−{% endif %}{{ request.user.simbolo_moeda }} {{ item.valor|floatformat:"2g" }}
+            <td class="px-3 py-2 align-top">
+              <select name="tipo_{{ item.idx }}" aria-label="Tipo do lançamento"
+                      onchange="corTipo(this)"
+                      class="tipo-sel w-full text-xs bg-bg border border-line rounded px-2 py-1 outline-none focus:border-accent/50 transition-colors appearance-none {% if item.tipo == 'receita' %}text-green{% else %}text-red{% endif %}">
+                <option value="receita" {% if item.tipo == 'receita' %}selected{% endif %}>Entrada</option>
+                <option value="despesa" {% if item.tipo == 'despesa' %}selected{% endif %}>Saída</option>
+              </select>
+            </td>
+            <td class="px-3 py-2 align-top">
+              <div class="flex items-center bg-bg border border-line rounded overflow-hidden focus-within:border-accent/50 transition-colors">
+                <span class="text-[10px] text-dim pl-2 pr-1 flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
+                <input type="number" name="valor_{{ item.idx }}" step="0.01" min="0.01"
+                       value="{{ item.valor|floatformat:'2u' }}"
+                       aria-label="Valor do lançamento"
+                       class="w-full text-xs bg-transparent px-1 py-1 text-tx text-right outline-none font-semibold">
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -150,6 +177,11 @@
   </form>
 
   <script>
+  function corTipo(sel) {
+    const receita = sel.value === 'receita';
+    sel.classList.toggle('text-green', receita);
+    sel.classList.toggle('text-red', !receita);
+  }
   function itens() { return document.querySelectorAll('.chk-item'); }
   function atualizarContador() {
     var n = 0;

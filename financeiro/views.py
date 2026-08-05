@@ -1288,6 +1288,7 @@ def revisar_extrato(request):
     lancamentos = _desserializar(dados['lancamentos'])
 
     if request.method == 'POST':
+        from datetime import datetime as _dt
         selecionados = set(request.POST.getlist('incluir'))
         imp = ImportacaoExtrato.objects.create(
             usuario=request.user,
@@ -1303,10 +1304,36 @@ def revisar_extrato(request):
         for i, l in enumerate(lancamentos):
             if str(i) not in selecionados:
                 continue
+
+            # Campos podem ter sido corrigidos manualmente na revisão
+            descricao = (request.POST.get(f'descricao_{i}') or l['descricao']).strip()[:200]
+
+            tipo = request.POST.get(f'tipo_{i}')
+            if tipo not in ('receita', 'despesa'):
+                tipo = l['tipo']
+
+            valor = l['valor']
+            valor_txt = (request.POST.get(f'valor_{i}') or '').replace(',', '.').strip()
+            if valor_txt:
+                try:
+                    v = Decimal(valor_txt)
+                    if v > 0:
+                        valor = v
+                except (ArithmeticError, ValueError):
+                    pass
+
+            data_lanc = l['data']
+            data_txt = (request.POST.get(f'data_{i}') or '').strip()
+            if data_txt:
+                try:
+                    data_lanc = _dt.strptime(data_txt, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+
             cat_id = request.POST.get(f'categoria_{i}') or None
             novas.append(Transacao(
-                usuario=request.user, tipo=l['tipo'],
-                descricao=l['descricao'], valor=l['valor'], data=l['data'],
+                usuario=request.user, tipo=tipo,
+                descricao=descricao or l['descricao'], valor=valor, data=data_lanc,
                 categoria_id=int(cat_id) if cat_id and cat_id.isdigit() else None,
                 entidade_id=l.get('entidade_id'),
                 fitid=l.get('fitid', ''), importacao=imp,
