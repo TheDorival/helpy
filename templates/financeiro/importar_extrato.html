@@ -211,20 +211,21 @@
 
         if (!temTexto) {
           progresso('PDF em imagem — carregando reconhecimento de texto…', 8);
-          linhas = await ocrPdf(pdf);
+          linhas = await ocrPdf(pdf, 500);
         }
 
-        progresso('Interpretando lançamentos…', 96);
-        const resp = await fetch("{% url 'importar_pdf' %}", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
-          },
-          body: JSON.stringify({ arquivo_nome: f.name, linhas: linhas }),
-        });
-        const dados = await resp.json();
+        progresso('Interpretando lançamentos…', 90);
+        let dados = await enviarLinhas(f.name, linhas, 1);
         if (!dados.ok) return falhar(dados.erro || 'Não foi possível ler o extrato.');
+
+        // Leitura ruim: tenta outra resolução e o servidor fica com a melhor
+        if (dados.tentar_de_novo && !temTexto) {
+          progresso('Leitura imprecisa — repetindo em outra resolução…', 40);
+          const outras = await ocrPdf(pdf, 350);
+          const segunda = await enviarLinhas(f.name, outras, 2);
+          if (segunda.ok) dados = segunda;
+        }
+
         progresso('Pronto — abrindo revisão…', 100);
         window.location = dados.redirect;
 
@@ -285,6 +286,18 @@
             .trim();
         })
         .filter(function (l) { return l.length > 0; });
+    }
+
+    async function enviarLinhas(nome, linhas, tentativa) {
+      const resp = await fetch("{% url 'importar_pdf' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({ arquivo_nome: nome, linhas: linhas, tentativa: tentativa }),
+      });
+      return resp.json();
     }
 
     /* Maior escala que o navegador consegue rasterizar sem estourar o canvas.

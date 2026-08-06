@@ -1552,9 +1552,27 @@ def importar_extrato(request):
     })
 
 
+def _qualidade_leitura(conferencia):
+    """Nota de 0 a 1 da leitura: quanto do extrato foi lido com confiança.
+
+    A última linha do extrato nunca é verificável (não há linha seguinte para
+    comparar o saldo), então ela sai do denominador — do contrário um extrato
+    de poucas linhas sairia sempre com nota baixa.
+    """
+    total = conferencia['total'] + conferencia.get('descartadas', 0)
+    if not total:
+        return 0.0
+    verificaveis = max(total - 1, 1)
+    return min(conferencia['conferem'] / verificaveis, 1.0)
+
+
 @login_required
 def importar_pdf(request):
-    """Recebe as linhas de texto extraídas do PDF pelo navegador (pdf.js/OCR)."""
+    """Recebe as linhas de texto extraídas do PDF pelo navegador (pdf.js/OCR).
+
+    O navegador pode enviar uma segunda leitura, feita em outra resolução,
+    quando a primeira sai ruim; aqui fica a melhor das duas.
+    """
     from django.http import JsonResponse
 
     if request.method != 'POST':
@@ -1564,7 +1582,8 @@ def importar_pdf(request):
         payload = json.loads(request.body.decode('utf-8'))
         linhas = payload.get('linhas') or []
         nome = (payload.get('arquivo_nome') or 'extrato.pdf')[:255]
-    except (ValueError, AttributeError):
+        tentativa = int(payload.get('tentativa') or 1)
+    except (ValueError, AttributeError, TypeError):
         return JsonResponse({'ok': False, 'erro': 'Dados inválidos.'}, status=400)
 
     if not isinstance(linhas, list) or not linhas:
@@ -1579,6 +1598,20 @@ def importar_pdf(request):
     conf = conferencia_lancamentos(lancamentos)
     conf['descartadas'] = len(descartes)
     conf['exemplos_descartados'] = [d[:90] for d in descartes[:5]]
+    conf['qualidade'] = round(_qualidade_leitura(conf), 3)
+    conf['tentativa'] = tentativa
+
+    # Leitura anterior guardada: fica com a melhor das duas
+    anterior = request.session.get('import_extrato')
+    if tentativa > 1 and anterior and anterior.get('conferencia'):
+        if anterior['conferencia'].get('qualidade', 0) >= conf['qualidade']:
+            return JsonResponse({
+                'ok': True, 'n': len(anterior['lancamentos']),
+                'qualidade': anterior['conferencia']['qualidade'],
+                'usou_anterior': True,
+                'redirect': '/importar/revisar/',
+            })
+
     lancamentos = _preparar_lancamentos(request.user, lancamentos)
     request.session['import_extrato'] = {
         'arquivo_nome': nome, 'formato': 'pdf',
@@ -1586,7 +1619,13 @@ def importar_pdf(request):
         'conferencia': conf,
         'lancamentos': _serializar(lancamentos),
     }
-    return JsonResponse({'ok': True, 'n': len(lancamentos), 'redirect': '/importar/revisar/'})
+    return JsonResponse({
+        'ok': True, 'n': len(lancamentos),
+        'qualidade': conf['qualidade'],
+        # Abaixo de 70% de linhas conferidas vale tentar outra resolução
+        'tentar_de_novo': tentativa == 1 and conf['qualidade'] < 0.7,
+        'redirect': '/importar/revisar/',
+    })
 
 
 @login_required
