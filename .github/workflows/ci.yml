@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          # Mesma versão do runtime.txt usado pelo Render (formato lá é
+          # "python-3.13.7", que esta action não sabe interpretar)
+          python-version: '3.13'
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Verificar migrations pendentes
+        # Falha se algum model mudou sem gerar migration
+        run: python manage.py makemigrations --check --dry-run
+        env:
+          SECRET_KEY: chave-apenas-para-ci-nao-usar-em-producao
+          DEBUG: 'True'
+          DATABASE_URL: sqlite:///ci.sqlite3
+
+      - name: Rodar testes
+        # A suíte usa SQLite em memória (ver helpy/settings/base.py)
+        run: python manage.py test --verbosity 2
+        env:
+          SECRET_KEY: chave-apenas-para-ci-nao-usar-em-producao
+          DEBUG: 'True'
+          DATABASE_URL: sqlite:///ci.sqlite3
+
+      - name: Checagem de segurança para produção
+        run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_SETTINGS_MODULE: helpy.settings.prod
+          # 50+ caracteres: o próprio check reprova chaves curtas
+          SECRET_KEY: ci-somente-para-validacao-com-tamanho-suficiente-1234567890
+          DEBUG: 'False'
+          DATABASE_URL: sqlite:///ci.sqlite3
+          ALLOWED_HOSTS: exemplo.com
