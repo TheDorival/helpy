@@ -287,8 +287,47 @@
         .filter(function (l) { return l.length > 0; });
     }
 
+    /* Maior escala que o navegador consegue rasterizar sem estourar o canvas.
+       Os limites variam bastante: desktops aceitam ~268 megapixels, celulares
+       às vezes 16. Passar do limite gera canvas em branco — e OCR vazio. */
+    const LIMITE_LADO = 16384;          // limite de largura/altura na maioria dos navegadores
+    let limiteAreaCache = null;
+
+    function limiteArea() {
+        if (limiteAreaCache !== null) return limiteAreaCache;
+        // Testa alguns tamanhos até achar um que o navegador realmente aloca
+        const candidatos = [268435456, 134217728, 67108864, 33554432, 16777216];
+        for (const area of candidatos) {
+            const lado = Math.floor(Math.sqrt(area));
+            const teste = document.createElement('canvas');
+            teste.width = lado; teste.height = lado;
+            const ctx = teste.getContext('2d');
+            let ok = false;
+            try {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(lado - 2, lado - 2, 1, 1);
+                ok = ctx.getImageData(lado - 2, lado - 2, 1, 1).data[3] !== 0;
+            } catch (e) { ok = false; }
+            teste.width = teste.height = 0;
+            if (ok) { limiteAreaCache = area; return area; }
+        }
+        limiteAreaCache = 16777216;
+        return limiteAreaCache;
+    }
+
+    function escalaSegura(pagina, dpi) {
+        const base = pagina.getViewport({ scale: 1 });
+        let escala = dpi / 72;
+        const area = limiteArea() * 0.85;        // margem de folga
+        const maxPorArea = Math.sqrt(area / (base.width * base.height));
+        const maxPorLado = Math.min(LIMITE_LADO / base.width, LIMITE_LADO / base.height);
+        escala = Math.min(escala, maxPorArea, maxPorLado);
+        return Math.max(escala, 2);              // abaixo disto o OCR não serve
+    }
+
     /* OCR página a página com tesseract.js */
-    async function ocrPdf(pdf) {
+    async function ocrPdf(pdf, dpiAlvo) {
+      dpiAlvo = dpiAlvo || 500;
       if (!window.Tesseract) {
         await new Promise(function (ok, falha) {
           const s = document.createElement('script');
@@ -308,8 +347,10 @@
       try {
         for (let p = 1; p <= pdf.numPages; p++) {
           const pagina = await pdf.getPage(p);
-          // ~500 DPI: nesta densidade o OCR para de confundir dígitos (3/8, 5/6)
-          const viewport = pagina.getViewport({ scale: 500 / 72 });
+          // ~500 DPI é onde o OCR para de confundir dígitos (3/8, 5/6), mas o
+          // navegador pode não aguentar um canvas desse tamanho — sobretudo no
+          // celular. Reduz até caber, em vez de falhar ou degradar em silêncio.
+          const viewport = pagina.getViewport({ scale: escalaSegura(pagina, dpiAlvo) });
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
