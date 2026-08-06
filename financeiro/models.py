@@ -640,7 +640,10 @@ class RegraCategoria(models.Model):
     ]
 
     usuario   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='regras_categoria')
-    termo     = models.CharField(max_length=120, help_text='Se a descrição contiver este texto…')
+    termo     = models.CharField(
+        max_length=120,
+        help_text='Comparado com a linha inteira do extrato (operação + favorecido).',
+    )
     categoria = models.ForeignKey(Categoria, null=True, blank=True,
                                   on_delete=models.CASCADE, related_name='regras')
     recorrente = models.ForeignKey('TransacaoFixa', null=True, blank=True,

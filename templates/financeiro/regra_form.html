@@ -16,12 +16,16 @@
         {% csrf_token %}
 
         <div>
-          <label for="id_termo" class="block text-xs font-medium text-muted mb-1">Se a descrição contiver</label>
+          <label for="id_termo" class="block text-xs font-medium text-muted mb-1">Se o lançamento contiver</label>
           <input type="text" name="termo" id="id_termo" maxlength="120" required
                  value="{{ form.termo.value|default:'' }}"
-                 placeholder="Ex: IFOOD"
+                 placeholder="Ex: IFOOD ou RECEBIMENTO TED SALARIO"
                  class="w-full text-sm bg-bg border {% if form.termo.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
-          <p class="mt-1 text-[10px] text-dim">Não diferencia maiúsculas de minúsculas.</p>
+          <p class="mt-1 text-[10px] text-dim">
+            Compara com a linha inteira do extrato — o tipo de operação
+            (“PIX RECEBIDO”, “RECEBIMENTO TED SALARIO”) e o favorecido. Assim dá para
+            separar lançamentos de mesmo nome por origem. Não diferencia maiúsculas de minúsculas.
+          </p>
           {% if form.termo.errors %}<p class="mt-1 text-xs text-red">{{ form.termo.errors.0 }}</p>{% endif %}
         </div>
 
