@@ -40,7 +40,7 @@
         <thead>
           <tr class="border-b border-line">
             <th class="text-left text-xs font-medium text-dim px-4 py-2">Se a descrição contiver</th>
-            <th class="text-left text-xs font-medium text-dim px-4 py-2">Categoria</th>
+            <th class="text-left text-xs font-medium text-dim px-4 py-2">Destino</th>
             <th class="text-left text-xs font-medium text-dim px-4 py-2">Aplica a</th>
             <th class="text-left text-xs font-medium text-dim px-4 py-2">Status</th>
             <th class="px-4 py-2"></th>
@@ -53,7 +53,12 @@
               <span class="font-mono text-xs bg-bg border border-line rounded px-2 py-0.5">{{ r.termo }}</span>
             </td>
             <td class="px-4 py-2.5">
-              <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ r.categoria.nome }}</span>
+              {% if r.categoria %}
+                <span class="text-xs text-muted bg-bg border border-line rounded px-2 py-0.5">{{ r.categoria.nome }}</span>
+              {% endif %}
+              {% if r.recorrente %}
+                <span class="text-xs text-accent bg-accent/5 border border-accent/20 rounded px-2 py-0.5" title="Concilia com esta recorrente">⇄ {{ r.recorrente.nome_display }}</span>
+              {% endif %}
               {% if r.entidade %}<span class="text-[10px] text-dim ml-1">→ {{ r.entidade.nome }}</span>{% endif %}
             </td>
             <td class="px-4 py-2.5 text-xs text-muted">{{ r.get_aplica_a_display }}</td>

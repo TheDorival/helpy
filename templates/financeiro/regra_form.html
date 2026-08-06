@@ -42,7 +42,7 @@
 
         <div>
           <label for="id_categoria" class="block text-xs font-medium text-muted mb-1">Categoria</label>
-          <select name="categoria" id="id_categoria" required
+          <select name="categoria" id="id_categoria"
                   data-selecionada="{{ form.categoria.value|default:'' }}"
                   class="w-full text-sm bg-bg border {% if form.categoria.errors %}border-red{% else %}border-line{% endif %} rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
           </select>
@@ -51,6 +51,29 @@
             <p class="mt-1 text-xs text-amber-400">Você ainda não tem categorias — <a href="{% url 'nova_categoria' %}" class="underline">crie uma primeiro</a>.</p>
           {% endif %}
         </div>
+
+        <div>
+          <label for="id_recorrente" class="block text-xs font-medium text-muted mb-1">
+            Vincular a uma recorrente <span class="text-dim font-normal">(opcional)</span>
+          </label>
+          <select name="recorrente" id="id_recorrente"
+                  class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors appearance-none">
+            <option value="">— nenhuma —</option>
+            {% for r in form.fields.recorrente.queryset %}
+              <option value="{{ r.pk }}" {% if form.recorrente.value|stringformat:'s' == r.pk|stringformat:'s' %}selected{% endif %}>
+                {{ r.nome_display }} · {{ r.get_tipo_display }} · {{ request.user.simbolo_moeda }} {{ r.valor|floatformat:"2g" }}
+              </option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-[10px] text-dim">
+            Lançamentos importados que casarem com o termo serão conciliados com essa recorrente —
+            mesmo que a data ou o valor variem (salário adiantado por feriado, hora extra, reajuste).
+          </p>
+        </div>
+
+        {% if form.non_field_errors %}
+          <p class="text-xs text-red">{{ form.non_field_errors.0 }}</p>
+        {% endif %}
 
         <div>
           <label for="id_entidade" class="block text-xs font-medium text-muted mb-1">
