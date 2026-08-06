@@ -896,10 +896,13 @@ def ajustar_meta(request, pk):
     return redirect('metas')
 
 
-def _proxima_data_pagamento(dia, dia_util=False, regra=None):
-    """Retorna a próxima data de pagamento a partir de hoje."""
+def _proxima_data_pagamento(dia, dia_util=False, regra=None, hoje=None):
+    """Retorna a próxima data de pagamento a partir de hoje.
+
+    `hoje` pode ser informado para tornar o cálculo determinístico nos testes.
+    """
     import calendar as _cal
-    hoje = date.today()
+    hoje = hoje or date.today()
 
     if not dia:
         return hoje
