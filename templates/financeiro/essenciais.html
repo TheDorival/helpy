@@ -139,6 +139,14 @@
             <p class="text-xs text-dim mb-auto">Não informado</p>
           {% endif %}
 
+          <!-- Registro manual de comissão / salário variável -->
+          {% if cat.slug == 'salario' and ess_salario %}
+          <button type="button" onclick="abrirModalSalario()"
+                  class="mt-3 w-full text-[11px] font-medium text-green bg-green/10 border border-green/20 hover:bg-green/20 rounded-md py-1.5 transition-colors">
+            Registrar recebimento
+          </button>
+          {% endif %}
+
           <!-- Ações (hover) -->
           <div class="mt-3 pt-2 border-t border-line flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <a href="{% url 'editar_essencial' cat.slug %}"
@@ -173,5 +181,7 @@
 
   {% endwith %}
   {% endfor %}
+
+  {% include 'financeiro/_modal_salario.html' %}
 
 {% endblock %}
