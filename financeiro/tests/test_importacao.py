@@ -191,6 +191,57 @@ class ExtratoCaixaTests(SimpleTestCase):
         with self.assertRaises(ExtratoInvalido):
             parse_linhas_caixa(['texto qualquer', 'sem datas'])
 
+    # ── outras operações que a Caixa usa ─────────────────────────────────────
+
+    def test_reconhece_operacoes_variadas(self):
+        casos = {
+            '02/08/2026 - 14:10:51 021410 DEB PIX QR COD EST Gustavo Felipe 68,79 D 552,87 C':
+                ('DEB PIX QR COD EST', 'despesa'),
+            '30/05/2026 - 10:00:00 300100 DEVOLUCAO PIX RECEBIDO 99 Food 2.009,74 C 2.500,00 C':
+                ('DEVOLUCAO PIX RECEBIDO', 'receita'),
+            '31/05/2026 - 10:00:00 310100 PAG BOLETO IBC Seul Sociedade de 562,50 D 1.900,00 C':
+                ('PAG BOLETO IBC', 'despesa'),
+            '15/06/2026 - 11:32:37 151132 SAQUE DIN LOTERICO 298,31 D 395,90 C':
+                ('SAQUE', 'despesa'),
+        }
+        for linha, (operacao, tipo) in casos.items():
+            with self.subTest(operacao=operacao):
+                item = parse_linhas_caixa([linha])[0]
+                self.assertEqual(item['operacao'], operacao)
+                self.assertEqual(item['tipo'], tipo)
+
+    def test_secao_lancamentos_do_dia_nao_atrapalha(self):
+        """Extratos do dia corrente trazem um bloco extra antes dos demais."""
+        linhas = [
+            'Lançamentos do dia',
+            '05/08/2026 - 16:53:55 051653 DEB PIX CHAVE Bernardo Jose Luca 150,00 D 5,46 C',
+            'Lançamentos',
+            '04/08/2026 - 21:51:27 042151 COMPRA CARTAO DEBITO Unicompra 5,99 D 485,46 C',
+        ]
+        lancamentos = parse_linhas_caixa(linhas)
+        self.assertEqual(len(lancamentos), 2)
+
+    def test_saldo_isolado_nao_vira_lancamento(self):
+        """Com o valor ilegível, sobra só o saldo — não pode virar receita.
+
+        Caso real: 'CORRECAO MONETARIA 0,00 C 812,11 C' onde o OCR destruiu o
+        primeiro número. Aceitar a sobra criaria uma receita de R$ 812,11.
+        """
+        linhas = [
+            '01/08/2026 - 03:04:10 000000 CORRECAO MONETARIA goocC 812,11 C',
+            '01/08/2026 - 03:04:10 000000 CREDITO JUROS 0,01 C 812,12 C',
+        ]
+        lancamentos = parse_linhas_caixa(linhas)
+        self.assertEqual(len(lancamentos), 1)
+        self.assertEqual(lancamentos[0]['valor'], Decimal('0.01'))
+
+    def test_valor_unico_aceito_quando_o_historico_confirma(self):
+        """Saldo ilegível, mas o histórico diz a direção: o lançamento vale."""
+        linhas = ['28/01/2026 - 19:46:09 281946 COMPRA CARTAO DEBITO Loja 45,91 D 15,78']
+        item = parse_linhas_caixa(linhas)[0]
+        self.assertEqual(item['valor'], Decimal('45.91'))
+        self.assertEqual(item['tipo'], 'despesa')
+
 
 class ConferenciaTests(SimpleTestCase):
     """Cada linha é checada contra a variação da coluna Saldo."""
