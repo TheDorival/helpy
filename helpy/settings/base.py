@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import sys
+
 import environ
 from pathlib import Path
 
@@ -87,6 +89,21 @@ WSGI_APPLICATION = 'helpy.wsgi.application'
 DATABASES = {
     'default': env.db(default='sqlite:///db.sqlite3')
 }
+
+# ── Testes ────────────────────────────────────────────────────────────────────
+# Rodam sempre em SQLite na memória: não encostam no banco de produção, não
+# dependem de rede e terminam em segundos. Contra o Postgres remoto a suíte
+# levava minutos e o banco de teste nem podia ser removido ao final.
+EXECUTANDO_TESTES = 'test' in sys.argv
+
+if EXECUTANDO_TESTES:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
+    # hash rápido: criar usuário em teste não precisa ser caro
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+    MIDDLEWARE = [m for m in MIDDLEWARE if 'whitenoise' not in m]
 
 
 # Password validation
