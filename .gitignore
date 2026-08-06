@@ -7,3 +7,11 @@ staticfiles/
 *.pyc
 *.sqlite3
 .env
+
+# Backups: contêm seus dados financeiros — nunca vão para o repositório
+helpy-backup-*.json
+backup*.json
+*_backup.json
+backups/
+*.dump
+*.sql
