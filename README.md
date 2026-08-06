@@ -200,6 +200,32 @@ suspensos ou removidos, como já aconteceu com o PostgreSQL do Render.
 
 ---
 
+## Monitoramento de erros
+
+Em produção, erros não tratados podem ser enviados ao [Sentry](https://sentry.io),
+que avisa por e-mail com o traceback completo — sem isso, um erro 500 só aparece
+se você for procurar nos logs do Render.
+
+1. Crie uma conta gratuita e um projeto do tipo **Django**
+2. Copie o DSN que aparece na tela (algo como `https://chave@o0.ingest.sentry.io/123`)
+3. No Render, adicione a variável `SENTRY_DSN` com esse valor
+
+Sem a variável definida, nada é enviado e a aplicação funciona normalmente —
+inclusive no desenvolvimento local.
+
+**Privacidade:** por ser um app financeiro, a integração remove do relatório o
+corpo das requisições (valores e descrições de lançamentos), os cookies e os
+cabeçalhos de autenticação. O que sobra é o suficiente para diagnosticar: URL,
+método, navegador e o traceback. Há testes garantindo esse comportamento.
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `SENTRY_DSN` | Endereço do projeto no Sentry | vazio (desligado) |
+| `SENTRY_ENVIRONMENT` | Nome do ambiente nos relatórios | `producao` |
+| `SENTRY_TRACES_SAMPLE_RATE` | Amostragem de desempenho (0 a 1) | `0.0` |
+
+---
+
 ## Configuração de banco de dados remoto
 
 Para usar PostgreSQL em outro computador via rede (ex: usando [Tailscale](https://tailscale.com)):
