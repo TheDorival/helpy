@@ -1236,6 +1236,93 @@ def _marcar_duplicatas(usuario, lancamentos):
     return lancamentos
 
 
+TOLERANCIA_CONCILIACAO = 5          # dias de diferença aceitos
+MARGEM_VALOR_CONCILIACAO = Decimal('0.2')   # 20% de diferença de valor
+
+
+def _valores_conciliaveis(valor_importado, valor_previsto):
+    """Mesmo valor, ou diferença pequena (hora extra, reajuste, juros)."""
+    if valor_importado == valor_previsto:
+        return True
+    if not valor_previsto:
+        return False
+    return abs(valor_importado - valor_previsto) <= (valor_previsto * MARGEM_VALOR_CONCILIACAO)
+
+
+def _conciliar_com_recorrentes(usuario, lancamentos, tol=TOLERANCIA_CONCILIACAO):
+    """Casa lançamentos do extrato com ocorrências de recorrentes.
+
+    Cobre os dois casos do pagamento antecipado/atrasado:
+      • ocorrência já gerada  → o importado atualiza a existente (sem duplicar)
+      • ocorrência ainda pendente → marca a recorrente para não gerar de novo
+
+    A busca é restrita a lançamentos gerados por recorrentes, o que evita
+    confundir duas transações avulsas de mesmo valor em dias próximos.
+    """
+    if not lancamentos:
+        return lancamentos
+
+    datas = [l['data'] for l in lancamentos]
+    inicio, fim = min(datas) - timedelta(days=tol), max(datas) + timedelta(days=tol)
+
+    geradas = list(
+        Transacao.objects.filter(
+            usuario=usuario, origem_fixa__isnull=False,
+            data__gte=inicio, data__lte=fim,
+        ).select_related('origem_fixa')
+    )
+    usadas = set()
+
+    ordenados = sorted(lancamentos, key=lambda x: x['data'])
+
+    # 1) ocorrências já geradas
+    for l in ordenados:
+        melhor, melhor_score = None, None
+        for t in geradas:
+            if t.pk in usadas or t.tipo != l['tipo']:
+                continue
+            dist = abs((t.data - l['data']).days)
+            if dist > tol or not _valores_conciliaveis(l['valor'], t.valor):
+                continue
+            score = (0 if l['valor'] == t.valor else 1, dist)
+            if melhor_score is None or score < melhor_score:
+                melhor, melhor_score = t, score
+
+        if melhor:
+            usadas.add(melhor.pk)
+            l['conciliar_id'] = melhor.pk
+            l['conciliar_nome'] = melhor.descricao or (melhor.origem_fixa.nome_display if melhor.origem_fixa else '')
+            l['conciliar_data'] = melhor.data
+            l['conciliar_valor'] = melhor.valor
+            l['duplicata'] = False          # é conciliação, não duplicata
+            l['motivo_duplicata'] = ''
+
+    # 2) ocorrências ainda não geradas (importação feita antes da data prevista)
+    regra = _regra_usuario(usuario)
+    pendentes = [l for l in ordenados if not l.get('conciliar_id') and not l.get('duplicata')]
+    if pendentes:
+        for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True):
+            prevista = tf.proxima_data()
+            visitadas = 0
+            while prevista and prevista <= fim and visitadas < 12:
+                visitadas += 1
+                if prevista >= inicio:
+                    for l in pendentes:
+                        if (l.get('antecipa_fixa_id') or l['tipo'] != tf.tipo
+                                or abs((prevista - l['data']).days) > tol
+                                or not _valores_conciliaveis(l['valor'], tf.valor)):
+                            continue
+                        l['antecipa_fixa_id'] = tf.pk
+                        l['antecipa_ate'] = prevista
+                        l['conciliar_nome'] = tf.nome_display
+                        l['conciliar_data'] = prevista
+                        l['conciliar_valor'] = tf.valor
+                        break
+                prevista = tf.avancar(prevista, regra)
+
+    return lancamentos
+
+
 def _aplicar_regras(usuario, lancamentos):
     """Sugere categoria (e entidade) para cada lançamento com base nas regras ativas."""
     regras = list(
@@ -1258,21 +1345,44 @@ def _aplicar_regras(usuario, lancamentos):
     return lancamentos
 
 
+def _preparar_lancamentos(usuario, lancamentos):
+    """Marca duplicatas, concilia com recorrentes e aplica as regras de categoria."""
+    lancamentos = _marcar_duplicatas(usuario, lancamentos)
+    lancamentos = _conciliar_com_recorrentes(usuario, lancamentos)
+    return _aplicar_regras(usuario, lancamentos)
+
+
 def _serializar(lancamentos):
-    return [{
-        **l,
-        'data': l['data'].isoformat(),
-        'valor': str(l['valor']),
-    } for l in lancamentos]
+    saida = []
+    for l in lancamentos:
+        d = {**l, 'data': l['data'].isoformat(), 'valor': str(l['valor'])}
+        if l.get('conciliar_data'):
+            d['conciliar_data'] = l['conciliar_data'].isoformat()
+        if l.get('conciliar_valor') is not None:
+            d['conciliar_valor'] = str(l['conciliar_valor'])
+        if l.get('antecipa_ate'):
+            d['antecipa_ate'] = l['antecipa_ate'].isoformat()
+        saida.append(d)
+    return saida
 
 
 def _desserializar(dados):
     from datetime import datetime as _dt
-    return [{
-        **d,
-        'data': _dt.strptime(d['data'], '%Y-%m-%d').date(),
-        'valor': Decimal(d['valor']),
-    } for d in dados]
+
+    def _data(v):
+        return _dt.strptime(v, '%Y-%m-%d').date() if v else None
+
+    saida = []
+    for d in dados:
+        item = {**d, 'data': _data(d['data']), 'valor': Decimal(d['valor'])}
+        if d.get('conciliar_data'):
+            item['conciliar_data'] = _data(d['conciliar_data'])
+        if d.get('conciliar_valor') is not None:
+            item['conciliar_valor'] = Decimal(d['conciliar_valor'])
+        if d.get('antecipa_ate'):
+            item['antecipa_ate'] = _data(d['antecipa_ate'])
+        saida.append(item)
+    return saida
 
 
 @login_required
@@ -1289,7 +1399,7 @@ def importar_extrato(request):
         try:
             if ext in ('ofx', 'ofc', 'qfx'):
                 lancamentos, meta = parse_ofx(conteudo)
-                lancamentos = _aplicar_regras(request.user, _marcar_duplicatas(request.user, lancamentos))
+                lancamentos = _preparar_lancamentos(request.user, lancamentos)
                 request.session['import_extrato'] = {
                     'arquivo_nome': nome, 'formato': 'ofx', 'meta': {
                         'banco': meta['banco'], 'conta': meta['conta'],
@@ -1352,7 +1462,7 @@ def importar_pdf(request):
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
 
     conf = conferencia_lancamentos(lancamentos)
-    lancamentos = _aplicar_regras(request.user, _marcar_duplicatas(request.user, lancamentos))
+    lancamentos = _preparar_lancamentos(request.user, lancamentos)
     request.session['import_extrato'] = {
         'arquivo_nome': nome, 'formato': 'pdf',
         'meta': meta_do_extrato([str(l) for l in linhas]),
@@ -1387,7 +1497,7 @@ def mapear_csv(request):
         else:
             try:
                 lancamentos = parse_csv(dados['linhas'], col_data, col_valor, col_desc, col_tipo)
-                lancamentos = _aplicar_regras(request.user, _marcar_duplicatas(request.user, lancamentos))
+                lancamentos = _preparar_lancamentos(request.user, lancamentos)
                 request.session['import_extrato'] = {
                     'arquivo_nome': dados['arquivo_nome'], 'formato': 'csv',
                     'meta': {'banco': '', 'conta': '', 'periodo_inicio': None, 'periodo_fim': None},
@@ -1430,6 +1540,7 @@ def revisar_extrato(request):
         )
 
         novas = []
+        conciliadas = antecipadas = 0
         for i, l in enumerate(lancamentos):
             if str(i) not in selecionados:
                 continue
@@ -1460,16 +1571,42 @@ def revisar_extrato(request):
                     pass
 
             cat_id = request.POST.get(f'categoria_{i}') or None
+            categoria_id = int(cat_id) if cat_id and cat_id.isdigit() else None
             observacao = f'Importado de {dados["arquivo_nome"]}'
             if l.get('operacao'):
                 observacao = f'{l["operacao"]} · {observacao}'
 
+            # Conciliação: atualiza a ocorrência já gerada pela recorrente
+            if l.get('conciliar_id'):
+                campos = {
+                    'data': data_lanc, 'valor': valor, 'tipo': tipo,
+                    'fitid': l.get('fitid', ''), 'importacao': imp,
+                    'observacao': f'Conciliado com o extrato · {observacao}',
+                }
+                if categoria_id:
+                    campos['categoria_id'] = categoria_id
+                n_conc = (Transacao.objects
+                          .filter(pk=l['conciliar_id'], usuario=request.user)
+                          .update(**campos))
+                conciliadas += n_conc
+                if n_conc:
+                    continue      # não cria linha nova
+
+            # Ocorrência ainda não gerada: marca a recorrente como já lançada
+            fixa_id = l.get('antecipa_fixa_id')
+            if fixa_id and l.get('antecipa_ate'):
+                TransacaoFixa.objects.filter(pk=fixa_id, usuario=request.user).update(
+                    ultima_geracao=l['antecipa_ate'],
+                )
+                antecipadas += 1
+
             novas.append(Transacao(
                 usuario=request.user, tipo=tipo,
                 descricao=descricao or l['descricao'], valor=valor, data=data_lanc,
-                categoria_id=int(cat_id) if cat_id and cat_id.isdigit() else None,
+                categoria_id=categoria_id,
                 entidade_id=l.get('entidade_id'),
                 fitid=l.get('fitid', ''), importacao=imp,
+                origem_fixa_id=fixa_id,
                 observacao=observacao,
             ))
 
@@ -1480,11 +1617,14 @@ def revisar_extrato(request):
         imp.save(update_fields=['n_importadas', 'n_ignoradas'])
 
         del request.session['import_extrato']
-        messages.success(
-            request,
-            f'{len(novas)} lançamento(s) importado(s) de {dados["arquivo_nome"]}.'
-            + (f' {imp.n_ignoradas} ignorado(s).' if imp.n_ignoradas else '')
-        )
+        partes = [f'{len(novas)} lançamento(s) importado(s) de {dados["arquivo_nome"]}.']
+        if conciliadas:
+            partes.append(f'{conciliadas} conciliado(s) com lançamentos de recorrentes.')
+        if antecipadas:
+            partes.append(f'{antecipadas} recorrente(s) marcada(s) como já lançada(s).')
+        if imp.n_ignoradas:
+            partes.append(f'{imp.n_ignoradas} ignorado(s).')
+        messages.success(request, ' '.join(partes))
         return redirect('importar_extrato')
 
     itens = []
@@ -1495,6 +1635,7 @@ def revisar_extrato(request):
     total_desp = sum(l['valor'] for l in lancamentos if l['tipo'] == 'despesa')
     n_dup = sum(1 for l in lancamentos if l['duplicata'])
     n_susp = sum(1 for l in lancamentos if l.get('suspeito'))
+    n_conc = sum(1 for l in lancamentos if l.get('conciliar_id') or l.get('antecipa_fixa_id'))
 
     conf = dados.get('conferencia')
 
@@ -1513,6 +1654,7 @@ def revisar_extrato(request):
         'n_total': len(lancamentos),
         'n_duplicatas': n_dup,
         'n_suspeitos': n_susp,
+        'n_conciliacoes': n_conc,
         'n_novos': len(lancamentos) - n_dup,
         'cats_receita': Categoria.objects.filter(usuario=request.user, tipo='receita'),
         'cats_despesa': Categoria.objects.filter(usuario=request.user, tipo='despesa'),
