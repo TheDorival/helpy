@@ -134,9 +134,12 @@ IGNORAR_HISTORICO = ('saldo dia', 'saldo anterior', 'saldo do dia', 'saldo bloqu
 # Tipos de operação da Caixa — separados do favorecido para a descrição não repetir
 # "COMPRA CARTAO DEBITO" em toda linha. Ordem importa: os mais longos primeiro.
 OPERACOES = (
+    'DEVOLUCAO PIX RECEBIDO', 'DEVOLUCAO PIX ENVIADO', 'DEVOLUCAO PIX',
     'PIX RECEBIDO DADOS CONTA', 'PIX ENVIADO DADOS CONTA',
+    'DEB PIX QR COD EST', 'CRED PIX QR COD EST', 'DEB PIX QR CODIGO',
     'COMPRA CARTAO DEBITO', 'COMPRA CARTAO CREDITO', 'DEPOSITO DINH LOTERICO',
-    'PAGAMENTO DE BOLETO', 'RECEBIMENTO TED SALARIO', 'TRANSFERENCIA ENVIADA',
+    'PAGAMENTO DE BOLETO', 'PAG BOLETO IBC', 'PAG BOLETO', 'PAGAMENTO BOLETO',
+    'RECEBIMENTO TED SALARIO', 'TRANSFERENCIA ENVIADA',
     'TRANSFERENCIA RECEBIDA', 'RECEBIMENTO TED', 'DEB PIX CHAVE', 'CRED PIX CHAVE',
     'PIX RECEBIDO', 'PIX ENVIADO', 'CREDITO FGTS', 'DEPOSITO DINHEIRO',
     'SAQUE LOTERICO', 'ENVIO PIX', 'DEBITO AUTOMATICO', 'TARIFA BANCARIA',
@@ -146,9 +149,11 @@ OPERACOES = (
 
 # Direção inferida pelo histórico quando o indicador D/C não é legível
 PALAVRAS_DESPESA = ('enviado', 'compra', 'debito', 'débito', 'pagamento', 'saque',
-                    'tarifa', 'saida', 'saída', 'transferencia enviada', 'boleto')
+                    'tarifa', 'saida', 'saída', 'transferencia enviada', 'boleto',
+                    'deb pix', 'pag ')
 PALAVRAS_RECEITA = ('recebido', 'recebimento', 'deposito', 'depósito', 'credito',
-                    'crédito', 'salario', 'salário', 'estorno', 'rendimento', 'entrada')
+                    'crédito', 'salario', 'salário', 'estorno', 'rendimento', 'entrada',
+                    'devolucao', 'devolução', 'cred pix')
 
 
 # Número colado ao indicador D/C sem a vírgula decimal: "81211C", "749 D", "1.01411C"
@@ -347,10 +352,11 @@ def parse_linhas_caixa(linhas):
             if not indicador:
                 continue  # sem como saber entrada ou saída — melhor não adivinhar
 
-        # Linha com um único valor legível: pode ser o valor (saldo ilegível) ou o
-        # próprio saldo (valor ilegível). Se o indicador contradiz o histórico,
-        # provavelmente é o saldo — descartar em vez de inventar um lançamento.
-        if len(valores) == 1 and direcao_hist and indicador != direcao_hist:
+        # Linha com um único valor legível: pode ser o valor do lançamento (saldo
+        # ilegível) ou o próprio saldo (valor ilegível). Só aceita quando o
+        # histórico confirma a direção — do contrário é chute, e chute aqui vira
+        # lançamento inventado com o valor do saldo.
+        if len(valores) == 1 and indicador != direcao_hist:
             continue
 
         # Descrição = tudo antes do primeiro valor monetário
