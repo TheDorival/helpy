@@ -149,6 +149,57 @@ helpy/
 
 ---
 
+## Testes
+
+```bash
+python manage.py test
+```
+
+A suíte roda em SQLite na memória, sem tocar o banco configurado no `.env` —
+leva menos de um segundo e pode ser executada com o servidor no ar. Cobre
+cálculo de dias úteis e feriados, geração e projeção de recorrentes, leitura de
+extratos (OFX, CSV e PDF), conciliação com lançamentos importados, backup e
+controle de acesso entre usuários.
+
+O GitHub Actions executa a mesma suíte, mais `makemigrations --check` e
+`check --deploy`, a cada push e pull request (`.github/workflows/ci.yml`).
+
+---
+
+## Backup e restauração
+
+O banco de produção não guarda cópia dos seus dados por conta própria. O
+comando abaixo gera um JSON independente do banco, que pode ser restaurado em
+qualquer instalação do Helpy — inclusive de PostgreSQL para SQLite e vice-versa.
+
+```bash
+# exportar (gera helpy-backup-AAAA-MM-DD.json)
+python manage.py backup --usuario leonardo
+
+# escolher o destino
+python manage.py backup --usuario leonardo --saida backups/2026-08.json
+
+# restaurar somando aos dados existentes
+python manage.py backup --restaurar backups/2026-08.json
+
+# restaurar apagando antes o que existe hoje
+python manage.py backup --restaurar backups/2026-08.json --substituir
+```
+
+O arquivo preserva valores, datas originais de criação e os vínculos entre
+registros (transação → recorrente, essencial → recorrente, regra → categoria).
+Categorias e entidades de mesmo nome são reaproveitadas em vez de duplicadas.
+
+Para rodar contra o banco de produção a partir da sua máquina, aponte o
+`DATABASE_URL` do `.env` para ele antes de executar o comando.
+
+**Frequência sugerida:** uma exportação por mês, junto da importação do extrato,
+guardada fora do computador (nuvem ou pendrive). O Neon mantém histórico próprio
+de alguns dias, mas ele não substitui uma cópia sua — bancos gratuitos podem ser
+suspensos ou removidos, como já aconteceu com o PostgreSQL do Render.
+
+---
+
 ## Configuração de banco de dados remoto
 
 Para usar PostgreSQL em outro computador via rede (ex: usando [Tailscale](https://tailscale.com)):
@@ -168,6 +219,16 @@ O PostgreSQL do servidor precisa estar configurado para aceitar conexões da fai
 | `SECRET_KEY` | Chave secreta do Django | — |
 | `DEBUG` | Modo debug (`True`/`False`) | `False` |
 | `DATABASE_URL` | URL de conexão com o banco | `sqlite:///db.sqlite3` |
+| `ALLOWED_HOSTS` | Domínios aceitos em produção | `*` |
+| `SECURE_HSTS_SECONDS` | Validade do HSTS em produção | `3600` |
+
+Gere a `SECRET_KEY` com:
+
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Use chaves diferentes em desenvolvimento e produção.
 
 ---
 
