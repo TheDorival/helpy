@@ -25,6 +25,9 @@
         {% if n_suspeitos %}
           <span class="text-muted">Conferir: <span class="text-red font-medium">{{ n_suspeitos }}</span></span>
         {% endif %}
+        {% if n_conciliacoes %}
+          <span class="text-muted">Conciliados: <span class="text-accent font-medium">{{ n_conciliacoes }}</span></span>
+        {% endif %}
         <span class="text-muted">Entradas: <span class="text-green font-medium">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:"2g" }}</span></span>
         <span class="text-muted">Saídas: <span class="text-red font-medium">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</span></span>
       </div>
@@ -100,7 +103,7 @@
         </thead>
         <tbody class="divide-y divide-line">
           {% for item in itens %}
-          <tr class="{% if item.duplicata %}opacity-60{% endif %}{% if item.suspeito %} bg-red/5{% endif %}">
+          <tr class="{% if item.duplicata %}opacity-60{% endif %}{% if item.suspeito %} bg-red/5{% elif item.conciliar_id or item.antecipa_fixa_id %} bg-accent/5{% endif %}">
             <td class="px-3 py-2 align-top">
               <input type="checkbox" name="incluir" value="{{ item.idx }}"
                      class="chk-item mt-1.5 w-4 h-4 rounded border-line bg-bg accent-accent"
@@ -125,6 +128,15 @@
               {% endif %}
               {% if item.suspeito %}
                 <p class="text-[10px] text-red mt-1">⚠ Não confere com a coluna Saldo — {{ item.motivo_suspeita }}</p>
+              {% endif %}
+              {% if item.conciliar_id or item.antecipa_fixa_id %}
+                <p class="text-[10px] text-accent mt-1">
+                  ⇄ {% if item.conciliar_id %}Substitui{% else %}Cobre{% endif %}
+                  “{{ item.conciliar_nome }}” previsto para {{ item.conciliar_data|date:"d/m" }}
+                  {% if item.conciliar_valor != item.valor %}
+                    <span class="text-amber-400">— previsto {{ request.user.simbolo_moeda }} {{ item.conciliar_valor|floatformat:"2g" }}</span>
+                  {% endif %}
+                </p>
               {% endif %}
             </td>
             <td class="px-3 py-2 align-top">
