@@ -166,29 +166,49 @@ def _regra_usuario(usuario):
     return getattr(usuario, 'regra_dia_util', REGRA_DIA_UTIL_PADRAO) or REGRA_DIA_UTIL_PADRAO
 
 
+def _datas_ja_geradas(usuario):
+    """Datas que cada recorrente já tem materializadas, por recorrente.
+
+    Evita repetir uma ocorrência quando o controle de última geração é
+    reiniciado (por exemplo ao mudar o dia de vencimento) ou quando a data de
+    um lançamento foi ajustada à mão.
+    """
+    from collections import defaultdict
+    mapa = defaultdict(set)
+    for fixa_id, dia in (Transacao.objects
+                         .filter(usuario=usuario, origem_fixa__isnull=False)
+                         .values_list('origem_fixa_id', 'data')):
+        mapa[fixa_id].add(dia)
+    return mapa
+
+
 def sincronizar_fixas(usuario, limite=None):
     """Gera todas as ocorrências pendentes de transações fixas até `limite` (padrão: hoje)."""
     ate = limite if limite is not None else date.today()
     regra = _regra_usuario(usuario)
+    ja_geradas = _datas_ja_geradas(usuario)
     for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade'):
         proxima  = tf.avancar(tf.ultima_geracao, regra) if tf.ultima_geracao else tf.data_inicio
         lim_fixa = min(ate, tf.data_fim) if tf.data_fim else ate
 
         novas, ultima = [], tf.ultima_geracao
+        ocupadas = ja_geradas.get(tf.pk, set())
         d = proxima
         while d <= lim_fixa:
-            novas.append(Transacao(
-                usuario=tf.usuario, tipo=tf.tipo,
-                entidade=tf.entidade, descricao=tf.descricao,
-                valor=tf.valor, data=d,
-                categoria=tf.categoria, observacao=tf.observacao,
-                origem_fixa=tf,
-            ))
+            if d not in ocupadas:      # já existe lançamento desta recorrente no dia
+                novas.append(Transacao(
+                    usuario=tf.usuario, tipo=tf.tipo,
+                    entidade=tf.entidade, descricao=tf.descricao,
+                    valor=tf.valor, data=d,
+                    categoria=tf.categoria, observacao=tf.observacao,
+                    origem_fixa=tf,
+                ))
             ultima = d
             d = tf.avancar(d, regra)
 
         if novas:
             Transacao.objects.bulk_create(novas)
+        if ultima and ultima != tf.ultima_geracao:
             TransacaoFixa.objects.filter(pk=tf.pk).update(ultima_geracao=ultima)
 
 
@@ -201,6 +221,7 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
     """
     itens = []
     regra = _regra_usuario(usuario)
+    ja_geradas = _datas_ja_geradas(usuario)
     qs = TransacaoFixa.objects.filter(usuario=usuario, ativa=True).select_related('categoria', 'entidade')
     if tipo:
         qs = qs.filter(tipo=tipo)
@@ -208,9 +229,10 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
     for tf in qs:
         d = tf.avancar(tf.ultima_geracao, regra) if tf.ultima_geracao else tf.data_inicio
         lim = min(fim, tf.data_fim) if tf.data_fim else fim
+        ocupadas = ja_geradas.get(tf.pk, set())
         guarda = 0
         while d <= lim and guarda < 500:
-            if d >= inicio:
+            if d >= inicio and d not in ocupadas:
                 itens.append({
                     'data': d,
                     'tipo': tf.tipo,
