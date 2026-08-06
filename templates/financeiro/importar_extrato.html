@@ -81,6 +81,16 @@
           <li><span class="text-tx font-medium">CSV</span> — planilhas e outros bancos, com escolha das colunas.</li>
           <li><span class="text-tx font-medium">PDF</span> — o "Extrato por período" da Caixa. Lido no seu navegador; se as páginas forem imagem, o texto é reconhecido por OCR em alta resolução (cerca de 20 segundos por página). Cada lançamento é conferido contra a coluna Saldo do extrato.</li>
         </ul>
+
+        <div class="mt-3 px-3 py-2 rounded-md bg-bg border border-line">
+          <p class="text-[11px] text-muted">
+            <span class="text-amber-400">A leitura de PDF varia conforme o aparelho.</span>
+            O reconhecimento acontece no seu navegador, e cada dispositivo desenha a página de um
+            jeito ligeiramente diferente — o mesmo arquivo pode render resultados distintos no
+            computador e no celular, onde a resolução costuma ser limitada. Se a conferência
+            acusar muitas divergências, tente pelo computador ou use o arquivo OFX, que é exato.
+          </p>
+        </div>
       </div>
 
       <div class="bg-surface border border-line rounded-lg p-5">

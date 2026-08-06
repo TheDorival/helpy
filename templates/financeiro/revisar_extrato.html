@@ -44,6 +44,13 @@
             ⚠ Leitura por PDF depende de reconhecimento de texto — confira os valores antes de importar.
             Sempre que possível, prefira o arquivo OFX.
           </p>
+          {% if not conferencia.ok or conferencia.sem_conferencia %}
+            <p class="text-[11px] text-muted">
+              O resultado varia conforme o aparelho: o mesmo arquivo pode ser lido melhor em outro
+              dispositivo, sobretudo no computador. Se muitas linhas não conferirem, vale repetir a
+              importação por lá.
+            </p>
+          {% endif %}
         {% endif %}
       </div>
     {% endif %}
