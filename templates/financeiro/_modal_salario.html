@@ -1,0 +1,94 @@
+{% comment %}
+Registro de recebimento de salário (comissão / fixo + comissão).
+Requer no contexto: ess_salario (Essencial) e, opcionalmente, salario_pendente
+para abrir sozinho no dia do pagamento. Use abrirModalSalario() para abrir.
+{% endcomment %}
+
+{% if ess_salario %}
+<div id="modal-salario" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     onclick="if(event.target===this)fecharModalSalario()">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+  <div class="relative bg-surface border border-line rounded-xl w-full max-w-sm shadow-2xl">
+
+    <div class="px-5 py-4 border-b border-line">
+      <p class="text-sm font-semibold text-tx">Registrar recebimento</p>
+      <p class="text-xs text-dim mt-0.5">
+        {% if ess_salario.tipo_salario == 'fixo_comissao' %}
+          {% if ess_salario.transacao_fixa.ativa %}
+            A parte fixa é lançada automaticamente — informe só a comissão.
+          {% else %}
+            Informe o valor fixo e a comissão recebida.
+          {% endif %}
+        {% else %}
+          Informe o quanto você recebeu.
+        {% endif %}
+      </p>
+    </div>
+
+    <form method="post" action="{% url 'registrar_salario' %}" class="px-5 py-4 space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+
+      {% if ess_salario.tipo_salario == 'fixo_comissao' and not ess_salario.transacao_fixa.ativa %}
+      <div>
+        <label class="block text-xs font-medium text-muted mb-1">Salário fixo</label>
+        <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden">
+          <span class="text-sm text-dim px-3 border-r border-line">{{ request.user.simbolo_moeda }}</span>
+          <input type="number" name="valor_fixo" step="0.01" min="0"
+                 value="{{ ess_salario.valor_fixo|default:''|floatformat:'2u' }}"
+                 class="flex-1 text-sm bg-transparent px-3 py-2 text-tx outline-none">
+        </div>
+      </div>
+      {% else %}
+      <input type="hidden" name="valor_fixo" value="0">
+      {% endif %}
+
+      <div>
+        <label class="block text-xs font-medium text-muted mb-1">
+          {% if ess_salario.tipo_salario == 'fixo_comissao' %}Comissão recebida{% else %}Valor recebido{% endif %}
+        </label>
+        <div class="flex items-center bg-bg border border-line rounded-md overflow-hidden focus-within:border-green/50 transition-colors">
+          <span class="text-sm text-dim px-3 border-r border-line">{{ request.user.simbolo_moeda }}</span>
+          <input type="number" name="comissao" id="campo-comissao" step="0.01" min="0" placeholder="0,00"
+                 class="flex-1 text-sm bg-transparent px-3 py-2 text-tx outline-none">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-muted mb-1">Data do recebimento</label>
+        <input type="date" name="data" value="{{ hoje|date:'Y-m-d' }}"
+               class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-green/50 transition-colors">
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button type="submit"
+                class="flex-1 bg-green/10 border border-green/20 text-green hover:bg-green/20 text-sm font-medium py-2 rounded-md transition-colors">
+          Registrar
+        </button>
+        <button type="button" onclick="fecharModalSalario()"
+                class="px-4 py-2 text-sm text-muted hover:text-tx border border-line rounded-md transition-colors">
+          {% if salario_pendente %}Depois{% else %}Cancelar{% endif %}
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  function abrirModalSalario() {
+    document.getElementById('modal-salario').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    var campo = document.getElementById('campo-comissao');
+    if (campo) campo.focus();
+  }
+  function fecharModalSalario() {
+    document.getElementById('modal-salario').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') fecharModalSalario();
+  });
+  {% if salario_pendente %}abrirModalSalario();{% endif %}
+</script>
+{% endif %}

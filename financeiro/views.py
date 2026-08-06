@@ -995,10 +995,17 @@ def essenciais(request):
         })
         prev_tipo = tipo
 
+    ess_salario = next(
+        (e for e in ativas.values()
+         if e.categoria.slug == 'salario' and e.tipo_salario in ('comissao', 'fixo_comissao')),
+        None,
+    )
+
     return render(request, 'financeiro/essenciais.html', {
         'grupos': grupos_ordenados,
         'n_ativos': len(ativas),
         'hoje': date.today(),
+        'ess_salario': ess_salario,
     })
 
 
@@ -1183,12 +1190,14 @@ def editar_essencial(request, slug):
 @login_required
 def registrar_salario(request):
     """Registra o recebimento do salário (comissão ou fixo+comissão) via modal."""
+    destino = request.POST.get('next') or 'painel'
     try:
         ess = Essencial.objects.get(usuario=request.user, categoria__slug='salario', ativa=True)
     except Essencial.DoesNotExist:
-        return redirect('painel')
+        return redirect(destino)
 
     if request.method == 'POST':
+        from datetime import datetime as _dt
         from decimal import Decimal as D
         comissao_str = request.POST.get('comissao', '0').replace(',', '.').strip()
         fixo_str     = request.POST.get('valor_fixo', '0').replace(',', '.').strip()
@@ -1204,6 +1213,15 @@ def registrar_salario(request):
             fixo = D('0')
         total = fixo + comissao
 
+        # Data informada no modal (permite registrar fora do dia do pagamento)
+        data_reg = date.today()
+        data_txt = (request.POST.get('data') or '').strip()
+        if data_txt:
+            try:
+                data_reg = _dt.strptime(data_txt, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+
         if total > 0:
             cat_fin = _get_or_create_categoria_financeiro(request.user, 'Salário', 'receita')
             descricao = 'Salário'
@@ -1212,12 +1230,13 @@ def registrar_salario(request):
             Transacao.objects.create(
                 usuario=request.user, tipo='receita',
                 descricao=descricao, valor=total,
-                data=date.today(), categoria=cat_fin,
+                data=data_reg, categoria=cat_fin,
             )
-        ess.ultimo_registro = date.today()
+            messages.success(request, f'{descricao} de {request.user.simbolo_moeda} {total} registrado.')
+        ess.ultimo_registro = data_reg
         ess.save(update_fields=['ultimo_registro'])
 
-    return redirect('painel')
+    return redirect(destino)
 
 
 @login_required

@@ -105,10 +105,13 @@ def painel(request):
     metas_resumo = list(Meta.objects.filter(usuario=request.user, concluida=False).select_related('categoria')[:4])
 
     salario_pendente = None
+    ess_salario = None
     try:
-        ess_sal = Essencial.objects.select_related('categoria').get(
+        ess_sal = Essencial.objects.select_related('categoria', 'transacao_fixa').get(
             usuario=request.user, categoria__slug='salario', ativa=True,
         )
+        if ess_sal.tipo_salario in ('comissao', 'fixo_comissao'):
+            ess_salario = ess_sal          # permite registrar em qualquer dia
         if ess_sal.salario_pendente_hoje():
             salario_pendente = ess_sal
     except Essencial.DoesNotExist:
@@ -126,6 +129,7 @@ def painel(request):
         'tipos_saldo_extra': tipos_saldo_extra,
         'metas_resumo': metas_resumo,
         'salario_pendente': salario_pendente,
+        'ess_salario': ess_salario,
         'hoje': hoje,
     })
 
