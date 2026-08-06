@@ -45,3 +45,45 @@ STORAGES = {
 }
 
 DATABASES['default']['CONN_MAX_AGE'] = 600
+
+
+# ── Monitoramento de erros (Sentry) ───────────────────────────────────────────
+# Só liga se SENTRY_DSN estiver definido; sem a variável, nada é enviado e a
+# aplicação segue normalmente.
+
+SENTRY_DSN = env('SENTRY_DSN', default='')
+
+
+def _limpar_dados_sensiveis(evento, dica=None):
+    """Remove do relatório qualquer coisa que possa conter dado financeiro."""
+    requisicao = evento.get('request') or {}
+    requisicao.pop('data', None)      # corpo do POST (valores, descrições...)
+    requisicao.pop('cookies', None)
+    cabecalhos = requisicao.get('headers') or {}
+    for campo in ('Cookie', 'Authorization'):
+        cabecalhos.pop(campo, None)
+    return evento
+
+
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env('SENTRY_ENVIRONMENT', default='producao'),
+
+        # Nunca anexar dados do usuário ao relatório: este é um app financeiro.
+        # Sem isso, o Sentry mandaria e-mail, IP e corpo das requisições junto.
+        send_default_pii=False,
+
+        # Amostragem de desempenho — 0 desliga; suba se quiser medir lentidão
+        traces_sample_rate=env.float('SENTRY_TRACES_SAMPLE_RATE', default=0.0),
+
+        # Erros de 4xx (404, 403) não interessam; só falhas de verdade
+        ignore_errors=[
+            'django.http.Http404',
+            'django.core.exceptions.PermissionDenied',
+            'django.security.DisallowedHost',
+        ],
+        before_send=_limpar_dados_sensiveis,
+    )

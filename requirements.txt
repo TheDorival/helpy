@@ -6,6 +6,7 @@ djangorestframework==3.17.1
 gunicorn==23.0.0
 pillow==12.2.0
 psycopg2-binary==2.9.11
+sentry-sdk==2.20.0
 sqlparse==0.5.5
 tzdata==2026.1
 whitenoise==6.12.0
