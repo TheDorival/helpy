@@ -1237,6 +1237,7 @@ def _marcar_duplicatas(usuario, lancamentos):
 
 
 TOLERANCIA_CONCILIACAO = 5          # dias de diferença aceitos
+TOLERANCIA_REGRA = 20               # dias, quando a regra aponta a recorrente
 MARGEM_VALOR_CONCILIACAO = Decimal('0.2')   # 20% de diferença de valor
 
 
@@ -1263,7 +1264,8 @@ def _conciliar_com_recorrentes(usuario, lancamentos, tol=TOLERANCIA_CONCILIACAO)
         return lancamentos
 
     datas = [l['data'] for l in lancamentos]
-    inicio, fim = min(datas) - timedelta(days=tol), max(datas) + timedelta(days=tol)
+    janela = max(tol, TOLERANCIA_REGRA if any(l.get('regra_fixa_id') for l in lancamentos) else tol)
+    inicio, fim = min(datas) - timedelta(days=janela), max(datas) + timedelta(days=janela)
 
     geradas = list(
         Transacao.objects.filter(
@@ -1277,12 +1279,21 @@ def _conciliar_com_recorrentes(usuario, lancamentos, tol=TOLERANCIA_CONCILIACAO)
 
     # 1) ocorrências já geradas
     for l in ordenados:
+        # Regra apontando a recorrente: casamento explícito, com folga maior e
+        # sem exigir valor parecido — o usuário já disse que são a mesma coisa.
+        fixa_regra = l.get('regra_fixa_id')
+        tol_l = TOLERANCIA_REGRA if fixa_regra else tol
+
         melhor, melhor_score = None, None
         for t in geradas:
             if t.pk in usadas or t.tipo != l['tipo']:
                 continue
+            if fixa_regra and t.origem_fixa_id != fixa_regra:
+                continue
             dist = abs((t.data - l['data']).days)
-            if dist > tol or not _valores_conciliaveis(l['valor'], t.valor):
+            if dist > tol_l:
+                continue
+            if not fixa_regra and not _valores_conciliaveis(l['valor'], t.valor):
                 continue
             score = (0 if l['valor'] == t.valor else 1, dist)
             if melhor_score is None or score < melhor_score:
@@ -1308,9 +1319,12 @@ def _conciliar_com_recorrentes(usuario, lancamentos, tol=TOLERANCIA_CONCILIACAO)
                 visitadas += 1
                 if prevista >= inicio:
                     for l in pendentes:
+                        indicada = l.get('regra_fixa_id') == tf.pk
+                        limite = TOLERANCIA_REGRA if indicada else tol
                         if (l.get('antecipa_fixa_id') or l['tipo'] != tf.tipo
-                                or abs((prevista - l['data']).days) > tol
-                                or not _valores_conciliaveis(l['valor'], tf.valor)):
+                                or abs((prevista - l['data']).days) > limite
+                                or (not indicada
+                                    and not _valores_conciliaveis(l['valor'], tf.valor))):
                             continue
                         l['antecipa_fixa_id'] = tf.pk
                         l['antecipa_ate'] = prevista
@@ -1327,29 +1341,36 @@ def _aplicar_regras(usuario, lancamentos):
     """Sugere categoria (e entidade) para cada lançamento com base nas regras ativas."""
     regras = list(
         RegraCategoria.objects.filter(usuario=usuario, ativa=True)
-        .select_related('categoria', 'entidade')
+        .select_related('categoria', 'entidade', 'recorrente')
     )
     for l in lancamentos:
         l['categoria_id'] = None
         l['categoria_nome'] = ''
         l['entidade_id'] = None
+        l['regra_fixa_id'] = None
         # Casa com o texto completo do extrato (operação + favorecido), mesmo que
         # a descrição exibida mostre apenas o favorecido.
         texto = l.get('texto_completo') or l['descricao']
         for r in regras:
             if r.combina(texto, l['tipo']):
-                l['categoria_id'] = r.categoria_id
-                l['categoria_nome'] = r.categoria.nome
+                if r.categoria_id:
+                    l['categoria_id'] = r.categoria_id
+                    l['categoria_nome'] = r.categoria.nome
                 l['entidade_id'] = r.entidade_id
+                l['regra_fixa_id'] = r.recorrente_id
                 break
     return lancamentos
 
 
 def _preparar_lancamentos(usuario, lancamentos):
-    """Marca duplicatas, concilia com recorrentes e aplica as regras de categoria."""
+    """Marca duplicatas, aplica regras e concilia com recorrentes.
+
+    As regras vêm antes da conciliação porque podem apontar a recorrente
+    correspondente, o que torna o casamento muito mais preciso.
+    """
     lancamentos = _marcar_duplicatas(usuario, lancamentos)
-    lancamentos = _conciliar_com_recorrentes(usuario, lancamentos)
-    return _aplicar_regras(usuario, lancamentos)
+    lancamentos = _aplicar_regras(usuario, lancamentos)
+    return _conciliar_com_recorrentes(usuario, lancamentos)
 
 
 def _serializar(lancamentos):
@@ -1673,7 +1694,7 @@ def cancelar_importacao(request):
 @login_required
 def regras(request):
     return render(request, 'financeiro/regras.html', {
-        'regras': RegraCategoria.objects.filter(usuario=request.user).select_related('categoria', 'entidade'),
+        'regras': RegraCategoria.objects.filter(usuario=request.user).select_related('categoria', 'entidade', 'recorrente'),
     })
 
 
