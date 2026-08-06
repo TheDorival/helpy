@@ -1291,6 +1291,24 @@ def _valores_conciliaveis(valor_importado, valor_previsto):
     return abs(valor_importado - valor_previsto) <= (valor_previsto * MARGEM_VALOR_CONCILIACAO)
 
 
+def _fixas_irmas(usuario, fixa_ids):
+    """Mapa fixa → conjunto de recorrentes equivalentes (parcelas do mesmo essencial).
+
+    Um salário quinzenal chega ao extrato com o mesmo texto nas duas parcelas;
+    a regra aponta uma delas e o sistema decide qual encaixa melhor.
+    """
+    grupos = {}
+    if not fixa_ids:
+        return grupos
+    for ess in Essencial.objects.filter(
+        usuario=usuario, transacao_fixa__isnull=False, transacao_fixa_2__isnull=False,
+    ).values_list('transacao_fixa_id', 'transacao_fixa_2_id'):
+        par = {ess[0], ess[1]}
+        for fid in par:
+            grupos[fid] = par
+    return {fid: grupos.get(fid, {fid}) for fid in fixa_ids}
+
+
 def _conciliar_com_recorrentes(usuario, lancamentos, tol=TOLERANCIA_CONCILIACAO):
     """Casa lançamentos do extrato com ocorrências de recorrentes.
 
@@ -1317,63 +1335,94 @@ def _conciliar_com_recorrentes(usuario, lancamentos, tol=TOLERANCIA_CONCILIACAO)
     usadas = set()
 
     ordenados = sorted(lancamentos, key=lambda x: x['data'])
+    irmas = _fixas_irmas(usuario, {l.get('regra_fixa_id') for l in ordenados if l.get('regra_fixa_id')})
 
-    # 1) ocorrências já geradas
-    for l in ordenados:
+    # 1) ocorrências já geradas — avalia todos os pares e fica com os melhores,
+    # para que uma parcela não "roube" a vaga da outra por chegar antes.
+    pares = []
+    for idx, l in enumerate(ordenados):
         # Regra apontando a recorrente: casamento explícito, com folga maior e
         # sem exigir valor parecido — o usuário já disse que são a mesma coisa.
         fixa_regra = l.get('regra_fixa_id')
+        permitidas = irmas.get(fixa_regra, {fixa_regra}) if fixa_regra else None
         tol_l = TOLERANCIA_REGRA if fixa_regra else tol
 
-        melhor, melhor_score = None, None
         for t in geradas:
-            if t.pk in usadas or t.tipo != l['tipo']:
+            if t.tipo != l['tipo']:
                 continue
-            if fixa_regra and t.origem_fixa_id != fixa_regra:
+            if permitidas and t.origem_fixa_id not in permitidas:
                 continue
             dist = abs((t.data - l['data']).days)
             if dist > tol_l:
                 continue
             if not fixa_regra and not _valores_conciliaveis(l['valor'], t.valor):
                 continue
-            score = (0 if l['valor'] == t.valor else 1, dist)
-            if melhor_score is None or score < melhor_score:
-                melhor, melhor_score = t, score
+            # entre parcelas do mesmo essencial, vence a de valor mais próximo
+            score = (0 if l['valor'] == t.valor else 1, abs(l['valor'] - t.valor), dist)
+            pares.append((score, idx, t))
 
-        if melhor:
-            usadas.add(melhor.pk)
-            l['conciliar_id'] = melhor.pk
-            l['conciliar_nome'] = melhor.descricao or (melhor.origem_fixa.nome_display if melhor.origem_fixa else '')
-            l['conciliar_data'] = melhor.data
-            l['conciliar_valor'] = melhor.valor
-            l['duplicata'] = False          # é conciliação, não duplicata
-            l['motivo_duplicata'] = ''
+    pares.sort(key=lambda p: (p[0], p[1]))
+    ja_conciliados = set()
+    for score, idx, t in pares:
+        if t.pk in usadas or idx in ja_conciliados:
+            continue
+        l = ordenados[idx]
+        usadas.add(t.pk)
+        ja_conciliados.add(idx)
+        l['conciliar_id'] = t.pk
+        l['conciliar_nome'] = t.descricao or (t.origem_fixa.nome_display if t.origem_fixa else '')
+        l['conciliar_data'] = t.data
+        l['conciliar_valor'] = t.valor
+        l['duplicata'] = False          # é conciliação, não duplicata
+        l['motivo_duplicata'] = ''
 
     # 2) ocorrências ainda não geradas (importação feita antes da data prevista)
     regra = _regra_usuario(usuario)
     pendentes = [l for l in ordenados if not l.get('conciliar_id') and not l.get('duplicata')]
     if pendentes:
+        # Ocorrências previstas dentro da janela, por recorrente
+        previstas = []
         for tf in TransacaoFixa.objects.filter(usuario=usuario, ativa=True):
-            prevista = tf.proxima_data()
+            d = tf.proxima_data()
             visitadas = 0
-            while prevista and prevista <= fim and visitadas < 12:
+            while d and d <= fim and visitadas < 12:
                 visitadas += 1
-                if prevista >= inicio:
-                    for l in pendentes:
-                        indicada = l.get('regra_fixa_id') == tf.pk
-                        limite = TOLERANCIA_REGRA if indicada else tol
-                        if (l.get('antecipa_fixa_id') or l['tipo'] != tf.tipo
-                                or abs((prevista - l['data']).days) > limite
-                                or (not indicada
-                                    and not _valores_conciliaveis(l['valor'], tf.valor))):
-                            continue
-                        l['antecipa_fixa_id'] = tf.pk
-                        l['antecipa_ate'] = prevista
-                        l['conciliar_nome'] = tf.nome_display
-                        l['conciliar_data'] = prevista
-                        l['conciliar_valor'] = tf.valor
-                        break
-                prevista = tf.avancar(prevista, regra)
+                if d >= inicio:
+                    previstas.append((tf, d))
+                d = tf.avancar(d, regra)
+
+        candidatos = []
+        for idx, l in enumerate(pendentes):
+            fixa_regra = l.get('regra_fixa_id')
+            permitidas = irmas.get(fixa_regra, {fixa_regra}) if fixa_regra else None
+
+            for tf, prevista in previstas:
+                if tf.tipo != l['tipo']:
+                    continue
+                indicada = bool(permitidas and tf.pk in permitidas)
+                if permitidas and not indicada:
+                    continue
+                dist = abs((prevista - l['data']).days)
+                if dist > (TOLERANCIA_REGRA if indicada else tol):
+                    continue
+                if not indicada and not _valores_conciliaveis(l['valor'], tf.valor):
+                    continue
+                score = (0 if l['valor'] == tf.valor else 1, abs(l['valor'] - tf.valor), dist)
+                candidatos.append((score, idx, tf, prevista))
+
+        candidatos.sort(key=lambda p: (p[0], p[1]))
+        tomadas, atendidos = set(), set()
+        for score, idx, tf, prevista in candidatos:
+            if (tf.pk, prevista) in tomadas or idx in atendidos:
+                continue
+            l = pendentes[idx]
+            tomadas.add((tf.pk, prevista))
+            atendidos.add(idx)
+            l['antecipa_fixa_id'] = tf.pk
+            l['antecipa_ate'] = prevista
+            l['conciliar_nome'] = tf.nome_display
+            l['conciliar_data'] = prevista
+            l['conciliar_valor'] = tf.valor
 
     return lancamentos
 
