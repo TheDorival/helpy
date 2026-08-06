@@ -641,7 +641,11 @@ class RegraCategoria(models.Model):
 
     usuario   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='regras_categoria')
     termo     = models.CharField(max_length=120, help_text='Se a descrição contiver este texto…')
-    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='regras')
+    categoria = models.ForeignKey(Categoria, null=True, blank=True,
+                                  on_delete=models.CASCADE, related_name='regras')
+    recorrente = models.ForeignKey('TransacaoFixa', null=True, blank=True,
+                                   on_delete=models.CASCADE, related_name='regras',
+                                   help_text='Lançamentos casados são conciliados com esta recorrente.')
     aplica_a  = models.CharField(max_length=8, choices=TIPO_CHOICES, default='ambos')
     entidade  = models.ForeignKey(Entidade, null=True, blank=True, on_delete=models.SET_NULL, related_name='regras')
     ativa     = models.BooleanField(default=True)
@@ -653,7 +657,8 @@ class RegraCategoria(models.Model):
         ordering = ['termo']
 
     def __str__(self):
-        return f'{self.termo} → {self.categoria}'
+        destino = self.categoria or self.recorrente
+        return f'{self.termo} → {destino}'
 
     def combina(self, descricao, tipo):
         if not self.ativa:

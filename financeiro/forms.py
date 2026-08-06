@@ -9,14 +9,27 @@ from .models import (Categoria, Emprestimo, Entidade, EventoVida, Meta, RegraCat
 class RegraCategoriaForm(forms.ModelForm):
     class Meta:
         model = RegraCategoria
-        fields = ['termo', 'categoria', 'aplica_a', 'entidade', 'ativa']
+        fields = ['termo', 'categoria', 'recorrente', 'aplica_a', 'entidade', 'ativa']
 
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['entidade'].required = False
+        self.fields['categoria'].required = False
+        self.fields['recorrente'].required = False
         if usuario:
             self.fields['categoria'].queryset = Categoria.objects.filter(usuario=usuario)
             self.fields['entidade'].queryset = Entidade.objects.filter(usuario=usuario)
+            self.fields['recorrente'].queryset = TransacaoFixa.objects.filter(
+                usuario=usuario, ativa=True,
+            ).select_related('categoria')
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get('categoria') and not cleaned.get('recorrente'):
+            raise forms.ValidationError(
+                'Escolha uma categoria, uma recorrente, ou as duas.'
+            )
+        return cleaned
 
 
 class CategoriaForm(forms.ModelForm):
