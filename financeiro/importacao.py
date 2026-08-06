@@ -305,11 +305,19 @@ def _validar_contra_saldos(registros):
             item['motivo_suspeita'] = f'Saldo do extrato indica {esperado:.2f}'
 
 
-def parse_linhas_caixa(linhas):
+def parse_linhas_caixa(linhas, descartes=None):
     """Converte linhas de texto do 'Extrato por período' da Caixa em lançamentos.
 
     Aceita linhas vindas do PDF com texto ou do OCR feito no navegador.
+
+    `descartes`: lista opcional preenchida com as linhas que têm data mas não
+    puderam ser interpretadas — normalmente falha de OCR. Sem isso, um
+    lançamento ilegível some sem deixar rastro.
     """
+    def descartar(linha):
+        if descartes is not None:
+            descartes.append(linha)
+
     registros = []
     lancamentos = []
     for linha in _juntar_quebradas(linhas):
@@ -327,6 +335,7 @@ def parse_linhas_caixa(linhas):
         resto = m.group('resto')
         valores = RE_VALOR_DC.findall(resto)
         if not valores:
+            descartar(linha)
             continue
 
         # Saldo da linha (última coluna) — usado para conferência
@@ -342,21 +351,26 @@ def parse_linhas_caixa(linhas):
         # Quando só há uma, ela é o próprio valor.
         valor_txt, indicador = valores[-2] if len(valores) >= 2 else valores[0]
         valor = _valor_csv(valor_txt)
-        if valor is None or valor == 0:
+        if valor is None:
+            descartar(linha)
             continue
+        if valor == 0:
+            continue                      # lançamento de valor zero: nada a importar
 
         direcao_hist = _direcao_pelo_historico(resto)
 
         if not indicador:
             indicador = direcao_hist
             if not indicador:
-                continue  # sem como saber entrada ou saída — melhor não adivinhar
+                descartar(linha)   # sem saber se é entrada ou saída
+                continue
 
         # Linha com um único valor legível: pode ser o valor do lançamento (saldo
         # ilegível) ou o próprio saldo (valor ilegível). Só aceita quando o
         # histórico confirma a direção — do contrário é chute, e chute aqui vira
         # lançamento inventado com o valor do saldo.
         if len(valores) == 1 and indicador != direcao_hist:
+            descartar(linha)
             continue
 
         # Descrição = tudo antes do primeiro valor monetário

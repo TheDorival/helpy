@@ -1570,12 +1570,15 @@ def importar_pdf(request):
     if not isinstance(linhas, list) or not linhas:
         return JsonResponse({'ok': False, 'erro': 'Nenhum texto foi extraído do PDF.'}, status=400)
 
+    descartes = []
     try:
-        lancamentos = parse_linhas_caixa([str(l) for l in linhas][:5000])
+        lancamentos = parse_linhas_caixa([str(l) for l in linhas][:5000], descartes)
     except ExtratoInvalido as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
 
     conf = conferencia_lancamentos(lancamentos)
+    conf['descartadas'] = len(descartes)
+    conf['exemplos_descartados'] = [d[:90] for d in descartes[:5]]
     lancamentos = _preparar_lancamentos(request.user, lancamentos)
     request.session['import_extrato'] = {
         'arquivo_nome': nome, 'formato': 'pdf',

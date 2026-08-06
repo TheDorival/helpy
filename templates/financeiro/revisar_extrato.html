@@ -68,7 +68,24 @@
           {% if conferencia.sem_conferencia %}
             <span class="text-muted">Sem conferência: <span class="text-dim">{{ conferencia.sem_conferencia }}</span></span>
           {% endif %}
+          {% if conferencia.descartadas %}
+            <span class="text-muted">Não reconhecidas: <span class="text-red font-medium">{{ conferencia.descartadas }}</span></span>
+          {% endif %}
         </div>
+
+        {% if conferencia.descartadas %}
+          <div class="mt-2 px-3 py-2 rounded-md bg-red/5 border border-red/20">
+            <p class="text-[11px] text-red">
+              {{ conferencia.descartadas }} linha{{ conferencia.descartadas|pluralize }} do extrato
+              tinha{{ conferencia.descartadas|pluralize:"m" }} data mas não pôde{{ conferencia.descartadas|pluralize:",ram" }}
+              ser interpretada{{ conferencia.descartadas|pluralize }} — confira no PDF se algum lançamento ficou de fora
+              e acrescente manualmente.
+            </p>
+            {% for exemplo in conferencia.exemplos_descartados %}
+              <p class="text-[10px] text-dim font-mono mt-1">{{ exemplo }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
         <p class="mt-1.5 text-[11px] text-muted">
           Cada linha é comparada com a variação da coluna Saldo do próprio extrato.
           {% if not conferencia.ok %}As divergentes estão destacadas em vermelho na lista abaixo.{% endif %}
