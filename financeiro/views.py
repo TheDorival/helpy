@@ -970,6 +970,7 @@ def _criar_tf_essencial(usuario, cat, valor, dia, dia_util, obs, sufixo=''):
         data_inicio=_proxima_data_pagamento(dia, dia_util, _regra_usuario(usuario)),
         dia_util_n=dia if dia_util else None,
         categoria=cat_fin, observacao=obs, ativa=True,
+        conta=cat.conta,      # o vale credita no bolso do vale, não na conta
     )
 
 

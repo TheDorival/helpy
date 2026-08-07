@@ -5,24 +5,49 @@ from django.conf import settings
 from django.db import models
 
 
+# ── Bolsos ────────────────────────────────────────────────────────────────────
+# De onde o dinheiro saiu ou para onde entrou. Sem isso, uma gratificação em
+# espécie infla o saldo bancário e um gasto de vale o derruba — e a conferência
+# contra o extrato, que é o que garante que a importação está íntegra, quebra.
+CONTA_CHOICES = [
+    ('banco',    'Conta bancária'),
+    ('dinheiro', 'Dinheiro'),
+    ('vale',     'Vale alimentação/refeição'),
+    ('outro',    'Outro'),
+]
+
+# Vale só compra comida: somar com o resto dá um total que não existe na prática
+CONTAS_RESTRITAS = frozenset({'vale'})
+
+
+def conta_e_restrita(conta):
+    return conta in CONTAS_RESTRITAS
+
+
+def _campo_conta(ajuda):
+    return models.CharField(max_length=10, choices=CONTA_CHOICES, default='banco',
+                            db_index=True, help_text=ajuda)
+
+
 CATALOGO_ESSENCIAIS = [
-    # slug, nome, tipo, ícone, prioridade, variavel, frequencia, ordem, descricao
-    ('salario',          'Salário',               'receita',  '💰', 'fundamental', False, 'mensal',  1,  'Principal fonte de renda mensal.'),
-    ('freelance',        'Freelance / Renda extra','receita',  '🎯', 'opcional',    True,  'mensal',  2,  'Renda variável de projetos ou bicos.'),
-    ('aluguel_recebido', 'Aluguel recebido',       'receita',  '🏘️', 'opcional',    False, 'mensal',  3,  'Renda de imóvel alugado.'),
-    ('bolsa',            'Bolsa / Auxílio',        'receita',  '📚', 'opcional',    False, 'mensal',  4,  'Bolsa de estudos, auxílio ou benefício.'),
-    ('aluguel',          'Aluguel / Prestação',    'despesa',  '🏠', 'fundamental', False, 'mensal',  1,  'Moradia — aluguel ou parcela de financiamento.'),
-    ('energia',          'Energia elétrica',       'despesa',  '⚡', 'fundamental', True,  'mensal',  2,  'Conta de luz mensal.'),
-    ('agua',             'Água / Saneamento',      'despesa',  '💧', 'fundamental', True,  'mensal',  3,  'Conta de água e saneamento.'),
-    ('alimentacao',      'Alimentação / Mercado',  'despesa',  '🛒', 'fundamental', True,  'mensal',  4,  'Gastos com supermercado e refeições.'),
-    ('transporte',       'Transporte',             'despesa',  '🚌', 'fundamental', True,  'mensal',  5,  'Transporte público, combustível ou aplicativo.'),
-    ('internet',         'Internet',               'despesa',  '🌐', 'importante',  False, 'mensal',  6,  'Plano de internet residencial.'),
-    ('telefone',         'Telefone / Celular',     'despesa',  '📱', 'importante',  False, 'mensal',  7,  'Plano de celular ou telefone fixo.'),
-    ('saude',            'Plano de saúde',         'despesa',  '🏥', 'importante',  False, 'mensal',  8,  'Convênio médico ou odontológico.'),
-    ('educacao',         'Faculdade / Escola',     'despesa',  '🎓', 'importante',  False, 'mensal',  9,  'Mensalidade de ensino.'),
-    ('academia',         'Academia',               'despesa',  '🏋️', 'opcional',    False, 'mensal', 10,  'Mensalidade de academia ou esporte.'),
-    ('streaming',        'Streaming',              'despesa',  '📺', 'opcional',    False, 'mensal', 11,  'Netflix, Disney+, HBO e outros.'),
-    ('assinaturas',      'Assinaturas',            'despesa',  '🔔', 'opcional',    False, 'mensal', 12,  'Softwares, apps e serviços mensais.'),
+    # slug, nome, tipo, ícone, prioridade, variavel, frequencia, ordem, descricao, conta
+    ('salario',          'Salário',               'receita',  '💰', 'fundamental', False, 'mensal',  1,  'Principal fonte de renda mensal.', 'banco'),
+    ('freelance',        'Freelance / Renda extra','receita',  '🎯', 'opcional',    True,  'mensal',  2,  'Renda variável de projetos ou bicos.', 'banco'),
+    ('aluguel_recebido', 'Aluguel recebido',       'receita',  '🏘️', 'opcional',    False, 'mensal',  3,  'Renda de imóvel alugado.', 'banco'),
+    ('bolsa',            'Bolsa / Auxílio',        'receita',  '📚', 'opcional',    False, 'mensal',  4,  'Bolsa de estudos, auxílio ou benefício.', 'banco'),
+    ('vale_alimentacao', 'Vale alimentação/refeição', 'receita', '🍽️', 'importante', False, 'mensal', 5, 'Crédito mensal do benefício. Cai no bolso do vale, não na conta — só compra comida.', 'vale'),
+    ('aluguel',          'Aluguel / Prestação',    'despesa',  '🏠', 'fundamental', False, 'mensal',  1,  'Moradia — aluguel ou parcela de financiamento.', 'banco'),
+    ('energia',          'Energia elétrica',       'despesa',  '⚡', 'fundamental', True,  'mensal',  2,  'Conta de luz mensal.', 'banco'),
+    ('agua',             'Água / Saneamento',      'despesa',  '💧', 'fundamental', True,  'mensal',  3,  'Conta de água e saneamento.', 'banco'),
+    ('alimentacao',      'Alimentação / Mercado',  'despesa',  '🛒', 'fundamental', True,  'mensal',  4,  'Gastos com supermercado e refeições.', 'banco'),
+    ('transporte',       'Transporte',             'despesa',  '🚌', 'fundamental', True,  'mensal',  5,  'Transporte público, combustível ou aplicativo.', 'banco'),
+    ('internet',         'Internet',               'despesa',  '🌐', 'importante',  False, 'mensal',  6,  'Plano de internet residencial.', 'banco'),
+    ('telefone',         'Telefone / Celular',     'despesa',  '📱', 'importante',  False, 'mensal',  7,  'Plano de celular ou telefone fixo.', 'banco'),
+    ('saude',            'Plano de saúde',         'despesa',  '🏥', 'importante',  False, 'mensal',  8,  'Convênio médico ou odontológico.', 'banco'),
+    ('educacao',         'Faculdade / Escola',     'despesa',  '🎓', 'importante',  False, 'mensal',  9,  'Mensalidade de ensino.', 'banco'),
+    ('academia',         'Academia',               'despesa',  '🏋️', 'opcional',    False, 'mensal', 10,  'Mensalidade de academia ou esporte.', 'banco'),
+    ('streaming',        'Streaming',              'despesa',  '📺', 'opcional',    False, 'mensal', 11,  'Netflix, Disney+, HBO e outros.', 'banco'),
+    ('assinaturas',      'Assinaturas',            'despesa',  '🔔', 'opcional',    False, 'mensal', 12,  'Softwares, apps e serviços mensais.', 'banco'),
 ]
 
 
@@ -43,6 +68,7 @@ class CategoriaEssencial(models.Model):
     frequencia  = models.CharField(max_length=20, default='mensal')
     ordem       = models.PositiveSmallIntegerField(default=0)
     descricao   = models.TextField(blank=True, default='')
+    conta       = _campo_conta('Bolso em que este essencial movimenta dinheiro.')
 
     class Meta:
         verbose_name = 'Categoria essencial'
@@ -52,13 +78,19 @@ class CategoriaEssencial(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def restrita(self):
+        return conta_e_restrita(self.conta)
+
     @classmethod
     def sincronizar_catalogo(cls):
-        for slug, nome, tipo, icone, prioridade, variavel, frequencia, ordem, descricao in CATALOGO_ESSENCIAIS:
+        for (slug, nome, tipo, icone, prioridade, variavel,
+             frequencia, ordem, descricao, conta) in CATALOGO_ESSENCIAIS:
             cls.objects.update_or_create(
                 slug=slug,
                 defaults=dict(nome=nome, tipo=tipo, icone=icone, prioridade=prioridade,
-                              variavel=variavel, frequencia=frequencia, ordem=ordem, descricao=descricao),
+                              variavel=variavel, frequencia=frequencia, ordem=ordem,
+                              descricao=descricao, conta=conta),
             )
 
 
@@ -198,30 +230,6 @@ class Entidade(models.Model):
 
     def __str__(self):
         return self.nome
-
-
-# ── Bolsos ────────────────────────────────────────────────────────────────────
-# De onde o dinheiro saiu ou para onde entrou. Sem isso, uma gratificação em
-# espécie infla o saldo bancário e um gasto de vale o derruba — e a conferência
-# contra o extrato, que é o que garante que a importação está íntegra, quebra.
-CONTA_CHOICES = [
-    ('banco',    'Conta bancária'),
-    ('dinheiro', 'Dinheiro'),
-    ('vale',     'Vale alimentação/refeição'),
-    ('outro',    'Outro'),
-]
-
-# Vale só compra comida: somar com o resto dá um total que não existe na prática
-CONTAS_RESTRITAS = frozenset({'vale'})
-
-
-def conta_e_restrita(conta):
-    return conta in CONTAS_RESTRITAS
-
-
-def _campo_conta(ajuda):
-    return models.CharField(max_length=10, choices=CONTA_CHOICES, default='banco',
-                            db_index=True, help_text=ajuda)
 
 
 class Transacao(models.Model):
