@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from django import forms
 
@@ -9,15 +10,21 @@ from .models import (Categoria, Emprestimo, Entidade, EventoVida, Meta, RegraCat
 class RegraCategoriaForm(forms.ModelForm):
     class Meta:
         model = RegraCategoria
-        fields = ['termo', 'categoria', 'recorrente', 'aplica_a', 'entidade', 'ativa']
+        fields = ['termo', 'categoria', 'recorrente', 'aplica_a', 'entidade', 'ativa',
+                  'gera_contrapartida', 'contrapartida_taxa', 'contrapartida_parcelas',
+                  'contrapartida_dia', 'contrapartida_categoria']
 
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['entidade'].required = False
         self.fields['categoria'].required = False
         self.fields['recorrente'].required = False
+        for campo in ('contrapartida_taxa', 'contrapartida_parcelas',
+                      'contrapartida_dia', 'contrapartida_categoria'):
+            self.fields[campo].required = False
         if usuario:
             self.fields['categoria'].queryset = Categoria.objects.filter(usuario=usuario)
+            self.fields['contrapartida_categoria'].queryset = Categoria.objects.filter(usuario=usuario)
             self.fields['entidade'].queryset = Entidade.objects.filter(usuario=usuario)
             self.fields['recorrente'].queryset = TransacaoFixa.objects.filter(
                 usuario=usuario, ativa=True,
@@ -29,6 +36,20 @@ class RegraCategoriaForm(forms.ModelForm):
             raise forms.ValidationError(
                 'Escolha uma categoria, uma recorrente, ou as duas.'
             )
+
+        # Campos vazios voltam ao padrão: o formulário não deve gravar None num
+        # campo que o modelo declara como não-nulo.
+        if cleaned.get('contrapartida_taxa') is None:
+            cleaned['contrapartida_taxa'] = Decimal('0')
+        if not cleaned.get('contrapartida_parcelas'):
+            cleaned['contrapartida_parcelas'] = 1
+
+        if cleaned.get('gera_contrapartida'):
+            dia = cleaned.get('contrapartida_dia')
+            if dia is not None and not (1 <= dia <= 31):
+                self.add_error('contrapartida_dia', 'Informe um dia entre 1 e 31.')
+            if cleaned['contrapartida_parcelas'] > 72:
+                self.add_error('contrapartida_parcelas', 'No máximo 72 parcelas.')
         return cleaned
 
 

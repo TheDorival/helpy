@@ -1,0 +1,111 @@
+{% extends 'base_painel.html' %}
+
+{% block title %}Cobranças futuras{% endblock %}
+{% block page_title %}Cobranças futuras{% endblock %}
+
+{% block skeleton %}
+  <div class="sk h-3 w-64 rounded mb-4"></div>
+  {% for i in "abc" %}
+    <div class="bg-surface border border-line rounded-lg p-4 mb-3">
+      <div class="sk h-4 w-48 rounded mb-3"></div>
+      <div class="sk h-3 w-full rounded mb-2"></div>
+      <div class="sk h-3 w-3/4 rounded"></div>
+    </div>
+  {% endfor %}
+{% endblock %}
+
+{% block content %}
+
+  <p class="text-xs text-dim mb-4 max-w-2xl">
+    Cobranças que nasceram de uma transação sua — o Pix no crédito que entra hoje e volta na fatura,
+    por exemplo. Elas aparecem nas previstas, mas <span class="text-tx">não viram lançamento
+    sozinhas</span>: confirme aqui quando a cobrança acontecer de verdade.
+  </p>
+
+  {% if not contrapartidas %}
+    <div class="bg-surface border border-dashed border-line rounded-lg px-4 py-10 text-center">
+      <p class="text-sm text-muted mb-1">Nenhuma cobrança futura</p>
+      <p class="text-xs text-dim">
+        Crie uma regra com “gera cobrança futura” em
+        <a href="{% url 'regras' %}" class="text-accent hover:underline">Regras</a>
+        e ela passa a agendar sozinha.
+      </p>
+    </div>
+  {% endif %}
+
+  {% for item in contrapartidas %}
+    <div class="bg-surface border border-line rounded-lg mb-3 overflow-hidden">
+
+      <div class="flex flex-wrap items-start justify-between gap-3 px-4 py-3 border-b border-line">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-tx truncate">
+            {{ item.obj.descricao|default:"Cobrança" }}
+          </p>
+          <p class="text-xs text-dim mt-0.5">
+            {% if item.obj.tipo == 'despesa' %}Saída{% else %}Entrada{% endif %}
+            · {{ item.parcelas|length }}x
+            {% if item.obj.taxa %}· taxa de {{ item.obj.taxa|floatformat:"-3" }}%{% endif %}
+            {% if item.obj.categoria %}· {{ item.obj.categoria }}{% endif %}
+            · de {{ item.obj.origem.data|date:"d/m/Y" }}
+          </p>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <div class="text-right">
+            {% if item.quitada %}
+              <span class="text-[10px] text-green border border-green/30 rounded-full px-2 py-0.5">quitada</span>
+            {% else %}
+              <p class="text-sm font-semibold {% if item.obj.tipo == 'despesa' %}text-red{% else %}text-green{% endif %}">
+                {{ request.user.simbolo_moeda }} {{ item.valor_pendente|floatformat:"2g" }}
+              </p>
+              <p class="text-[10px] text-dim">{{ item.n_pendentes }} a pagar</p>
+            {% endif %}
+          </div>
+          <form method="post" action="{% url 'excluir_contrapartida' item.obj.pk %}"
+                onsubmit="return confirm('Remover esta cobrança e as parcelas em aberto?')">
+            {% csrf_token %}
+            <button type="submit" class="text-dim hover:text-red transition-colors text-sm leading-none px-1"
+                    title="Remover">×</button>
+          </form>
+        </div>
+      </div>
+
+      <table class="w-full text-sm">
+        <tbody class="divide-y divide-line">
+          {% for p in item.parcelas %}
+            <tr class="{% if p.quitada %}opacity-50{% endif %}">
+              <td class="px-4 py-2 text-xs text-dim w-16">{{ p.numero }}/{{ item.parcelas|length }}</td>
+              <td class="px-4 py-2 text-xs {% if not p.quitada and p.data_vencimento <= hoje %}text-amber-400{% else %}text-muted{% endif %} whitespace-nowrap">
+                {{ p.data_vencimento|date:"d/m/Y" }}
+                {% if not p.quitada and p.data_vencimento <= hoje %}
+                  <span class="text-[10px]">· vencida</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2 text-right font-medium text-tx whitespace-nowrap">
+                {{ request.user.simbolo_moeda }} {{ p.valor|floatformat:"2g" }}
+              </td>
+              <td class="px-4 py-2 text-right w-40">
+                {% if p.quitada %}
+                  <span class="text-[10px] text-green">✓ registrada</span>
+                {% else %}
+                  <form method="post" action="{% url 'quitar_parcela' p.pk %}"
+                        class="flex items-center justify-end gap-1.5">
+                    {% csrf_token %}
+                    <input type="date" name="data" value="{{ p.data_vencimento|date:'Y-m-d' }}"
+                           aria-label="Data em que a cobrança aconteceu"
+                           class="text-[11px] bg-bg border border-line rounded px-1.5 py-1 text-tx outline-none focus:border-accent/50 transition-colors">
+                    <button type="submit"
+                            class="text-[11px] text-accent border border-accent/20 bg-accent/10 hover:bg-accent/20 rounded px-2 py-1 transition-colors whitespace-nowrap">
+                      Confirmar
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+  {% endfor %}
+
+{% endblock %}

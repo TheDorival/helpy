@@ -100,6 +100,70 @@
           <span class="text-sm text-tx">Regra ativa</span>
         </label>
 
+        <!-- ── Cobrança futura ─────────────────────────────────────────────── -->
+        <div class="pt-3 border-t border-line">
+          <label class="flex items-start gap-2.5 cursor-pointer">
+            <input type="checkbox" name="gera_contrapartida" value="True" id="id_gera_contrapartida"
+                   {% if form.gera_contrapartida.value %}checked{% endif %}
+                   onchange="alternarContrapartida()"
+                   class="w-4 h-4 mt-0.5 rounded border-line bg-bg accent-accent flex-shrink-0">
+            <span>
+              <span class="text-sm text-tx">Gera cobrança futura</span>
+              <span class="block text-[11px] text-dim mt-0.5 max-w-md">
+                O lançamento casado cria uma cobrança de sinal oposto no futuro. É o caso do Pix no
+                crédito: entra como receita hoje e volta como despesa na fatura.
+              </span>
+            </span>
+          </label>
+
+          <div id="campos-contrapartida" class="mt-3 pl-6 space-y-3 {% if not form.gera_contrapartida.value %}hidden{% endif %}">
+
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label for="id_contrapartida_taxa" class="block text-xs font-medium text-muted mb-1.5">Taxa (%)</label>
+                <input type="number" name="contrapartida_taxa" id="id_contrapartida_taxa" step="0.001" min="0"
+                       value="{{ form.contrapartida_taxa.value|default_if_none:'0' }}"
+                       oninput="previaContrapartida()"
+                       class="w-full bg-bg border border-line rounded-md px-2 py-1.5 text-sm text-tx outline-none focus:border-accent transition-colors">
+              </div>
+              <div>
+                <label for="id_contrapartida_parcelas" class="block text-xs font-medium text-muted mb-1.5">Parcelas</label>
+                <input type="number" name="contrapartida_parcelas" id="id_contrapartida_parcelas" min="1" max="72"
+                       value="{{ form.contrapartida_parcelas.value|default_if_none:'1' }}"
+                       oninput="previaContrapartida()"
+                       class="w-full bg-bg border border-line rounded-md px-2 py-1.5 text-sm text-tx outline-none focus:border-accent transition-colors">
+              </div>
+              <div>
+                <label for="id_contrapartida_dia" class="block text-xs font-medium text-muted mb-1.5">Dia da fatura</label>
+                <input type="number" name="contrapartida_dia" id="id_contrapartida_dia" min="1" max="31"
+                       value="{{ form.contrapartida_dia.value|default_if_none:'' }}"
+                       placeholder="—"
+                       class="w-full bg-bg border border-line rounded-md px-2 py-1.5 text-sm text-tx placeholder-dim outline-none focus:border-accent transition-colors">
+              </div>
+            </div>
+            <p class="text-[10px] text-dim -mt-1">
+              Dia da fatura em branco usa o mesmo dia da transação, no mês seguinte.
+            </p>
+
+            <div>
+              <label for="id_contrapartida_categoria" class="block text-xs font-medium text-muted mb-1.5">
+                Categoria da cobrança
+              </label>
+              <select name="contrapartida_categoria" id="id_contrapartida_categoria"
+                      class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx outline-none focus:border-accent transition-colors appearance-none">
+                <option value="">— sem categoria —</option>
+                {% for c in form.fields.contrapartida_categoria.queryset %}
+                  <option value="{{ c.pk }}" {% if form.contrapartida_categoria.value|stringformat:'s' == c.pk|stringformat:'s' %}selected{% endif %}>
+                    {{ c.nome }} ({{ c.get_tipo_display }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <p id="previa-contrapartida" class="text-[11px] text-muted bg-bg border border-line rounded-md px-2.5 py-2"></p>
+          </div>
+        </div>
+
         <div class="flex gap-3 pt-1">
           <button type="submit"
                   class="flex-1 bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 text-sm font-medium py-2 rounded-md transition-colors">
@@ -116,6 +180,33 @@
   </div>
 
   <script>
+  /* Mostra os campos da cobrança só quando ela está ligada */
+  function alternarContrapartida() {
+    const ligado = document.getElementById('id_gera_contrapartida').checked;
+    document.getElementById('campos-contrapartida').classList.toggle('hidden', !ligado);
+    if (ligado) previaContrapartida();
+  }
+
+  /* Prévia com um valor redondo: taxa e parcelamento em número, não em teoria */
+  function previaContrapartida() {
+    const alvo = document.getElementById('previa-contrapartida');
+    if (!alvo) return;
+
+    const taxa = parseFloat(document.getElementById('id_contrapartida_taxa').value) || 0;
+    const n = Math.max(parseInt(document.getElementById('id_contrapartida_parcelas').value, 10) || 1, 1);
+
+    const base = 1000;
+    const total = base * (1 + taxa / 100);
+    const parcela = total / n;
+    const fmt = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let texto = 'Exemplo: uma transação de R$ 1.000,00 gera cobrança de R$ ' + fmt(total);
+    if (n > 1) texto += ', em ' + n + 'x de R$ ' + fmt(parcela);
+    alvo.textContent = texto + '.';
+  }
+
+  alternarContrapartida();
+
   (function () {
     const CATEGORIAS = {
       receita: [{% for c in categorias %}{% if c.tipo == 'receita' %}{ id: "{{ c.pk }}", nome: "{{ c.nome|escapejs }}" },{% endif %}{% endfor %}],

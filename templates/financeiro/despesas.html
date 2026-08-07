@@ -190,14 +190,22 @@
               {{ request.user.simbolo_moeda }} {{ p.valor|floatformat:"2g" }}
             </td>
             <td class="px-4 py-2 text-right">
-              <span class="text-[10px] text-dim border border-line rounded-full px-2 py-0.5 whitespace-nowrap">prevista</span>
+              {% if p.parcela %}
+                <span class="text-[10px] text-amber-400 border border-amber-400/30 rounded-full px-2 py-0.5 whitespace-nowrap"
+                      title="Cobrança gerada por uma transação anterior">cobrança</span>
+              {% else %}
+                <span class="text-[10px] text-dim border border-line rounded-full px-2 py-0.5 whitespace-nowrap">prevista</span>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       <p class="px-4 py-2 text-[11px] text-dim border-t border-line">
-        Calculadas das suas recorrentes — viram registros reais automaticamente quando a data chegar.
+        As <span class="text-dim">previstas</span> vêm das suas recorrentes e viram registros reais
+        quando a data chegar. As <span class="text-amber-400">cobranças</span> nasceram de uma
+        transação anterior e esperam você confirmar em
+        <a href="{% url 'contrapartidas' %}" class="text-accent hover:underline">Cobranças futuras</a>.
       </p>
     </div>
   {% endif %}
