@@ -11,9 +11,10 @@ from django.contrib.auth import get_user_model
 from django.core.management import CommandError, call_command
 from django.test import TestCase
 
-from financeiro.models import (AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo,
-                               Entidade, Essencial, EventoVida, Meta, ParcelaEmprestimo,
-                               RegraCategoria, SaldoExtra, Transacao, TransacaoFixa)
+from financeiro.models import (AjusteSaldo, Categoria, CategoriaEssencial, Contrapartida,
+                               Emprestimo, Entidade, Essencial, EventoVida, Meta,
+                               ParcelaContrapartida, ParcelaEmprestimo, RegraCategoria,
+                               SaldoExtra, Transacao, TransacaoFixa)
 
 Usuario = get_user_model()
 
@@ -64,9 +65,15 @@ class BackupTests(TestCase):
                                    valor=Decimal('2500'), observacao='Saldo do extrato')
         EventoVida.objects.create(usuario=self.u, titulo='Mudança', tipo='moradia',
                                   data=date(2026, 1, 5), transacao=self.t)
-        RegraCategoria.objects.create(usuario=self.u, termo='ALUGUEL',
-                                      categoria=self.cat, recorrente=self.tf,
-                                      aplica_a='despesa')
+        regra = RegraCategoria.objects.create(usuario=self.u, termo='ALUGUEL',
+                                              categoria=self.cat, recorrente=self.tf,
+                                              aplica_a='despesa')
+        cp = Contrapartida.objects.create(
+            usuario=self.u, origem=self.t, regra=regra, tipo='despesa',
+            descricao='Pix crédito', valor_total=Decimal('1065.00'),
+            taxa=Decimal('6.5'), categoria=self.cat,
+        )
+        cp.gerar_parcelas(date(2026, 3, 23), 3, 10)
 
     def _exportar(self):
         call_command('backup', usuario='dono', saida=str(self.arquivo), stdout=StringIO())
@@ -123,11 +130,11 @@ class BackupTests(TestCase):
     def test_restaura_apos_perda_total(self):
         self._exportar()
         # simula a perda do banco
-        for modelo in (RegraCategoria, EventoVida, AjusteSaldo, SaldoExtra, Meta,
-                       ParcelaEmprestimo, Emprestimo, Essencial, Transacao, TransacaoFixa,
-                       Entidade, Categoria):
-            if modelo is ParcelaEmprestimo:
-                modelo.objects.all().delete()
+        for modelo in (ParcelaContrapartida, Contrapartida, RegraCategoria, EventoVida,
+                       AjusteSaldo, SaldoExtra, Meta, ParcelaEmprestimo, Emprestimo,
+                       Essencial, Transacao, TransacaoFixa, Entidade, Categoria):
+            if modelo in (ParcelaEmprestimo, ParcelaContrapartida):
+                modelo.objects.all().delete()      # não têm campo `usuario`
             else:
                 modelo.objects.filter(usuario=self.u).delete()
         self.assertEqual(Transacao.objects.filter(usuario=self.u).count(), 0)
@@ -140,6 +147,11 @@ class BackupTests(TestCase):
         self.assertIsNotNone(ancora)
         self.assertEqual(ancora.valor, Decimal('2500.00'))
         self.assertEqual(ancora.data, date(2026, 1, 15))
+
+        cp = Contrapartida.objects.get(usuario=self.u)
+        self.assertEqual(cp.valor_total, Decimal('1065.00'))
+        self.assertEqual(cp.parcelas.count(), 3)
+        self.assertEqual(cp.origem, Transacao.objects.get(usuario=self.u))
         self.assertEqual(ParcelaEmprestimo.objects.filter(emprestimo__usuario=self.u).count(), 2)
 
     def test_restauracao_preserva_valores_e_datas(self):
