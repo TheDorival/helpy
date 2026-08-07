@@ -14,10 +14,10 @@ from .forms import (CategoriaForm, EmprestimoForm, EntidadeForm, EventoVidaForm,
                     RegraCategoriaForm, TransacaoFixaForm, TransacaoForm)
 from .importacao import (ExtratoInvalido, conferencia_lancamentos, detectar_colunas, ler_csv,
                          meta_do_extrato, parse_csv, parse_linhas_caixa, parse_ofx)
-from .models import (CONTA_CHOICES, AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo,
-                     Entidade, Essencial, EventoVida, ImportacaoExtrato, Meta, ParcelaEmprestimo,
-                     RegraCategoria, SaldoExtra, Transacao, TransacaoFixa, _avancar_data,
-                     _data_parcela)
+from .models import (CONTA_CHOICES, AjusteSaldo, Categoria, CategoriaEssencial, Contrapartida,
+                     Emprestimo, Entidade, Essencial, EventoVida, ImportacaoExtrato, Meta,
+                     ParcelaContrapartida, ParcelaEmprestimo, RegraCategoria, SaldoExtra,
+                     Transacao, TransacaoFixa, _avancar_data, _data_parcela)
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -100,6 +100,31 @@ def _entidades_ctx(usuario):
     return qs, grupos
 
 
+def _avisar_contrapartida(request, transacao):
+    """Gera a cobrança futura do lançamento manual e avisa o que foi agendado.
+
+    Sem o aviso, parcelas apareceriam nas previstas sem o usuário saber de onde
+    vieram — surpresa é a última coisa que se quer num app de dinheiro.
+
+    `_gerar_contrapartida` e `_regra_para_transacao` são definidas mais abaixo
+    neste módulo; a resolução acontece na chamada, não na definição.
+    """
+    regra = _regra_para_transacao(request.user, transacao)
+    contrapartida = _gerar_contrapartida(transacao, regra)
+    if not contrapartida:
+        return
+
+    n = contrapartida.parcelas.count()
+    primeira = contrapartida.parcelas.first()
+    em_vezes = f'em {n}x ' if n > 1 else ''
+    messages.info(
+        request,
+        f'Cobrança futura agendada: {request.user.simbolo_moeda} '
+        f'{contrapartida.valor_total} {em_vezes}a partir de '
+        f'{primeira.data_vencimento:%d/%m/%Y}.',
+    )
+
+
 @login_required
 def nova_receita(request):
     entidades, _ = _entidades_ctx(request.user)
@@ -109,6 +134,7 @@ def nova_receita(request):
         t.usuario = request.user
         t.tipo = 'receita'
         t.save()
+        _avisar_contrapartida(request, t)
         return redirect('receitas')
     return render(request, 'financeiro/transacao_form.html', {
         'form': form, 'tipo': 'receita', 'titulo': 'Nova receita',
@@ -125,6 +151,7 @@ def nova_despesa(request):
         t.usuario = request.user
         t.tipo = 'despesa'
         t.save()
+        _avisar_contrapartida(request, t)
         return redirect('despesas')
     return render(request, 'financeiro/transacao_form.html', {
         'form': form, 'tipo': 'despesa', 'titulo': 'Nova despesa',
@@ -246,7 +273,46 @@ def projetar_fixas(usuario, inicio, fim, tipo=None):
             guarda += 1
             d = tf.avancar(d, regra)
 
+    itens.extend(projetar_contrapartidas(usuario, inicio, fim, tipo))
     itens.sort(key=lambda x: x['data'])
+    return itens
+
+
+def projetar_contrapartidas(usuario, inicio, fim, tipo=None):
+    """Parcelas de cobranças futuras ainda não quitadas, no período.
+
+    Entram na mesma projeção das recorrentes: são compromissos certos que ainda
+    não aconteceram. Nada é gravado — a parcela só vira `Transacao` quando a
+    cobrança de fato chegar.
+    """
+    qs = (
+        ParcelaContrapartida.objects
+        .filter(
+            contrapartida__usuario=usuario,
+            quitada=False,
+            transacao__isnull=True,
+            data_vencimento__gte=inicio,
+            data_vencimento__lte=fim,
+        )
+        .select_related('contrapartida', 'contrapartida__categoria')
+    )
+    if tipo:
+        qs = qs.filter(contrapartida__tipo=tipo)
+
+    itens = []
+    for p in qs:
+        cp = p.contrapartida
+        total = cp.parcelas.count()
+        sufixo = f' ({p.numero}/{total})' if total > 1 else ''
+        itens.append({
+            'data': p.data_vencimento,
+            'tipo': cp.tipo,
+            'nome_display': (cp.descricao or 'Cobrança futura') + sufixo,
+            'valor': p.valor,
+            'categoria': cp.categoria,
+            'fixa': None,
+            'parcela': p,
+        })
     return itens
 
 
@@ -1444,6 +1510,8 @@ def _aplicar_regras(usuario, lancamentos):
         l['categoria_nome'] = ''
         l['entidade_id'] = None
         l['regra_fixa_id'] = None
+        l['regra_id'] = None
+        l['gera_contrapartida'] = False
         # Casa com o texto completo do extrato (operação + favorecido), mesmo que
         # a descrição exibida mostre apenas o favorecido.
         texto = l.get('texto_completo') or l['descricao']
@@ -1454,8 +1522,77 @@ def _aplicar_regras(usuario, lancamentos):
                     l['categoria_nome'] = r.categoria.nome
                 l['entidade_id'] = r.entidade_id
                 l['regra_fixa_id'] = r.recorrente_id
+                l['regra_id'] = r.pk
+                l['gera_contrapartida'] = r.gera_contrapartida
                 break
     return lancamentos
+
+
+def _gerar_contrapartida(transacao, regra):
+    """Cria a cobrança futura de uma transação, conforme a regra.
+
+    O sinal é sempre invertido: o Pix no crédito entra como receita hoje e volta
+    como despesa na fatura. As parcelas ficam pendentes — nada vira `Transacao`
+    aqui, porque a cobrança ainda não aconteceu.
+
+    Devolve a contrapartida criada, ou None quando a regra não pede uma.
+    """
+    if not regra or not regra.gera_contrapartida:
+        return None
+
+    oposto = 'despesa' if transacao.tipo == 'receita' else 'receita'
+    contrapartida = Contrapartida.objects.create(
+        usuario=transacao.usuario,
+        origem=transacao,
+        regra=regra,
+        tipo=oposto,
+        conta=transacao.conta,
+        descricao=(transacao.descricao or transacao.nome_display)[:200],
+        categoria=regra.contrapartida_categoria,
+        valor_total=regra.valor_com_taxa(transacao.valor),
+        taxa=regra.contrapartida_taxa,
+    )
+    contrapartida.gerar_parcelas(
+        transacao.data,
+        regra.contrapartida_parcelas,
+        regra.contrapartida_dia,
+    )
+    return contrapartida
+
+
+def _gerar_contrapartidas_em_lote(usuario, transacoes, regras_ids):
+    """Gera as cobranças futuras das transações recém-importadas.
+
+    Recebe as duas listas em paralelo porque só depois do `bulk_create` as
+    transações têm id para servir de origem. Devolve quantas foram criadas.
+    """
+    pedidas = {rid for rid in regras_ids if rid}
+    if not pedidas:
+        return 0
+
+    regras = {
+        r.pk: r for r in RegraCategoria.objects
+        .filter(usuario=usuario, pk__in=pedidas)
+        .select_related('contrapartida_categoria')
+    }
+
+    criadas = 0
+    for transacao, regra_id in zip(transacoes, regras_ids):
+        regra = regras.get(regra_id) if regra_id else None
+        if regra and transacao.pk and _gerar_contrapartida(transacao, regra):
+            criadas += 1
+    return criadas
+
+
+def _regra_para_transacao(usuario, transacao):
+    """Primeira regra ativa que casa com a transação — usada no lançamento manual."""
+    texto = transacao.descricao or transacao.nome_display
+    for r in (RegraCategoria.objects
+              .filter(usuario=usuario, ativa=True, gera_contrapartida=True)
+              .select_related('contrapartida_categoria')):
+        if r.combina(texto, transacao.tipo):
+            return r
+    return None
 
 
 def _preparar_lancamentos(usuario, lancamentos):
@@ -1699,7 +1836,8 @@ def revisar_extrato(request):
         )
 
         novas = []
-        conciliadas = antecipadas = 0
+        regras_das_novas = []
+        conciliadas = antecipadas = contrapartidas = 0
         for i, l in enumerate(lancamentos):
             if str(i) not in selecionados:
                 continue
@@ -1769,9 +1907,13 @@ def revisar_extrato(request):
                 origem_fixa_id=fixa_id,
                 observacao=observacao,
             ))
+            # A regra é guardada em paralelo: só dá para gerar a contrapartida
+            # depois que a transação existir e tiver id.
+            regras_das_novas.append(l.get('regra_id') if l.get('gera_contrapartida') else None)
 
         if novas:
             Transacao.objects.bulk_create(novas)
+            contrapartidas = _gerar_contrapartidas_em_lote(request.user, novas, regras_das_novas)
         imp.n_importadas = len(novas)
         imp.n_ignoradas = len(lancamentos) - len(novas)
         imp.save(update_fields=['n_importadas', 'n_ignoradas'])
@@ -1780,6 +1922,8 @@ def revisar_extrato(request):
         partes = [f'{len(novas)} lançamento(s) importado(s) de {dados["arquivo_nome"]}.']
         if conciliadas:
             partes.append(f'{conciliadas} conciliado(s) com lançamentos de recorrentes.')
+        if contrapartidas:
+            partes.append(f'{contrapartidas} cobrança(s) futura(s) agendada(s).')
         if antecipadas:
             partes.append(f'{antecipadas} recorrente(s) marcada(s) como já lançada(s).')
         if imp.n_ignoradas:
@@ -1829,6 +1973,72 @@ def cancelar_importacao(request):
 
 
 # ── REGRAS DE CATEGORIZAÇÃO ───────────────────────────────────────────────────
+
+@login_required
+def contrapartidas(request):
+    """Cobranças futuras geradas por transações, com o que ainda falta pagar."""
+    itens = (
+        Contrapartida.objects
+        .filter(usuario=request.user)
+        .select_related('categoria', 'origem', 'regra')
+        .prefetch_related('parcelas')
+    )
+    lista = []
+    for cp in itens:
+        parcelas = list(cp.parcelas.all())
+        pendentes = [p for p in parcelas if not p.quitada]
+        lista.append({
+            'obj': cp,
+            'parcelas': parcelas,
+            'n_pendentes': len(pendentes),
+            'valor_pendente': sum((p.valor for p in pendentes), Decimal('0')),
+            'quitada': not pendentes,
+        })
+
+    return render(request, 'financeiro/contrapartidas.html', {
+        'contrapartidas': lista,
+        'hoje': date.today(),
+    })
+
+
+@login_required
+def quitar_parcela(request, pk):
+    """Confirma que a cobrança aconteceu: a parcela vira transação de verdade."""
+    parcela = get_object_or_404(
+        ParcelaContrapartida, pk=pk, contrapartida__usuario=request.user,
+    )
+    if request.method != 'POST' or parcela.quitada:
+        return redirect('contrapartidas')
+
+    cp = parcela.contrapartida
+    data_str = (request.POST.get('data') or '').strip()
+    transacao = Transacao.objects.create(
+        usuario=request.user,
+        tipo=cp.tipo,
+        conta=cp.conta,
+        descricao=cp.descricao or 'Cobrança',
+        valor=parcela.valor,
+        data=parse_date(data_str) or parcela.data_vencimento,
+        categoria=cp.categoria,
+        observacao=f'Parcela {parcela.numero} de cobrança gerada automaticamente.',
+    )
+    parcela.quitada = True
+    parcela.transacao = transacao
+    parcela.save(update_fields=['quitada', 'transacao'])
+
+    messages.success(request, f'Parcela {parcela.numero} registrada.')
+    return redirect('contrapartidas')
+
+
+@login_required
+def excluir_contrapartida(request, pk):
+    """Remove a cobrança e as parcelas que ainda não viraram transação."""
+    cp = get_object_or_404(Contrapartida, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        cp.delete()
+        messages.success(request, 'Cobrança futura removida.')
+    return redirect('contrapartidas')
+
 
 @login_required
 def regras(request):
