@@ -293,4 +293,18 @@
 
   {% include 'financeiro/_modal_salario.html' %}
 
+  <script>
+  /* Abre/fecha o formulário de saldo extra */
+  function toggleAddSaldo() {
+    const form = document.getElementById('add-saldo-form');
+    const icone = document.getElementById('add-saldo-icon');
+    const aberto = form.classList.toggle('hidden');
+    if (icone) icone.style.transform = aberto ? '' : 'rotate(45deg)';
+    if (!aberto) {
+      const nome = form.querySelector('input[name=nome]');
+      if (nome) nome.focus();
+    }
+  }
+  </script>
+
 {% endblock %}
