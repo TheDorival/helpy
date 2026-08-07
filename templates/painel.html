@@ -73,14 +73,21 @@
         </button>
       </div>
 
-      <!-- Ajuste do saldo: informa o valor real do extrato -->
+      <!-- Ajuste do saldo: informa o valor real de um bolso -->
       <div id="ajuste-saldo-form" class="hidden mb-3 p-2.5 rounded-md bg-bg border border-line">
         <p class="text-[11px] text-muted mb-2">
-          Informe o saldo que aparece no seu extrato. O Helpy passa a contar a partir dele —
-          nada vira receita ou despesa, então médias e gráficos não mudam.
+          Informe o saldo real do bolso — o que aparece no extrato, ou o que você contou na
+          carteira. O Helpy passa a contar a partir dele; nada vira receita ou despesa, então
+          médias e gráficos não mudam.
         </p>
         <form method="post" action="{% url 'ajustar_saldo' %}" class="space-y-1.5">
           {% csrf_token %}
+          <select name="conta" id="ajuste-conta" aria-label="Bolso" onchange="bolsoMudou()"
+                  class="w-full text-xs bg-surface border border-line rounded px-2 py-1.5 text-tx outline-none focus:border-accent/50 transition-colors">
+            {% for valor, rotulo in contas %}
+              <option value="{{ valor }}">{{ rotulo }}</option>
+            {% endfor %}
+          </select>
           <div class="flex gap-1.5">
             <input type="date" name="data" value="{{ hoje|date:'Y-m-d' }}" max="{{ hoje|date:'Y-m-d' }}"
                    aria-label="Data do saldo" required
@@ -89,7 +96,7 @@
               <span class="text-[10px] text-dim pl-2 pr-1 flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
               <input type="number" name="valor" id="ajuste-valor" step="0.01" required
                      value="{{ saldo_historico|floatformat:'2u' }}"
-                     aria-label="Saldo real da conta"
+                     aria-label="Saldo real do bolso"
                      oninput="mostrarDiferenca()"
                      class="w-full text-xs bg-transparent px-1 py-1.5 text-tx text-right outline-none font-semibold">
             </div>
@@ -103,21 +110,40 @@
                     class="flex-1 text-xs bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 rounded px-2 py-1.5 transition-colors">
               Ajustar saldo
             </button>
-            {% if ancora_saldo %}
-              <button type="submit" form="form-desfazer-ajuste"
-                      class="text-xs text-dim hover:text-red border border-line rounded px-2 py-1.5 transition-colors">
-                Desfazer
-              </button>
-            {% endif %}
+            <button type="submit" form="form-desfazer-ajuste" id="btn-desfazer-ajuste"
+                    class="hidden text-xs text-dim hover:text-red border border-line rounded px-2 py-1.5 transition-colors">
+              Desfazer
+            </button>
           </div>
         </form>
-        {% if ancora_saldo %}
-          <form method="post" action="{% url 'desfazer_ajuste_saldo' %}" id="form-desfazer-ajuste"
-                onsubmit="return confirm('Remover o ajuste? O saldo volta a ser a soma de todos os lançamentos.')">
-            {% csrf_token %}
-          </form>
-        {% endif %}
+        <form method="post" action="{% url 'desfazer_ajuste_saldo' %}" id="form-desfazer-ajuste"
+              onsubmit="return confirm('Remover o ajuste deste bolso? O saldo volta a ser a soma dos lançamentos.')">
+          {% csrf_token %}
+          <input type="hidden" name="conta" id="desfazer-conta" value="banco">
+        </form>
       </div>
+
+      <!-- Outros bolsos: dinheiro, vale, outro -->
+      {% if bolsos|length > 1 %}
+        <div class="space-y-1.5 mb-3 pt-2 border-t border-line">
+          {% for b in bolsos %}
+            {% if b.conta != 'banco' %}
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="text-xs text-dim truncate">{{ b.rotulo }}</span>
+                  {% if b.restrito %}
+                    <span class="text-[10px] text-amber-400/80 bg-bg border border-line rounded px-1 flex-shrink-0"
+                          title="Uso restrito — não entra no disponível">restrito</span>
+                  {% endif %}
+                </div>
+                <span class="text-xs {% if b.saldo < 0 %}text-red{% else %}text-tx{% endif %} flex-shrink-0">
+                  {{ request.user.simbolo_moeda }} {{ b.saldo|floatformat:"2g" }}
+                </span>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
 
       {% if saldos_extras %}
         <div class="space-y-1.5 mb-3">
@@ -143,11 +169,24 @@
           </div>
           {% endfor %}
         </div>
-        <div class="border-t border-line pt-2 mb-3">
+      {% endif %}
+
+      {% if saldos_extras or saldo_restrito %}
+        <div class="border-t border-line pt-2 mb-3 space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-muted">Total</span>
-            <span class="text-xs font-semibold text-tx">{{ request.user.simbolo_moeda }} {{ saldo_total|floatformat:"2g" }}</span>
+            <span class="text-xs text-muted">Disponível</span>
+            <span class="text-xs font-semibold text-tx">{{ request.user.simbolo_moeda }} {{ saldo_disponivel|floatformat:"2g" }}</span>
           </div>
+          {% if saldo_restrito %}
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-dim" title="Vale só compra comida — fora do disponível">Restrito</span>
+              <span class="text-xs text-dim">{{ request.user.simbolo_moeda }} {{ saldo_restrito|floatformat:"2g" }}</span>
+            </div>
+            <div class="flex items-center justify-between pt-1 border-t border-line/50">
+              <span class="text-xs text-muted">Total</span>
+              <span class="text-xs font-semibold text-tx">{{ request.user.simbolo_moeda }} {{ saldo_total|floatformat:"2g" }}</span>
+            </div>
+          {% endif %}
         </div>
       {% endif %}
 
@@ -370,16 +409,45 @@
     const form = document.getElementById('ajuste-saldo-form');
     const fechado = form.classList.toggle('hidden');
     if (!fechado) {
-      mostrarDiferenca();
+      bolsoMudou();
       const campo = document.getElementById('ajuste-valor');
       if (campo) { campo.focus(); campo.select(); }
     }
   }
 
-  /* Mostra de quanto é o acerto antes de confirmar — sem surpresa depois */
-  const SALDO_ATUAL = {{ saldo_historico|floatformat:'2u'|default:'0' }};
+  /* Saldo e âncora de cada bolso, para trocar sem recarregar a página */
+  const BOLSOS = {
+    {% for b in bolsos %}"{{ b.conta }}": { saldo: {{ b.saldo|floatformat:'2u' }}, ancorado: {% if b.ancora %}true{% else %}false{% endif %} }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
   const MOEDA = "{{ request.user.simbolo_moeda|escapejs }}";
 
+  function bolsoAtual() {
+    const sel = document.getElementById('ajuste-conta');
+    return sel ? sel.value : 'banco';
+  }
+
+  function saldoAtual() {
+    const b = BOLSOS[bolsoAtual()];
+    return b ? b.saldo : 0;      // bolso ainda sem movimento nenhum
+  }
+
+  /* Troca de bolso: repõe o valor sugerido e ajusta o botão de desfazer */
+  function bolsoMudou() {
+    const conta = bolsoAtual();
+    const campo = document.getElementById('ajuste-valor');
+    if (campo) campo.value = saldoAtual().toFixed(2);
+
+    const oculto = document.getElementById('desfazer-conta');
+    if (oculto) oculto.value = conta;
+
+    const botao = document.getElementById('btn-desfazer-ajuste');
+    if (botao) botao.classList.toggle('hidden', !(BOLSOS[conta] && BOLSOS[conta].ancorado));
+
+    mostrarDiferenca();
+  }
+
+  /* Mostra de quanto é o acerto antes de confirmar — sem surpresa depois */
   function mostrarDiferenca() {
     const aviso = document.getElementById('ajuste-diferenca');
     const campo = document.getElementById('ajuste-valor');
@@ -388,7 +456,7 @@
     const novo = parseFloat(campo.value);
     if (isNaN(novo)) { aviso.textContent = ''; return; }
 
-    const dif = Math.round((novo - SALDO_ATUAL) * 100) / 100;
+    const dif = Math.round((novo - saldoAtual()) * 100) / 100;
     if (dif === 0) {
       aviso.textContent = 'Igual ao saldo atual — nada muda.';
       aviso.className = 'text-[11px] text-dim';

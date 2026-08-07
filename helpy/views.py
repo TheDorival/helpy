@@ -7,7 +7,8 @@ from django.db.models import Sum
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import cache_control
 
-from financeiro.models import AjusteSaldo, Essencial, Meta, SaldoExtra, Transacao
+from financeiro.models import (CONTA_CHOICES, AjusteSaldo, Essencial, Meta, SaldoExtra,
+                               Transacao, conta_e_restrita)
 from financeiro.views import _periodo, projetar_fixas, sincronizar_fixas
 
 
@@ -26,18 +27,19 @@ def home(request):
     return render(request, 'home.html')
 
 
-def _saldo_historico(usuario):
-    """Saldo da conta.
+def _saldo_historico(usuario, conta='banco'):
+    """Saldo de um bolso.
 
-    Sem âncora, é a soma de tudo que já foi lançado. Com âncora, parte do saldo
-    real informado pelo usuário e soma só o que veio depois — o que aconteceu
-    antes já está embutido naquele número. Lançamentos do próprio dia da âncora
-    ficam de fora: o saldo do extrato naquela data já os contabiliza.
+    Sem âncora, é a soma de tudo que já foi lançado naquele bolso. Com âncora,
+    parte do saldo real informado pelo usuário e soma só o que veio depois — o
+    que aconteceu antes já está embutido naquele número. Lançamentos do próprio
+    dia da âncora ficam de fora: o saldo do extrato naquela data já os
+    contabiliza.
     """
-    movimentos = Transacao.objects.filter(usuario=usuario)
+    movimentos = Transacao.objects.filter(usuario=usuario, conta=conta)
     base = 0
 
-    ancora = AjusteSaldo.vigente(usuario)
+    ancora = AjusteSaldo.vigente(usuario, conta)
     if ancora:
         base = ancora.valor
         movimentos = movimentos.filter(data__gt=ancora.data)
@@ -45,6 +47,31 @@ def _saldo_historico(usuario):
     rec = movimentos.filter(tipo='receita').aggregate(t=Sum('valor'))['t'] or 0
     desp = movimentos.filter(tipo='despesa').aggregate(t=Sum('valor'))['t'] or 0
     return base + rec - desp
+
+
+def _saldos_por_bolso(usuario):
+    """Saldo de cada bolso, na ordem de CONTA_CHOICES.
+
+    Só entram os bolsos que existem para o usuário — quem nunca lançou nada em
+    dinheiro não precisa ver uma linha "Dinheiro: 0,00" no painel.
+    """
+    ancoras = AjusteSaldo.vigentes(usuario)
+    usadas = set(
+        Transacao.objects.filter(usuario=usuario)
+        .values_list('conta', flat=True).distinct()
+    ) | set(ancoras)
+
+    bolsos = []
+    for valor, rotulo in CONTA_CHOICES:
+        if valor == 'banco' or valor in usadas:
+            bolsos.append({
+                'conta': valor,
+                'rotulo': rotulo,
+                'saldo': _saldo_historico(usuario, valor),
+                'ancora': ancoras.get(valor),
+                'restrito': conta_e_restrita(valor),
+            })
+    return bolsos
 
 
 def _media_despesas_3m(usuario):
@@ -100,10 +127,25 @@ def painel(request):
     hoje = date.today()
     sincronizar_fixas(request.user, limite=hoje)
 
-    saldo_historico = _saldo_historico(request.user)
+    saldo_historico = _saldo_historico(request.user)          # conta bancária
     ancora_saldo = AjusteSaldo.vigente(request.user)
+    bolsos = _saldos_por_bolso(request.user)
     saldos_extras = list(SaldoExtra.objects.filter(usuario=request.user))
-    saldo_total = float(saldo_historico) + sum(float(se.valor) for se in saldos_extras)
+
+    # Vale só compra comida: somar com o resto produziria um total que não se
+    # pode gastar. Por isso o painel mostra disponível e restrito separados.
+    def _somar(itens):
+        return sum(float(v) for v in itens)
+
+    saldo_disponivel = (
+        _somar(b['saldo'] for b in bolsos if not b['restrito'])
+        + _somar(se.valor for se in saldos_extras if not conta_e_restrita(se.tipo))
+    )
+    saldo_restrito = (
+        _somar(b['saldo'] for b in bolsos if b['restrito'])
+        + _somar(se.valor for se in saldos_extras if conta_e_restrita(se.tipo))
+    )
+    saldo_total = saldo_disponivel + saldo_restrito
 
     # Despesas do mês atual (1 a hoje)
     inicio_atual = date(hoje.year, hoje.month, 1)
@@ -136,7 +178,11 @@ def painel(request):
     return render(request, 'painel.html', {
         'saldo_historico': saldo_historico,
         'ancora_saldo': ancora_saldo,
+        'bolsos': bolsos,
+        'contas': CONTA_CHOICES,
         'saldos_extras': saldos_extras,
+        'saldo_disponivel': saldo_disponivel,
+        'saldo_restrito': saldo_restrito,
         'saldo_total': saldo_total,
         'desp_mes_atual': desp_mes_atual,
         'avg_desp_3m': avg_desp_3m,
