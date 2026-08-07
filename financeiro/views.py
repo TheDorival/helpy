@@ -14,9 +14,10 @@ from .forms import (CategoriaForm, EmprestimoForm, EntidadeForm, EventoVidaForm,
                     RegraCategoriaForm, TransacaoFixaForm, TransacaoForm)
 from .importacao import (ExtratoInvalido, conferencia_lancamentos, detectar_colunas, ler_csv,
                          meta_do_extrato, parse_csv, parse_linhas_caixa, parse_ofx)
-from .models import (AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial,
-                     EventoVida, ImportacaoExtrato, Meta, ParcelaEmprestimo, RegraCategoria,
-                     SaldoExtra, Transacao, TransacaoFixa, _avancar_data, _data_parcela)
+from .models import (CONTA_CHOICES, AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo,
+                     Entidade, Essencial, EventoVida, ImportacaoExtrato, Meta, ParcelaEmprestimo,
+                     RegraCategoria, SaldoExtra, Transacao, TransacaoFixa, _avancar_data,
+                     _data_parcela)
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -198,7 +199,7 @@ def sincronizar_fixas(usuario, limite=None):
         while d <= lim_fixa:
             if d not in ocupadas:      # já existe lançamento desta recorrente no dia
                 novas.append(Transacao(
-                    usuario=tf.usuario, tipo=tf.tipo,
+                    usuario=tf.usuario, tipo=tf.tipo, conta=tf.conta,
                     entidade=tf.entidade, descricao=tf.descricao,
                     valor=tf.valor, data=d,
                     categoria=tf.categoria, observacao=tf.observacao,
@@ -294,7 +295,7 @@ def _aplicar_escopo(tf, escopo, usuario):
     desde = _inicio_periodo_atual(usuario) if escopo == 'atuais' else None
     return _ocorrencias_da_fixa(tf, desde).update(
         valor=tf.valor, descricao=tf.descricao, categoria=tf.categoria,
-        entidade=tf.entidade, tipo=tf.tipo, origem_fixa=tf,
+        entidade=tf.entidade, tipo=tf.tipo, conta=tf.conta, origem_fixa=tf,
     )
 
 
@@ -1759,6 +1760,7 @@ def revisar_extrato(request):
 
             novas.append(Transacao(
                 usuario=request.user, tipo=tipo,
+                conta='banco',          # veio de extrato bancário, por definição
                 descricao=descricao or l['descricao'], valor=valor, data=data_lanc,
                 categoria_id=categoria_id,
                 entidade_id=l.get('entidade_id'),
@@ -2127,9 +2129,17 @@ def excluir_saldo_extra(request, pk):
     return redirect('painel')
 
 
+CONTAS_VALIDAS = frozenset(v for v, _ in CONTA_CHOICES)
+
+
+def _conta_valida(valor):
+    """Bolso vindo do formulário, com fallback para a conta bancária."""
+    return valor if valor in CONTAS_VALIDAS else 'banco'
+
+
 @login_required
 def ajustar_saldo(request):
-    """Registra o saldo real da conta em uma data — a âncora do painel."""
+    """Registra o saldo real de um bolso em uma data — a âncora do painel."""
     if request.method != 'POST':
         return redirect('painel')
 
@@ -2150,6 +2160,7 @@ def ajustar_saldo(request):
 
     AjusteSaldo.objects.create(
         usuario=request.user,
+        conta=_conta_valida(request.POST.get('conta')),
         data=data,
         valor=valor,
         observacao=(request.POST.get('observacao') or '').strip()[:200],
@@ -2160,9 +2171,9 @@ def ajustar_saldo(request):
 
 @login_required
 def desfazer_ajuste_saldo(request):
-    """Remove a âncora vigente: o saldo volta a ser a soma dos lançamentos."""
+    """Remove a âncora vigente do bolso: o saldo volta a ser a soma dos lançamentos."""
     if request.method == 'POST':
-        ancora = AjusteSaldo.vigente(request.user)
+        ancora = AjusteSaldo.vigente(request.user, _conta_valida(request.POST.get('conta')))
         if ancora:
             ancora.delete()
             messages.success(request, 'Ajuste removido.')

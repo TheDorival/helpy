@@ -229,6 +229,24 @@
           </select>
         </div>
 
+        <!-- Bolso: as ocorrências geradas herdam esta escolha -->
+        <div>
+          <label for="id_conta" class="block text-xs font-medium text-muted mb-2">
+            Bolso
+          </label>
+          <select name="conta" id="id_conta"
+                  class="w-full bg-bg border border-line rounded-md px-3 py-2 text-sm text-tx focus:outline-none focus:border-accent transition-colors appearance-none">
+            {% for valor, rotulo in form.conta.field.choices %}
+              <option value="{{ valor }}" {% if form.conta.value|stringformat:"s" == valor|stringformat:"s" %}selected{% endif %}>
+                {{ rotulo }}
+              </option>
+            {% endfor %}
+          </select>
+          <p class="text-[11px] text-dim mt-1.5">
+            Todas as ocorrências geradas vão usar este bolso.
+          </p>
+        </div>
+
         <!-- Observação -->
         <div>
           <label for="id_observacao" class="block text-xs font-medium text-muted mb-2">

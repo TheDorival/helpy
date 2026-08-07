@@ -105,7 +105,7 @@ class EntidadeForm(forms.ModelForm):
 class TransacaoForm(forms.ModelForm):
     class Meta:
         model = Transacao
-        fields = ['entidade', 'descricao', 'valor', 'data', 'categoria', 'observacao']
+        fields = ['entidade', 'descricao', 'valor', 'data', 'categoria', 'conta', 'observacao']
 
     def __init__(self, *args, usuario=None, tipo=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -138,7 +138,7 @@ class TransacaoFixaForm(forms.ModelForm):
     class Meta:
         model = TransacaoFixa
         fields = ['tipo', 'descricao', 'entidade', 'valor', 'frequencia', 'intervalo_dias',
-                  'data_inicio', 'data_fim', 'categoria', 'observacao']
+                  'data_inicio', 'data_fim', 'categoria', 'conta', 'observacao']
 
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
