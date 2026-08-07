@@ -37,6 +37,12 @@
             {% else %}
               <span class="text-[10px] text-red bg-red/10 border border-red/20 rounded-full px-2 py-0.5">Despesa</span>
             {% endif %}
+            {% if cat.conta != 'banco' %}
+              <span class="text-[10px] text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5"
+                    title="Os lançamentos vão para este bolso, não para a conta bancária">
+                {{ cat.get_conta_display }}
+              </span>
+            {% endif %}
             {% if cat.prioridade == 'fundamental' %}
               <span class="text-[10px] text-red bg-red/10 border border-red/20 rounded-full px-2 py-0.5">Fundamental</span>
             {% elif cat.prioridade == 'importante' %}
