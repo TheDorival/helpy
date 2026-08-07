@@ -7,7 +7,7 @@ from django.db.models import Sum
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import cache_control
 
-from financeiro.models import Essencial, Meta, SaldoExtra, Transacao
+from financeiro.models import AjusteSaldo, Essencial, Meta, SaldoExtra, Transacao
 from financeiro.views import _periodo, projetar_fixas, sincronizar_fixas
 
 
@@ -27,9 +27,24 @@ def home(request):
 
 
 def _saldo_historico(usuario):
-    rec = Transacao.objects.filter(usuario=usuario, tipo='receita').aggregate(t=Sum('valor'))['t'] or 0
-    desp = Transacao.objects.filter(usuario=usuario, tipo='despesa').aggregate(t=Sum('valor'))['t'] or 0
-    return rec - desp
+    """Saldo da conta.
+
+    Sem âncora, é a soma de tudo que já foi lançado. Com âncora, parte do saldo
+    real informado pelo usuário e soma só o que veio depois — o que aconteceu
+    antes já está embutido naquele número. Lançamentos do próprio dia da âncora
+    ficam de fora: o saldo do extrato naquela data já os contabiliza.
+    """
+    movimentos = Transacao.objects.filter(usuario=usuario)
+    base = 0
+
+    ancora = AjusteSaldo.vigente(usuario)
+    if ancora:
+        base = ancora.valor
+        movimentos = movimentos.filter(data__gt=ancora.data)
+
+    rec = movimentos.filter(tipo='receita').aggregate(t=Sum('valor'))['t'] or 0
+    desp = movimentos.filter(tipo='despesa').aggregate(t=Sum('valor'))['t'] or 0
+    return base + rec - desp
 
 
 def _media_despesas_3m(usuario):

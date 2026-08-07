@@ -745,3 +745,39 @@ class SaldoExtra(models.Model):
 
     def __str__(self):
         return f'{self.nome} — R$ {self.valor}'
+
+
+class AjusteSaldo(models.Model):
+    """Âncora: o saldo real da conta em uma data, conferido no extrato.
+
+    O saldo do painel deixa de ser a soma de tudo que já foi lançado e passa a
+    ser esta âncora mais o que se movimentou depois dela. Serve para quem começou
+    a usar o app no meio do caminho ou para corrigir uma diferença acumulada sem
+    inventar receita ou despesa — o ajuste não entra em médias, resumos nem
+    gráficos de movimento.
+
+    Vale sempre a âncora mais recente; as anteriores ficam como histórico.
+    """
+
+    usuario     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                    related_name='ajustes_saldo')
+    data        = models.DateField(help_text='Data do saldo conferido no extrato')
+    valor       = models.DecimalField(max_digits=12, decimal_places=2,
+                                      help_text='Saldo real da conta nessa data')
+    observacao  = models.CharField(max_length=200, blank=True)
+    criado_em   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Ajuste de saldo'
+        verbose_name_plural = 'Ajustes de saldo'
+        # Desempate por criado_em: dois ajustes no mesmo dia, vale o último feito
+        ordering = ['-data', '-criado_em']
+        indexes = [models.Index(fields=['usuario', '-data'])]
+
+    def __str__(self):
+        return f'{self.data:%d/%m/%Y} — R$ {self.valor}'
+
+    @classmethod
+    def vigente(cls, usuario):
+        """Âncora mais recente do usuário, ou None se ele nunca ajustou o saldo."""
+        return cls.objects.filter(usuario=usuario).first()
