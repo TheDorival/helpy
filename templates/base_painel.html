@@ -115,6 +115,44 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
+    /* ── Movimento ──
+       Discreto de propósito: a página deve parecer que acordou, não que está
+       se exibindo. Deslocamento de poucos pixels, duração curta, e a curva
+       desacelerando no fim — movimento que freia parece natural, movimento
+       linear parece mecânico. */
+    :root {
+      --mov-rapido: 180ms;
+      --mov-base:   420ms;
+      --mov-lento:  800ms;
+      --mov-curva:  cubic-bezier(.22, .61, .36, 1);
+    }
+
+    /* `.entra` some antes de animar; sem isso o elemento pisca já posicionado
+       no primeiro quadro, antes de o CSS de animação valer. */
+    .entra {
+      opacity: 0;
+      animation: sk-fade-in var(--mov-base) var(--mov-curva) forwards;
+    }
+
+    /* Escalonamento: cada filho entra um pouco depois do anterior. Vai até 12
+       porque acima disso o último elemento demoraria demais para aparecer. */
+    .escalona > *  { opacity: 0; animation: sk-fade-in var(--mov-base) var(--mov-curva) forwards; }
+    .escalona > *:nth-child(1)  { animation-delay:   0ms; }
+    .escalona > *:nth-child(2)  { animation-delay:  45ms; }
+    .escalona > *:nth-child(3)  { animation-delay:  90ms; }
+    .escalona > *:nth-child(4)  { animation-delay: 135ms; }
+    .escalona > *:nth-child(5)  { animation-delay: 180ms; }
+    .escalona > *:nth-child(6)  { animation-delay: 225ms; }
+    .escalona > *:nth-child(7)  { animation-delay: 270ms; }
+    .escalona > *:nth-child(8)  { animation-delay: 315ms; }
+    .escalona > *:nth-child(9)  { animation-delay: 360ms; }
+    .escalona > *:nth-child(10) { animation-delay: 405ms; }
+    .escalona > *:nth-child(11) { animation-delay: 450ms; }
+    .escalona > *:nth-child(n+12) { animation-delay: 495ms; }
+
+    /* Barra que cresce: a largura final vai no style inline do elemento */
+    .barra-cresce { transition: width var(--mov-lento) var(--mov-curva); }
+
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus,
@@ -141,6 +179,9 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
       }
+      /* Anular a animação sem devolver a opacidade deixaria a página em branco */
+      .entra, .escalona > * { opacity: 1 !important; }
+      ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
     }
     html[data-reduzir-animacoes="1"] *,
     html[data-reduzir-animacoes="1"] *::before,
@@ -148,6 +189,21 @@
       animation: none !important;
       transition: none !important;
     }
+    html[data-reduzir-animacoes="1"] .entra,
+    html[data-reduzir-animacoes="1"] .escalona > * { opacity: 1 !important; }
+
+    /* Pseudo-elementos de transição não são alcançados pelo seletor `*` acima */
+    html[data-reduzir-animacoes="1"]::view-transition-old(root),
+    html[data-reduzir-animacoes="1"]::view-transition-new(root) { animation: none !important; }
+
+    /* ── Transição entre páginas ──
+       Cross-fade curto no lugar do corte seco da navegação. Navegador sem
+       suporte simplesmente ignora e nada muda. */
+    @view-transition { navigation: auto; }
+    ::view-transition-old(root) { animation: vt-sai var(--mov-rapido) ease-out both; }
+    ::view-transition-new(root) { animation: vt-entra var(--mov-base) var(--mov-curva) both; }
+    @keyframes vt-sai   { to   { opacity: 0; } }
+    @keyframes vt-entra { from { opacity: 0; } }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -498,6 +554,72 @@
     if (e.key === 'Escape') fecharSidebar();
   });
 
+  /* ── Números que contam ──
+     Marque o elemento com `data-conta` e o valor sobe de zero até ele. O texto
+     original é preservado: se o JavaScript não rodar, ou se o usuário pediu
+     menos animação, o número aparece pronto e nada se perde. */
+  (function () {
+    function movimentoReduzido() {
+      return document.documentElement.dataset.reduzirAnimacoes === '1' ||
+             window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    function contar(el) {
+      var texto = el.textContent;
+      var alvo = parseFloat(el.dataset.conta);
+      if (isNaN(alvo)) return;
+
+      // Preserva prefixo e sufixo (símbolo da moeda, "%", etc.)
+      var casas = (el.dataset.contaCasas !== undefined) ? parseInt(el.dataset.contaCasas, 10) : 2;
+      var numero = texto.match(/-?[\d.,]+/);
+      if (!numero) return;
+      var antes = texto.slice(0, numero.index);
+      var depois = texto.slice(numero.index + numero[0].length);
+
+      var inicio = performance.now();
+      var duracao = 800;
+
+      function passo(agora) {
+        var p = Math.min((agora - inicio) / duracao, 1);
+        var suave = 1 - Math.pow(1 - p, 3);        // desacelera no fim
+        var v = alvo * suave;
+        el.textContent = antes + v.toLocaleString('pt-BR', {
+          minimumFractionDigits: casas, maximumFractionDigits: casas,
+        }) + depois;
+        if (p < 1) requestAnimationFrame(passo);
+        else el.textContent = texto;               // fecha exatamente no valor do servidor
+      }
+      requestAnimationFrame(passo);
+    }
+
+    /* Barras crescem do zero. A largura final fica em `data-barra`, para o CSS
+       ter algo para onde transicionar — largura já aplicada não anima. */
+    function crescerBarras() {
+      document.querySelectorAll('[data-barra]').forEach(function (el) {
+        var largura = el.dataset.barra + '%';
+        if (movimentoReduzido()) { el.style.width = largura; return; }
+        el.style.width = '0%';
+        // Dois quadros: o primeiro aplica o zero, o segundo dispara a transição
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { el.style.width = largura; });
+        });
+      });
+    }
+
+    function aplicar() {
+      if (!movimentoReduzido()) {
+        document.querySelectorAll('[data-conta]').forEach(contar);
+      }
+      crescerBarras();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', aplicar);
+    } else {
+      aplicar();
+    }
+  })();
+
   /* ── Formata inputs de dinheiro com 2 casas decimais ── */
   (function () {
     function formatarMoney(input) {
@@ -546,7 +668,13 @@
       reveal();
     }
 
+    /* Onde há transição de página, o esqueleto ao clicar atrapalha: ele seria
+       capturado no instantâneo da página que sai e o usuário veria o esqueleto
+       piscar antes do cross-fade. Um ou outro, nunca os dois. */
+    var temTransicao = 'startViewTransition' in document;
+
     document.addEventListener('click', function (e) {
+      if (temTransicao) return;
       var a = e.target.closest('a[href]');
       if (!a) return;
       var h = a.getAttribute('href') || '';
