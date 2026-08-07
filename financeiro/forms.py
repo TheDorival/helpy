@@ -197,7 +197,8 @@ class TransacaoFixaForm(forms.ModelForm):
 class MetaForm(forms.ModelForm):
     class Meta:
         model = Meta
-        fields = ['nome', 'tipo', 'valor_alvo', 'categoria', 'data_inicio', 'data_fim', 'observacao']
+        fields = ['nome', 'tipo', 'periodicidade', 'valor_alvo', 'categoria',
+                  'data_inicio', 'data_fim', 'observacao']
 
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -209,6 +210,9 @@ class MetaForm(forms.ModelForm):
         self.fields['data_fim'].required = False
         self.fields['categoria'].required = False
         self.fields['observacao'].required = False
+        # Tem padrão no modelo: quem não informar recebe "mensal", em vez de um
+        # erro de formulário por um campo que o usuário nem viu.
+        self.fields['periodicidade'].required = False
         if not self.instance.pk:
             self.fields['data_inicio'].initial = date.today()
         if usuario:
@@ -218,6 +222,8 @@ class MetaForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if not cleaned.get('periodicidade'):
+            cleaned['periodicidade'] = 'mensal'
         if cleaned.get('tipo') == 'limite_gasto' and not cleaned.get('categoria'):
             self.add_error('categoria', 'Selecione uma categoria para o limite de gasto.')
         data_inicio = cleaned.get('data_inicio')

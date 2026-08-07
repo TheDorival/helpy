@@ -73,6 +73,21 @@
           {% if form.tipo.errors %}<p class="text-xs text-red mt-1">{{ form.tipo.errors.0 }}</p>{% endif %}
         </div>
 
+        <!-- Periodicidade -->
+        <div class="mb-4">
+          <label for="id_periodicidade" class="block text-xs font-medium text-muted mb-1">Vale por</label>
+          <select name="periodicidade" id="id_periodicidade"
+                  class="w-full text-sm bg-bg border border-line rounded-md px-3 py-2 text-tx outline-none focus:border-accent/50 transition-colors">
+            {% for val, label in form.fields.periodicidade.choices %}
+              <option value="{{ val }}" {% if form.periodicidade.value == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-[10px] text-dim">
+            Mensal reinicia a cada mês, seguindo o seu dia de corte. No período inteiro
+            acumula até a data fim — para casos como um teto de gasto numa reforma.
+          </p>
+        </div>
+
         <!-- Categoria (só para limite_gasto) -->
         <div id="cat-row" class="mb-4 {% if form.tipo.value != 'limite_gasto' %}hidden{% endif %}">
           <label class="block text-xs font-medium text-muted mb-1">Categoria de gasto</label>
