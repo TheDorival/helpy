@@ -18,10 +18,10 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from financeiro.models import (AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo,
-                               Entidade, Essencial, EventoVida, ImportacaoExtrato, Meta,
-                               ParcelaEmprestimo, RegraCategoria, SaldoExtra,
-                               Transacao, TransacaoFixa)
+from financeiro.models import (AjusteSaldo, Categoria, CategoriaEssencial, Contrapartida,
+                               Emprestimo, Entidade, Essencial, EventoVida, ImportacaoExtrato,
+                               Meta, ParcelaContrapartida, ParcelaEmprestimo, RegraCategoria,
+                               SaldoExtra, Transacao, TransacaoFixa)
 
 Usuario = get_user_model()
 
@@ -42,13 +42,28 @@ MODELOS = [
     ('ajustes_saldo', AjusteSaldo),
     ('eventos_vida', EventoVida),
     ('regras',       RegraCategoria),
+    # Depois das regras e das transações: a contrapartida referencia as duas
+    ('contrapartidas', Contrapartida),
+    ('parcelas_contrapartida', ParcelaContrapartida),
 ]
 
 # Campos que apontam para outro registro exportado (viram referência por índice)
 RELACOES = {
     'categoria', 'entidade', 'origem_fixa', 'importacao', 'transacao',
     'transacao_fixa', 'transacao_fixa_2', 'recorrente', 'emprestimo',
+    'origem', 'regra', 'contrapartida', 'contrapartida_categoria',
 }
+
+# Modelos sem campo `usuario`: o dono vem pelo registro pai
+DONO_INDIRETO = {
+    ParcelaEmprestimo:     'emprestimo__usuario',
+    ParcelaContrapartida:  'contrapartida__usuario',
+}
+
+
+def _do_usuario(modelo, usuario):
+    """QuerySet dos registros que pertencem ao usuário, direta ou indiretamente."""
+    return modelo.objects.filter(**{DONO_INDIRETO.get(modelo, 'usuario'): usuario})
 
 
 def _serializar_valor(valor):
@@ -95,11 +110,7 @@ class Command(BaseCommand):
         indices = {}
 
         for chave, modelo in MODELOS:
-            if modelo is ParcelaEmprestimo:
-                qs = modelo.objects.filter(emprestimo__usuario=usuario)
-            else:
-                qs = modelo.objects.filter(usuario=usuario)
-            qs = qs.order_by('pk')
+            qs = _do_usuario(modelo, usuario).order_by('pk')
 
             linhas, indices[modelo] = [], {}
             for pos, obj in enumerate(qs):
@@ -163,10 +174,7 @@ class Command(BaseCommand):
 
         if substituir:
             for _, modelo in reversed(MODELOS):
-                if modelo is ParcelaEmprestimo:
-                    modelo.objects.filter(emprestimo__usuario=usuario).delete()
-                else:
-                    modelo.objects.filter(usuario=usuario).delete()
+                _do_usuario(modelo, usuario).delete()
             self.stdout.write('Dados anteriores removidos.')
 
         criados = {}   # modelo → lista de objetos na ordem do backup
@@ -252,7 +260,7 @@ class Command(BaseCommand):
             else:
                 campos[nome] = self._valor_para_campo(campo, valor)
 
-        if modelo is not ParcelaEmprestimo:
+        if modelo not in DONO_INDIRETO:
             campos['usuario'] = usuario
         return modelo(**campos)
 
