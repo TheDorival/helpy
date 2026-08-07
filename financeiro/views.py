@@ -910,9 +910,36 @@ def metas(request):
     })
 
 
+def _preenchimento_da_sugestao(request):
+    """Valores vindos do link de sugestão, se houver.
+
+    Fica aqui e não no template de propósito: `request.GET.valor` usado como
+    argumento de filtro estoura com VariableDoesNotExist quando a chave não
+    existe — ao contrário de uma variável solta, argumento de filtro não falha
+    em silêncio. Era o que derrubava a tela de nova meta e a de edição.
+    """
+    inicial = {}
+    tipo = request.GET.get('tipo')
+    if tipo in dict(Meta.TIPO_CHOICES):
+        inicial['tipo'] = tipo
+
+    try:
+        inicial['valor_alvo'] = Decimal(request.GET['valor'])
+    except (KeyError, InvalidOperation):
+        pass
+
+    categoria = request.GET.get('categoria')
+    if categoria and categoria.isdigit():
+        if Categoria.objects.filter(pk=categoria, usuario=request.user).exists():
+            inicial['categoria'] = categoria
+
+    return inicial
+
+
 @login_required
 def nova_meta(request):
-    form = MetaForm(request.POST or None, usuario=request.user)
+    form = MetaForm(request.POST or None, usuario=request.user,
+                    initial=_preenchimento_da_sugestao(request))
     if request.method == 'POST' and form.is_valid():
         m = form.save(commit=False)
         m.usuario = request.user
