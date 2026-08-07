@@ -200,11 +200,36 @@ class Entidade(models.Model):
         return self.nome
 
 
+# ── Bolsos ────────────────────────────────────────────────────────────────────
+# De onde o dinheiro saiu ou para onde entrou. Sem isso, uma gratificação em
+# espécie infla o saldo bancário e um gasto de vale o derruba — e a conferência
+# contra o extrato, que é o que garante que a importação está íntegra, quebra.
+CONTA_CHOICES = [
+    ('banco',    'Conta bancária'),
+    ('dinheiro', 'Dinheiro'),
+    ('vale',     'Vale alimentação/refeição'),
+    ('outro',    'Outro'),
+]
+
+# Vale só compra comida: somar com o resto dá um total que não existe na prática
+CONTAS_RESTRITAS = frozenset({'vale'})
+
+
+def conta_e_restrita(conta):
+    return conta in CONTAS_RESTRITAS
+
+
+def _campo_conta(ajuda):
+    return models.CharField(max_length=10, choices=CONTA_CHOICES, default='banco',
+                            db_index=True, help_text=ajuda)
+
+
 class Transacao(models.Model):
     TIPO_CHOICES = [('receita', 'Receita'), ('despesa', 'Despesa')]
 
     usuario   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transacoes')
     tipo      = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    conta     = _campo_conta('Bolso de onde o dinheiro saiu ou entrou.')
     entidade  = models.ForeignKey(Entidade, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes')
     descricao = models.CharField(max_length=200, blank=True, default='')   # legado / fallback
     valor     = models.DecimalField(max_digits=12, decimal_places=2)
@@ -251,6 +276,7 @@ class TransacaoFixa(models.Model):
 
     usuario        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transacoes_fixas')
     tipo           = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    conta          = _campo_conta('Bolso que as ocorrências desta recorrente vão usar.')
     entidade       = models.ForeignKey(Entidade, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes_fixas')
     descricao      = models.CharField(max_length=200, blank=True, default='')   # legado / fallback
     valor          = models.DecimalField(max_digits=12, decimal_places=2)
@@ -761,6 +787,7 @@ class AjusteSaldo(models.Model):
 
     usuario     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                     related_name='ajustes_saldo')
+    conta       = _campo_conta('Bolso que este ajuste corrige.')
     data        = models.DateField(help_text='Data do saldo conferido no extrato')
     valor       = models.DecimalField(max_digits=12, decimal_places=2,
                                       help_text='Saldo real da conta nessa data')
@@ -772,12 +799,20 @@ class AjusteSaldo(models.Model):
         verbose_name_plural = 'Ajustes de saldo'
         # Desempate por criado_em: dois ajustes no mesmo dia, vale o último feito
         ordering = ['-data', '-criado_em']
-        indexes = [models.Index(fields=['usuario', '-data'])]
+        indexes = [models.Index(fields=['usuario', 'conta', '-data'])]
 
     def __str__(self):
-        return f'{self.data:%d/%m/%Y} — R$ {self.valor}'
+        return f'{self.get_conta_display()} {self.data:%d/%m/%Y} — R$ {self.valor}'
 
     @classmethod
-    def vigente(cls, usuario):
-        """Âncora mais recente do usuário, ou None se ele nunca ajustou o saldo."""
-        return cls.objects.filter(usuario=usuario).first()
+    def vigente(cls, usuario, conta='banco'):
+        """Âncora mais recente daquele bolso, ou None se ele nunca foi ajustado."""
+        return cls.objects.filter(usuario=usuario, conta=conta).first()
+
+    @classmethod
+    def vigentes(cls, usuario):
+        """Dicionário {conta: âncora} com a âncora vigente de cada bolso."""
+        encontradas = {}
+        for ajuste in cls.objects.filter(usuario=usuario):
+            encontradas.setdefault(ajuste.conta, ajuste)   # ordering já traz a mais recente
+        return encontradas
