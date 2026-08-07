@@ -1,0 +1,92 @@
+# Pilha do servidor próprio: Postgres + aplicação + túnel.
+#
+# Nenhuma porta é publicada para a internet. O túnel liga de dentro para fora,
+# então o roteador continua fechado — não há o que port-scanear.
+#
+#   docker compose -f deploy/compose.yaml up -d
+#
+# Rode sempre a partir da raiz do repositório: o build usa o repositório inteiro
+# como contexto.
+
+name: helpy
+
+# Log sem limite enche o disco e derruba o servidor num domingo à noite.
+x-log: &log
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    logging: *log
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-helpy}
+      POSTGRES_USER: ${POSTGRES_USER:-helpy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no deploy/.env}
+      # Sem isso o Postgres aceita conexão local sem senha dentro do container
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    volumes:
+      - dados-postgres:/var/lib/postgresql/data
+    # Sem `ports`: o banco só existe dentro da rede do compose. Para acessá-lo
+    # da máquina, use `docker compose exec db psql`.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-helpy} -d ${POSTGRES_DB:-helpy}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Migrations em serviço separado, e não no boot da aplicação: se falharem, a
+  # falha aparece de uma vez em vez de virar um web reiniciando em loop.
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: helpy-app
+    restart: "no"
+    logging: *log
+    env_file: .env
+    command: python manage.py migrate --noinput
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: helpy-app
+    restart: unless-stopped
+    logging: *log
+    env_file: .env
+    # Só o localhost enxerga esta porta. O túnel fala com o container pela rede
+    # interna; esta publicação existe para você testar de dentro da máquina.
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5).status < 500 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Túnel da Cloudflare: conexão de saída, autenticada por token.
+  # Crie o túnel no painel da Cloudflare e aponte o hostname para http://web:8000
+  tunel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    logging: *log
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?defina TUNNEL_TOKEN no deploy/.env}
+    depends_on:
+      - web
+
+volumes:
+  dados-postgres:
