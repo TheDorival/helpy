@@ -18,8 +18,8 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from financeiro.models import (Categoria, CategoriaEssencial, Emprestimo, Entidade,
-                               Essencial, EventoVida, ImportacaoExtrato, Meta,
+from financeiro.models import (AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo,
+                               Entidade, Essencial, EventoVida, ImportacaoExtrato, Meta,
                                ParcelaEmprestimo, RegraCategoria, SaldoExtra,
                                Transacao, TransacaoFixa)
 
@@ -39,6 +39,7 @@ MODELOS = [
     ('parcelas',     ParcelaEmprestimo),
     ('metas',        Meta),
     ('saldos_extras', SaldoExtra),
+    ('ajustes_saldo', AjusteSaldo),
     ('eventos_vida', EventoVida),
     ('regras',       RegraCategoria),
 ]
