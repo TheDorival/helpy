@@ -843,6 +843,131 @@ def exportar_dados(request):
     return response
 
 
+def _primeiro_dia(hoje, meses_atras):
+    """Primeiro dia do mês N meses antes do mês de `hoje`."""
+    total = hoje.year * 12 + (hoje.month - 1) - meses_atras
+    return date(total // 12, total % 12 + 1, 1)
+
+
+def _gastos_mensais_por_categoria(usuario, meses=6):
+    """{categoria_id: {'nome': ..., 'meses': [total de cada mês com gasto]}}"""
+    hoje = date.today()
+    inicio = _primeiro_dia(hoje, meses - 1)
+
+    linhas = (
+        Transacao.objects
+        .filter(usuario=usuario, tipo='despesa', categoria__isnull=False,
+                data__gte=inicio, data__lte=hoje)
+        .values('categoria_id', 'categoria__nome', 'data__year', 'data__month')
+        .annotate(total=Sum('valor'))
+    )
+
+    por_categoria = {}
+    for l in linhas:
+        item = por_categoria.setdefault(l['categoria_id'], {
+            'nome': l['categoria__nome'], 'meses': [],
+        })
+        item['meses'].append(float(l['total']))
+    return por_categoria
+
+
+def _categorias_contratadas(usuario):
+    """Categorias que o usuário não escolhe mês a mês — logo, não dá para limitar.
+
+    Dois sinais de cadastro: ter uma recorrente ativa (aluguel, internet,
+    streaming) e o catálogo de essenciais marcar a categoria como não-variável
+    (saúde, educação). Um terceiro sinal, o comportamento dos dados, entra
+    depois — ele pega o que não está cadastrado em lugar nenhum.
+    """
+    fixas = set(
+        TransacaoFixa.objects
+        .filter(usuario=usuario, ativa=True, tipo='despesa', categoria__isnull=False)
+        .values_list('categoria_id', flat=True)
+    )
+
+    nomes_fixos = set(
+        Essencial.objects
+        .filter(usuario=usuario, ativa=True, categoria__variavel=False,
+                categoria__tipo='despesa')
+        .values_list('categoria__nome', flat=True)
+    )
+    if nomes_fixos:
+        fixas |= set(
+            Categoria.objects
+            .filter(usuario=usuario, tipo='despesa', nome__in=nomes_fixos)
+            .values_list('pk', flat=True)
+        )
+    return fixas
+
+
+def _variacao(valores):
+    """Coeficiente de variação: desvio padrão dividido pela média.
+
+    Perto de zero significa gasto que se repete igual todo mês — conta de luz,
+    mensalidade. Sugerir "gaste menos" nisso é pedir o impossível.
+    """
+    if len(valores) < 2:
+        return None
+    media = sum(valores) / len(valores)
+    if media <= 0:
+        return None
+    variancia = sum((v - media) ** 2 for v in valores) / len(valores)
+    return (variancia ** 0.5) / media
+
+
+# Abaixo disto o gasto é considerado fixo: varia menos de 12% em torno da média
+LIMIAR_VARIACAO = 0.12
+
+# Sem pelo menos três meses não há como saber se um gasto varia ou foi exceção
+MESES_MINIMOS = 3
+
+
+def sugestoes_de_limite(usuario, meses=6):
+    """Sugere limites só onde gastar menos é uma decisão possível.
+
+    O alvo é o melhor mês recente, não uma fração inventada da média: é um
+    número que o próprio usuário já alcançou, então a meta é honesta.
+    """
+    com_meta = set(
+        Meta.objects
+        .filter(usuario=usuario, concluida=False, tipo='limite_gasto',
+                categoria__isnull=False)
+        .values_list('categoria_id', flat=True)
+    )
+    contratadas = _categorias_contratadas(usuario)
+    gastos = _gastos_mensais_por_categoria(usuario, meses)
+
+    sugestoes = []
+    for categoria_id, dados in gastos.items():
+        if categoria_id in com_meta or categoria_id in contratadas:
+            continue
+
+        valores = dados['meses']
+        if len(valores) < MESES_MINIMOS:
+            continue
+
+        variacao = _variacao(valores)
+        if variacao is None or variacao < LIMIAR_VARIACAO:
+            continue                     # gasto que não varia é fixo na prática
+
+        media = sum(valores) / len(valores)
+        melhor = min(valores)
+        if melhor >= media * 0.97:       # margem tão estreita que não vira meta
+            continue
+
+        sugestoes.append({
+            'categoria_id':    categoria_id,
+            'categoria_nome':  dados['nome'],
+            'media_mensal':    round(media, 2),
+            'limite_sugerido': round(melhor, 2),
+            'economia_mes':    round(media - melhor, 2),
+            'meses_com_dados': len(valores),
+        })
+
+    sugestoes.sort(key=lambda s: s['economia_mes'], reverse=True)
+    return sugestoes
+
+
 @login_required
 def metas(request):
     import calendar as _cal
@@ -858,34 +983,7 @@ def metas(request):
     ]
     proximas.sort(key=lambda m: m.data_fim)
 
-    mm = hoje.month - 3
-    yy = hoje.year
-    while mm <= 0:
-        mm += 12; yy -= 1
-    inicio_3m = date(yy, mm, 1)
-
-    cats_com_meta = set(
-        qs.filter(concluida=False, tipo='limite_gasto', categoria__isnull=False)
-        .values_list('categoria_id', flat=True)
-    )
-    top_cats = list(
-        Transacao.objects
-        .filter(usuario=request.user, tipo='despesa',
-                data__gte=inicio_3m, categoria__isnull=False)
-        .values('categoria_id', 'categoria__nome')
-        .annotate(total=Sum('valor'))
-        .order_by('-total')[:5]
-    )
-    sugestoes = []
-    for cat in top_cats:
-        if cat['categoria_id'] not in cats_com_meta:
-            media = float(cat['total']) / 3
-            sugestoes.append({
-                'categoria_id':    cat['categoria_id'],
-                'categoria_nome':  cat['categoria__nome'],
-                'media_mensal':    round(media, 2),
-                'limite_sugerido': round(media * 1.1, 2),
-            })
+    sugestoes = sugestoes_de_limite(request.user)
 
     totais_eco = []
     for i in range(1, 4):

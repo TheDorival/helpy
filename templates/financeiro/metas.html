@@ -225,18 +225,21 @@
       <div class="bg-surface border border-line rounded-lg p-4">
         <div class="flex items-center gap-1.5 mb-3">
           <p class="text-xs font-medium text-muted">Sugestões</p>
-          <span class="text-[10px] text-dim bg-bg border border-line rounded-full px-1.5 py-0.5">baseado nos seus gastos</span>
+          <span class="text-[10px] text-dim bg-bg border border-line rounded-full px-1.5 py-0.5">onde dá para escolher</span>
         </div>
         <div class="space-y-2">
           {% for s in sugestoes %}
           <div class="bg-bg border border-line rounded-lg p-3">
             <div class="flex items-start justify-between gap-2 mb-1">
               <p class="text-xs text-tx font-medium leading-tight">Limite em {{ s.categoria_nome }}</p>
-              <span class="text-[10px] text-red bg-red/10 border border-red/20 rounded-full px-1.5 py-0.5 flex-shrink-0">gasto</span>
+              <span class="text-[10px] text-green bg-green/10 border border-green/20 rounded-full px-1.5 py-0.5 flex-shrink-0 whitespace-nowrap">
+                −{{ request.user.simbolo_moeda }} {{ s.economia_mes|floatformat:"2g" }}/mês
+              </span>
             </div>
             <p class="text-[10px] text-dim mb-2">
-              Média {{ request.user.simbolo_moeda }} {{ s.media_mensal|floatformat:"2g" }}/mês nos últimos 3 meses.
-              Sugestão: {{ request.user.simbolo_moeda }} {{ s.limite_sugerido|floatformat:"2g" }}.
+              Você gasta {{ request.user.simbolo_moeda }} {{ s.media_mensal|floatformat:"2g" }}/mês em média,
+              mas já conseguiu {{ request.user.simbolo_moeda }} {{ s.limite_sugerido|floatformat:"2g" }}
+              em um dos últimos {{ s.meses_com_dados }} meses — dá para repetir.
             </p>
             <a href="{% url 'nova_meta' %}?tipo=limite_gasto&categoria={{ s.categoria_id }}&valor={{ s.limite_sugerido }}"
                class="text-[10px] font-medium text-accent hover:underline">
@@ -245,6 +248,10 @@
           </div>
           {% endfor %}
         </div>
+        <p class="mt-3 text-[10px] text-dim leading-snug">
+          Gastos contratados — aluguel, mensalidade, assinatura — ficam de fora:
+          limitar não é uma escolha disponível neles.
+        </p>
       </div>
       {% endif %}
 
