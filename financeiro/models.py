@@ -428,6 +428,22 @@ def _data_parcela(data_inicio, offset_meses):
     return date(ano, mes, dia)
 
 
+def _proxima_fatura(data_origem, dia):
+    """Primeiro vencimento no dia informado que cai **depois** da transação.
+
+    Compra no dia 23 com fatura vencendo no dia 10 só é cobrada no dia 10 do mês
+    seguinte — por isso a data tem que ser estritamente posterior.
+    """
+    from datetime import date
+    ano, mes = data_origem.year, data_origem.month
+    candidata = date(ano, mes, min(dia, calendar.monthrange(ano, mes)[1]))
+    if candidata > data_origem:
+        return candidata
+    total = ano * 12 + (mes - 1) + 1
+    ano, mes = total // 12, total % 12 + 1
+    return date(ano, mes, min(dia, calendar.monthrange(ano, mes)[1]))
+
+
 def _avancar_data(data, frequencia, intervalo_dias=None, dia_alvo=None):
     from datetime import date, timedelta
     meses = {'mensal': 1, 'bimestral': 2, 'trimestral': 3, 'semestral': 6, 'anual': 12}
@@ -688,6 +704,31 @@ class RegraCategoria(models.Model):
     ativa     = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    # ── Contrapartida ─────────────────────────────────────────────────────────
+    # Uma transação que gera outra, de sinal oposto, no futuro. O caso que
+    # motivou: Pix no crédito entra como receita hoje e volta como despesa na
+    # fatura do mês seguinte, com taxa e às vezes parcelado.
+    gera_contrapartida = models.BooleanField(
+        default=False,
+        help_text='Lançamentos casados geram uma cobrança futura de sinal oposto.',
+    )
+    contrapartida_taxa = models.DecimalField(
+        max_digits=6, decimal_places=3, default=0,
+        help_text='Percentual somado ao valor original (ex.: 6.5 para 6,5%).',
+    )
+    contrapartida_parcelas = models.PositiveSmallIntegerField(
+        default=1, help_text='Em quantas vezes a cobrança futura se divide.',
+    )
+    contrapartida_dia = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='Dia do vencimento da fatura (1–31). Vazio usa o dia da própria transação.',
+    )
+    contrapartida_categoria = models.ForeignKey(
+        Categoria, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='regras_contrapartida',
+        help_text='Categoria da cobrança futura.',
+    )
+
     class Meta:
         verbose_name = 'Regra de categorização'
         verbose_name_plural = 'Regras de categorização'
@@ -703,6 +744,104 @@ class RegraCategoria(models.Model):
         if self.aplica_a != 'ambos' and self.aplica_a != tipo:
             return False
         return self.termo.strip().lower() in (descricao or '').lower()
+
+    def valor_com_taxa(self, valor):
+        """Valor original acrescido da taxa da regra."""
+        if not self.contrapartida_taxa:
+            return Decimal(valor)
+        fator = Decimal('1') + (Decimal(self.contrapartida_taxa) / Decimal('100'))
+        return (Decimal(valor) * fator).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+class Contrapartida(models.Model):
+    """Cobrança futura nascida de uma transação — o outro lado da operação.
+
+    Pix no crédito é o caso típico: o dinheiro entra hoje e a fatura cobra no mês
+    seguinte, com taxa e às vezes parcelado. A dívida é certa no instante do Pix,
+    mas ainda não aconteceu — por isso ela vive aqui e não em `Transacao`, que
+    continua sendo o registro do que de fato ocorreu. As parcelas aparecem nas
+    previstas e viram transação quando a cobrança chega de verdade.
+    """
+
+    usuario     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                    related_name='contrapartidas')
+    origem      = models.ForeignKey('Transacao', on_delete=models.CASCADE,
+                                    related_name='contrapartidas',
+                                    help_text='Transação que gerou esta cobrança.')
+    regra       = models.ForeignKey(RegraCategoria, null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name='contrapartidas')
+    tipo        = models.CharField(max_length=10, choices=Transacao.TIPO_CHOICES)
+    conta       = _campo_conta('Bolso que a cobrança vai movimentar.')
+    descricao   = models.CharField(max_length=200, blank=True, default='')
+    categoria   = models.ForeignKey(Categoria, null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name='contrapartidas')
+    valor_total = models.DecimalField(max_digits=12, decimal_places=2)
+    taxa        = models.DecimalField(max_digits=6, decimal_places=3, default=0,
+                                      help_text='Percentual aplicado sobre o valor original.')
+    criado_em   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Contrapartida'
+        verbose_name_plural = 'Contrapartidas'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.descricao or "Cobrança"} — R$ {self.valor_total}'
+
+    @property
+    def pendentes(self):
+        return self.parcelas.filter(quitada=False)
+
+    @property
+    def valor_pendente(self):
+        return sum((p.valor for p in self.pendentes), Decimal('0'))
+
+    def gerar_parcelas(self, data_origem, n_parcelas, dia_vencimento=None):
+        """Divide o total em parcelas mensais, ancoradas no dia da fatura.
+
+        A sobra do arredondamento vai para a última parcela — do contrário a soma
+        das parcelas não fecharia com o total cobrado.
+        """
+        n = max(int(n_parcelas or 1), 1)
+
+        if dia_vencimento:
+            primeira = _proxima_fatura(data_origem, dia_vencimento)
+        else:
+            primeira = _data_parcela(data_origem, 1)   # mesmo dia, mês seguinte
+
+        base = (self.valor_total / n).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        parcelas = []
+        acumulado = Decimal('0')
+        for i in range(n):
+            valor = self.valor_total - acumulado if i == n - 1 else base
+            acumulado += valor
+            parcelas.append(ParcelaContrapartida(
+                contrapartida=self, numero=i + 1,
+                data_vencimento=_data_parcela(primeira, i),
+                valor=valor,
+            ))
+        return ParcelaContrapartida.objects.bulk_create(parcelas)
+
+
+class ParcelaContrapartida(models.Model):
+    contrapartida   = models.ForeignKey(Contrapartida, on_delete=models.CASCADE,
+                                        related_name='parcelas')
+    numero          = models.PositiveSmallIntegerField()
+    data_vencimento = models.DateField(db_index=True)
+    valor           = models.DecimalField(max_digits=12, decimal_places=2)
+    quitada         = models.BooleanField(default=False)
+    transacao       = models.ForeignKey('Transacao', null=True, blank=True,
+                                        on_delete=models.SET_NULL,
+                                        related_name='parcelas_contrapartida',
+                                        help_text='Lançamento real que quitou esta parcela.')
+
+    class Meta:
+        verbose_name = 'Parcela de contrapartida'
+        verbose_name_plural = 'Parcelas de contrapartida'
+        ordering = ['data_vencimento', 'numero']
+
+    def __str__(self):
+        return f'{self.numero}/{self.contrapartida.parcelas.count()} — R$ {self.valor}'
 
 
 class EventoVida(models.Model):
