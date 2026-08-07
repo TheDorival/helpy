@@ -226,6 +226,15 @@ método, navegador e o traceback. Há testes garantindo esse comportamento.
 
 ---
 
+## Servidor próprio
+
+Para rodar o Helpy na sua própria máquina Linux, publicamente acessível e sem
+abrir portas no roteador, veja [`deploy/README.md`](deploy/README.md) — inclui
+Docker Compose com Postgres, túnel da Cloudflare, endurecimento do sistema,
+backup verificado e a migração dos dados vindos do Render.
+
+---
+
 ## Configuração de banco de dados remoto
 
 Para usar PostgreSQL em outro computador via rede (ex: usando [Tailscale](https://tailscale.com)):
