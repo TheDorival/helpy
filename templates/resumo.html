@@ -74,7 +74,7 @@
   </div>
 
   <!-- 3 cards de resumo -->
-  <div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="grid grid-cols-3 gap-4 mb-6 escalona">
 
     <div class="bg-surface border border-line rounded-lg p-5">
       <div class="flex items-center justify-between mb-3">
@@ -85,7 +85,8 @@
           </svg>
         </div>
       </div>
-      <p class="text-2xl font-semibold {% if saldo >= 0 %}text-tx{% else %}text-red{% endif %}">
+      <p class="text-2xl font-semibold {% if saldo >= 0 %}text-tx{% else %}text-red{% endif %}"
+         data-conta="{{ saldo|floatformat:'2u' }}">
         {{ request.user.simbolo_moeda }} {{ saldo|floatformat:"2g" }}
       </p>
       <p class="mt-1 text-xs text-dim">Receitas − Despesas</p>
@@ -107,7 +108,8 @@
           </svg>
         </a>
       </div>
-      <p class="text-2xl font-semibold text-green">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:"2g" }}</p>
+      <p class="text-2xl font-semibold text-green"
+         data-conta="{{ total_receitas|floatformat:'2u' }}">{{ request.user.simbolo_moeda }} {{ total_receitas|floatformat:"2g" }}</p>
       {% if rec_previsto %}
         <p class="mt-1 text-xs text-muted">A receber: <span class="text-green font-medium">{{ request.user.simbolo_moeda }} {{ rec_previsto|floatformat:"2g" }}</span></p>
       {% else %}
@@ -125,7 +127,8 @@
           </svg>
         </a>
       </div>
-      <p class="text-2xl font-semibold text-red">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</p>
+      <p class="text-2xl font-semibold text-red"
+         data-conta="{{ total_despesas|floatformat:'2u' }}">{{ request.user.simbolo_moeda }} {{ total_despesas|floatformat:"2g" }}</p>
       {% if desp_previsto %}
         <p class="mt-1 text-xs text-muted">A pagar: <span class="text-red font-medium">{{ request.user.simbolo_moeda }} {{ desp_previsto|floatformat:"2g" }}</span></p>
       {% else %}

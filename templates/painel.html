@@ -44,7 +44,7 @@
   </div>
 
   <!-- Linha 1: Saldo em conta | Previsão de gastos | Previsão de economias -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 escalona">
 
     <!-- Widget: Saldo em conta -->
     <div class="bg-surface border border-line rounded-lg p-4">
@@ -55,7 +55,8 @@
         </svg>
       </div>
 
-      <p class="text-xl font-semibold {% if saldo_historico >= 0 %}text-tx{% else %}text-red{% endif %} mb-0.5">
+      <p class="text-xl font-semibold {% if saldo_historico >= 0 %}text-tx{% else %}text-red{% endif %} mb-0.5"
+         data-conta="{{ saldo_historico|floatformat:'2u' }}">
         {{ request.user.simbolo_moeda }} {{ saldo_historico|floatformat:"2g" }}
       </p>
 
@@ -232,7 +233,8 @@
         </svg>
       </div>
 
-      <p class="text-xl font-semibold text-tx mb-0.5">
+      <p class="text-xl font-semibold text-tx mb-0.5"
+         data-conta="{{ desp_prevista|floatformat:'2u' }}">
         {{ request.user.simbolo_moeda }} {{ desp_prevista|floatformat:"2g" }}
       </p>
       <p class="text-xs text-dim mb-3">
@@ -244,15 +246,15 @@
         {% widthratio desp_mes_atual avg_desp_3m 100 as pct_raw %}
         {% if pct_raw > 100 %}
           <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
-            <div class="h-1.5 rounded-full bg-red" style="width: 100%"></div>
+            <div class="h-1.5 rounded-full bg-red barra-cresce" data-barra="100" style="width: 100%"></div>
           </div>
           <p class="text-xs text-red mb-1">
             {{ pct_raw }}% da média — acima do esperado
           </p>
         {% else %}
           <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
-            <div class="h-1.5 rounded-full {% if pct_raw > 80 %}bg-red{% elif pct_raw > 60 %}bg-amber-400{% else %}bg-green{% endif %}"
-                 style="width: {{ pct_raw }}%"></div>
+            <div class="h-1.5 rounded-full barra-cresce {% if pct_raw > 80 %}bg-red{% elif pct_raw > 60 %}bg-amber-400{% else %}bg-green{% endif %}"
+                 data-barra="{{ pct_raw }}" style="width: {{ pct_raw }}%"></div>
           </div>
           <p class="text-xs text-dim mb-1">{{ pct_raw }}% da média mensal</p>
         {% endif %}
@@ -274,7 +276,8 @@
       </div>
 
       {% if rec_prevista > 0 or desp_prevista > 0 %}
-        <p class="text-xl font-semibold {% if economia_prevista >= 0 %}text-green{% else %}text-red{% endif %} mb-0.5">
+        <p class="text-xl font-semibold {% if economia_prevista >= 0 %}text-green{% else %}text-red{% endif %} mb-0.5"
+           data-conta="{{ economia_prevista|floatformat:'2u' }}">
           {{ request.user.simbolo_moeda }} {{ economia_prevista|floatformat:"2g" }}
         </p>
         <p class="text-xs text-dim mb-3">Economia mensal estimada</p>
@@ -300,7 +303,7 @@
   </div>
 
   <!-- Linha 2: Metas | Atalhos -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 escalona">
 
     <!-- Widget: Metas (placeholder) -->
     <div class="md:col-span-2 bg-surface border border-line rounded-lg p-4">
@@ -321,7 +324,8 @@
               <span class="text-xs {% if cor == 'green' %}text-green{% elif cor == 'amber' %}text-amber-400{% elif cor == 'red' %}text-red{% else %}text-accent{% endif %} flex-shrink-0 ml-2">{{ pct }}%</span>
             </div>
             <div class="bg-line rounded-full h-1 overflow-hidden">
-              <div class="h-1 rounded-full {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
+              <div class="h-1 rounded-full barra-cresce {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
+                   data-barra="{% if pct > 100 %}100{% else %}{{ pct }}{% endif %}"
                    style="width: {% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%"></div>
             </div>
           </div>
