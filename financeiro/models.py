@@ -586,9 +586,18 @@ class Meta(models.Model):
         ('receita',      'Meta de receita'),
     ]
 
+    PERIODICIDADE_CHOICES = [
+        ('mensal', 'A cada mês'),
+        ('total',  'No período inteiro'),
+    ]
+
     usuario     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='metas')
     nome        = models.CharField(max_length=150)
     tipo        = models.CharField(max_length=15, choices=TIPO_CHOICES)
+    periodicidade = models.CharField(
+        max_length=10, choices=PERIODICIDADE_CHOICES, default='mensal',
+        help_text='Mensal reinicia a cada mês; total acumula até a data fim.',
+    )
     valor_alvo  = models.DecimalField(max_digits=12, decimal_places=2)
     ajuste      = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     categoria   = models.ForeignKey('Categoria', on_delete=models.SET_NULL, null=True, blank=True, related_name='metas')
@@ -606,29 +615,61 @@ class Meta(models.Model):
     def __str__(self):
         return self.nome
 
-    def valor_atual(self):
-        from django.db.models import Sum
-        from datetime import date
-        hoje = date.today()
+    def janela(self, hoje=None):
+        """Intervalo (início, fim) sobre o qual a meta é medida.
+
+        Mensal olha só o período corrente — um limite de R$ 400 por mês tem que
+        reiniciar todo mês, senão ele acumula desde a data de início e estoura
+        para sempre, mesmo com o gasto sob controle. Total acumula do início ao
+        fim, para casos como "no máximo X na reforma".
+
+        O mês segue o dia de corte do usuário, o mesmo do resto do app.
+        """
+        from datetime import date, timedelta
+        hoje = hoje or date.today()
         fim = min(self.data_fim, hoje) if self.data_fim else hoje
-        inicio = self.data_inicio
 
-        if self.tipo in ('economia', 'receita'):
-            total = (
-                Transacao.objects
-                .filter(usuario=self.usuario, tipo='receita', data__gte=inicio, data__lte=fim)
-                .aggregate(t=Sum('valor'))['t'] or 0
-            )
-        else:  # limite_gasto
+        if self.periodicidade != 'mensal':
+            return self.data_inicio, fim
+
+        corte = getattr(self.usuario, 'dia_corte', 1) or 1
+        corte = min(corte, 28)                    # 29 a 31 não existem todo mês
+        ano, mes = hoje.year, hoje.month
+        if hoje.day < corte:                      # antes do corte, o mês é o anterior
+            ano, mes = (ano - 1, 12) if mes == 1 else (ano, mes - 1)
+
+        inicio_mes = date(ano, mes, corte)
+        prox = date(ano + 1, 1, corte) if mes == 12 else date(ano, mes + 1, corte)
+        fim_mes = prox - timedelta(days=1)
+
+        # A meta não mede nada fora da própria vigência
+        return max(inicio_mes, self.data_inicio), min(fim_mes, fim)
+
+    def valor_atual(self, hoje=None):
+        from django.db.models import Sum
+
+        inicio, fim = self.janela(hoje)
+        if fim < inicio:
+            return self.ajuste
+
+        def somar(tipo, categoria=False):
             qs = Transacao.objects.filter(
-                usuario=self.usuario, tipo='despesa',
-                data__gte=inicio, data__lte=fim,
+                usuario=self.usuario, tipo=tipo, data__gte=inicio, data__lte=fim,
             )
-            if self.categoria_id:
+            if categoria and self.categoria_id:
                 qs = qs.filter(categoria_id=self.categoria_id)
-            total = qs.aggregate(t=Sum('valor'))['t'] or 0
+            return Decimal(str(qs.aggregate(t=Sum('valor'))['t'] or 0))
 
-        return Decimal(str(total)) + self.ajuste
+        if self.tipo == 'economia':
+            # Economia é o que sobra, não o que entra. Contar só a receita fazia
+            # toda meta de economia se cumprir sozinha no dia do salário.
+            total = somar('receita') - somar('despesa')
+        elif self.tipo == 'receita':
+            total = somar('receita')
+        else:  # limite_gasto
+            total = somar('despesa', categoria=True)
+
+        return total + self.ajuste
 
     def progresso_pct(self):
         alvo = float(self.valor_alvo)
