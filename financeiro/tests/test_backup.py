@@ -11,8 +11,8 @@ from django.contrib.auth import get_user_model
 from django.core.management import CommandError, call_command
 from django.test import TestCase
 
-from financeiro.models import (Categoria, CategoriaEssencial, Emprestimo, Entidade,
-                               Essencial, EventoVida, Meta, ParcelaEmprestimo,
+from financeiro.models import (AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo,
+                               Entidade, Essencial, EventoVida, Meta, ParcelaEmprestimo,
                                RegraCategoria, SaldoExtra, Transacao, TransacaoFixa)
 
 Usuario = get_user_model()
@@ -60,6 +60,8 @@ class BackupTests(TestCase):
         Meta.objects.create(usuario=self.u, nome='Reserva', tipo='economia',
                             valor_alvo=Decimal('5000'), data_inicio=date(2026, 1, 1))
         SaldoExtra.objects.create(usuario=self.u, nome='Cripto', valor=Decimal('300'))
+        AjusteSaldo.objects.create(usuario=self.u, data=date(2026, 1, 15),
+                                   valor=Decimal('2500'), observacao='Saldo do extrato')
         EventoVida.objects.create(usuario=self.u, titulo='Mudança', tipo='moradia',
                                   data=date(2026, 1, 5), transacao=self.t)
         RegraCategoria.objects.create(usuario=self.u, termo='ALUGUEL',
@@ -121,8 +123,9 @@ class BackupTests(TestCase):
     def test_restaura_apos_perda_total(self):
         self._exportar()
         # simula a perda do banco
-        for modelo in (RegraCategoria, EventoVida, SaldoExtra, Meta, ParcelaEmprestimo,
-                       Emprestimo, Essencial, Transacao, TransacaoFixa, Entidade, Categoria):
+        for modelo in (RegraCategoria, EventoVida, AjusteSaldo, SaldoExtra, Meta,
+                       ParcelaEmprestimo, Emprestimo, Essencial, Transacao, TransacaoFixa,
+                       Entidade, Categoria):
             if modelo is ParcelaEmprestimo:
                 modelo.objects.all().delete()
             else:
@@ -133,6 +136,10 @@ class BackupTests(TestCase):
 
         self.assertEqual(Transacao.objects.filter(usuario=self.u).count(), 1)
         self.assertEqual(TransacaoFixa.objects.filter(usuario=self.u).count(), 1)
+        ancora = AjusteSaldo.vigente(self.u)
+        self.assertIsNotNone(ancora)
+        self.assertEqual(ancora.valor, Decimal('2500.00'))
+        self.assertEqual(ancora.data, date(2026, 1, 15))
         self.assertEqual(ParcelaEmprestimo.objects.filter(emprestimo__usuario=self.u).count(), 2)
 
     def test_restauracao_preserva_valores_e_datas(self):
