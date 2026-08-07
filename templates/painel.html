@@ -58,7 +58,66 @@
       <p class="text-xl font-semibold {% if saldo_historico >= 0 %}text-tx{% else %}text-red{% endif %} mb-0.5">
         {{ request.user.simbolo_moeda }} {{ saldo_historico|floatformat:"2g" }}
       </p>
-      <p class="text-xs text-dim mb-3">Histórico transações</p>
+
+      <div class="flex items-center gap-2 mb-3">
+        {% if ancora_saldo %}
+          <p class="text-xs text-dim" title="{{ ancora_saldo.observacao }}">
+            Ajustado em {{ ancora_saldo.data|date:"d/m/Y" }}
+          </p>
+        {% else %}
+          <p class="text-xs text-dim">Histórico transações</p>
+        {% endif %}
+        <button type="button" onclick="toggleAjuste()"
+                class="text-xs text-accent hover:underline transition-colors">
+          Ajustar
+        </button>
+      </div>
+
+      <!-- Ajuste do saldo: informa o valor real do extrato -->
+      <div id="ajuste-saldo-form" class="hidden mb-3 p-2.5 rounded-md bg-bg border border-line">
+        <p class="text-[11px] text-muted mb-2">
+          Informe o saldo que aparece no seu extrato. O Helpy passa a contar a partir dele —
+          nada vira receita ou despesa, então médias e gráficos não mudam.
+        </p>
+        <form method="post" action="{% url 'ajustar_saldo' %}" class="space-y-1.5">
+          {% csrf_token %}
+          <div class="flex gap-1.5">
+            <input type="date" name="data" value="{{ hoje|date:'Y-m-d' }}" max="{{ hoje|date:'Y-m-d' }}"
+                   aria-label="Data do saldo" required
+                   class="flex-1 min-w-0 text-xs bg-surface border border-line rounded px-2 py-1.5 text-tx outline-none focus:border-accent/50 transition-colors">
+            <div class="flex items-center flex-1 min-w-0 bg-surface border border-line rounded overflow-hidden focus-within:border-accent/50 transition-colors">
+              <span class="text-[10px] text-dim pl-2 pr-1 flex-shrink-0">{{ request.user.simbolo_moeda }}</span>
+              <input type="number" name="valor" id="ajuste-valor" step="0.01" required
+                     value="{{ saldo_historico|floatformat:'2u' }}"
+                     aria-label="Saldo real da conta"
+                     oninput="mostrarDiferenca()"
+                     class="w-full text-xs bg-transparent px-1 py-1.5 text-tx text-right outline-none font-semibold">
+            </div>
+          </div>
+          <input type="text" name="observacao" maxlength="200" placeholder="Observação (opcional)"
+                 aria-label="Observação"
+                 class="w-full text-xs bg-surface border border-line rounded px-2 py-1.5 text-tx placeholder-dim outline-none focus:border-accent/50 transition-colors">
+          <p id="ajuste-diferenca" class="text-[11px] text-dim"></p>
+          <div class="flex gap-1.5">
+            <button type="submit"
+                    class="flex-1 text-xs bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 rounded px-2 py-1.5 transition-colors">
+              Ajustar saldo
+            </button>
+            {% if ancora_saldo %}
+              <button type="submit" form="form-desfazer-ajuste"
+                      class="text-xs text-dim hover:text-red border border-line rounded px-2 py-1.5 transition-colors">
+                Desfazer
+              </button>
+            {% endif %}
+          </div>
+        </form>
+        {% if ancora_saldo %}
+          <form method="post" action="{% url 'desfazer_ajuste_saldo' %}" id="form-desfazer-ajuste"
+                onsubmit="return confirm('Remover o ajuste? O saldo volta a ser a soma de todos os lançamentos.')">
+            {% csrf_token %}
+          </form>
+        {% endif %}
+      </div>
 
       {% if saldos_extras %}
         <div class="space-y-1.5 mb-3">
@@ -304,6 +363,42 @@
       const nome = form.querySelector('input[name=nome]');
       if (nome) nome.focus();
     }
+  }
+
+  /* Abre/fecha o ajuste de saldo */
+  function toggleAjuste() {
+    const form = document.getElementById('ajuste-saldo-form');
+    const fechado = form.classList.toggle('hidden');
+    if (!fechado) {
+      mostrarDiferenca();
+      const campo = document.getElementById('ajuste-valor');
+      if (campo) { campo.focus(); campo.select(); }
+    }
+  }
+
+  /* Mostra de quanto é o acerto antes de confirmar — sem surpresa depois */
+  const SALDO_ATUAL = {{ saldo_historico|floatformat:'2u'|default:'0' }};
+  const MOEDA = "{{ request.user.simbolo_moeda|escapejs }}";
+
+  function mostrarDiferenca() {
+    const aviso = document.getElementById('ajuste-diferenca');
+    const campo = document.getElementById('ajuste-valor');
+    if (!aviso || !campo) return;
+
+    const novo = parseFloat(campo.value);
+    if (isNaN(novo)) { aviso.textContent = ''; return; }
+
+    const dif = Math.round((novo - SALDO_ATUAL) * 100) / 100;
+    if (dif === 0) {
+      aviso.textContent = 'Igual ao saldo atual — nada muda.';
+      aviso.className = 'text-[11px] text-dim';
+      return;
+    }
+    const abs = Math.abs(dif).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2,
+    });
+    aviso.textContent = (dif > 0 ? 'Acréscimo de ' : 'Redução de ') + MOEDA + ' ' + abs;
+    aviso.className = 'text-[11px] ' + (dif > 0 ? 'text-green' : 'text-red');
   }
   </script>
 

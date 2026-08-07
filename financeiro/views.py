@@ -1,21 +1,22 @@
 import csv
 import json
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 
 from .forms import (CategoriaForm, EmprestimoForm, EntidadeForm, EventoVidaForm, MetaForm,
                     RegraCategoriaForm, TransacaoFixaForm, TransacaoForm)
 from .importacao import (ExtratoInvalido, conferencia_lancamentos, detectar_colunas, ler_csv,
                          meta_do_extrato, parse_csv, parse_linhas_caixa, parse_ofx)
-from .models import (Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial, EventoVida,
-                     ImportacaoExtrato, Meta, ParcelaEmprestimo, RegraCategoria, SaldoExtra,
-                     Transacao, TransacaoFixa, _avancar_data, _data_parcela)
+from .models import (AjusteSaldo, Categoria, CategoriaEssencial, Emprestimo, Entidade, Essencial,
+                     EventoVida, ImportacaoExtrato, Meta, ParcelaEmprestimo, RegraCategoria,
+                     SaldoExtra, Transacao, TransacaoFixa, _avancar_data, _data_parcela)
 
 MESES = [
     '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -2123,4 +2124,46 @@ def excluir_saldo_extra(request, pk):
     se = get_object_or_404(SaldoExtra, pk=pk, usuario=request.user)
     if request.method == 'POST':
         se.delete()
+    return redirect('painel')
+
+
+@login_required
+def ajustar_saldo(request):
+    """Registra o saldo real da conta em uma data — a âncora do painel."""
+    if request.method != 'POST':
+        return redirect('painel')
+
+    # Aceita "1234.56" (input numérico) e "1.234,56" (digitado à mão)
+    bruto = (request.POST.get('valor') or '').strip().replace(' ', '')
+    if ',' in bruto:
+        bruto = bruto.replace('.', '').replace(',', '.')
+    try:
+        valor = Decimal(bruto).quantize(Decimal('0.01'))
+    except (InvalidOperation, ValueError):
+        messages.error(request, 'Informe um saldo válido.')
+        return redirect('painel')
+
+    data = parse_date(request.POST.get('data') or '') or date.today()
+    if data > date.today():
+        messages.error(request, 'A data do saldo não pode ser no futuro.')
+        return redirect('painel')
+
+    AjusteSaldo.objects.create(
+        usuario=request.user,
+        data=data,
+        valor=valor,
+        observacao=(request.POST.get('observacao') or '').strip()[:200],
+    )
+    messages.success(request, 'Saldo ajustado.')
+    return redirect('painel')
+
+
+@login_required
+def desfazer_ajuste_saldo(request):
+    """Remove a âncora vigente: o saldo volta a ser a soma dos lançamentos."""
+    if request.method == 'POST':
+        ancora = AjusteSaldo.vigente(request.user)
+        if ancora:
+            ancora.delete()
+            messages.success(request, 'Ajuste removido.')
     return redirect('painel')

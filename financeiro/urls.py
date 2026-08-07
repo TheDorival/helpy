@@ -57,4 +57,6 @@ urlpatterns = [
     path('saldo-extra/novo/', views.criar_saldo_extra, name='criar_saldo_extra'),
     path('saldo-extra/<int:pk>/atualizar/', views.atualizar_saldo_extra, name='atualizar_saldo_extra'),
     path('saldo-extra/<int:pk>/excluir/', views.excluir_saldo_extra, name='excluir_saldo_extra'),
+    path('saldo/ajustar/', views.ajustar_saldo, name='ajustar_saldo'),
+    path('saldo/ajustar/desfazer/', views.desfazer_ajuste_saldo, name='desfazer_ajuste_saldo'),
 ]

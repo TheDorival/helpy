@@ -101,6 +101,7 @@ def painel(request):
     sincronizar_fixas(request.user, limite=hoje)
 
     saldo_historico = _saldo_historico(request.user)
+    ancora_saldo = AjusteSaldo.vigente(request.user)
     saldos_extras = list(SaldoExtra.objects.filter(usuario=request.user))
     saldo_total = float(saldo_historico) + sum(float(se.valor) for se in saldos_extras)
 
@@ -134,6 +135,7 @@ def painel(request):
 
     return render(request, 'painel.html', {
         'saldo_historico': saldo_historico,
+        'ancora_saldo': ancora_saldo,
         'saldos_extras': saldos_extras,
         'saldo_total': saldo_total,
         'desp_mes_atual': desp_mes_atual,
