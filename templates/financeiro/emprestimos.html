@@ -67,8 +67,8 @@
           <!-- Barra de progresso -->
           <div class="w-20 flex-shrink-0">
             <div class="bg-line rounded-full h-1.5">
-              <div class="h-1.5 rounded-full transition-all {% if emp.tipo == 'tomado' %}bg-red{% else %}bg-green{% endif %}"
-                   style="width: {{ item.progresso_pct }}%"></div>
+              <div class="h-1.5 rounded-full barra-cresce {% if emp.tipo == 'tomado' %}bg-red{% else %}bg-green{% endif %}"
+                   data-barra="{{ item.progresso_pct }}" style="width: {{ item.progresso_pct }}%"></div>
             </div>
           </div>
 

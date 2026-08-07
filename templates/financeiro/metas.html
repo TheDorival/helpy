@@ -95,7 +95,8 @@
               </div>
 
               <div class="bg-line rounded-full h-1.5 mb-2 overflow-hidden">
-                <div class="h-1.5 rounded-full transition-all {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
+                <div class="h-1.5 rounded-full barra-cresce {% if cor == 'green' %}bg-green{% elif cor == 'amber' %}bg-amber-400{% elif cor == 'red' %}bg-red{% else %}bg-accent{% endif %}"
+                     data-barra="{% if pct > 100 %}100{% else %}{{ pct }}{% endif %}"
                      style="width: {% if pct > 100 %}100{% else %}{{ pct }}{% endif %}%"></div>
               </div>
 
