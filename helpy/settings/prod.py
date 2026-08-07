@@ -4,6 +4,18 @@ DEBUG = False
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
+# Origens aceitas em requisições POST. Precisa do esquema junto do domínio
+# ('https://helpy.exemplo.com'); sem isso, todo formulário atrás de um proxy
+# HTTPS falha com "CSRF verification failed".
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+
+# Quem termina o TLS é o proxy (Render, túnel da Cloudflare, nginx). Ele avisa
+# o esquema original neste cabeçalho — sem isso o Django acha que a requisição
+# chegou em HTTP e entra em laço de redirecionamento.
+#
+# Só é seguro porque nada além do proxy alcança a aplicação: no compose a porta
+# fica presa em 127.0.0.1. Se um dia você expuser o gunicorn direto, qualquer um
+# poderá forjar este cabeçalho e fingir que veio por HTTPS.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True

@@ -7,6 +7,7 @@ staticfiles/
 *.pyc
 *.sqlite3
 .env
+deploy/.env
 
 # Backups: contêm seus dados financeiros — nunca vão para o repositório
 helpy-backup-*.json
